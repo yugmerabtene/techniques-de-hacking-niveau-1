@@ -271,7 +271,7 @@ Mesures : chiffrement au repos et en transit, pentest interne trimestriel, SOC 2
 - [10 règles d'or ANSSI](https://cyber.gouv.fr/securisation/10-regles-or-securite-numerique/)
 - [RGS v2.0](https://www.ssi.gouv.fr/rgs)
 - [CERT-FR — Durcissement](https://www.cert.ssi.gouv.fr/)
-- [CIS Benchmarks](https://www.cisecurity.org/cis-benchmarks/)
+- [CIS Benchmarks](https://www.cisecurity.org/cis-benchmarks)
 - [MITRE D3FEND](https://d3fend.mitre.org/)
 
 ---

@@ -91,4 +91,4 @@ Pour le Ministère de la Justice (administration publique centrale) :
 
 - Directive (EU) 2022/2555 : https://eur-lex.europa.eu/eli/dir/2022/2555
 - NIS2 page officielle : https://digital-strategy.ec.europa.eu/en/policies/nis2-directive
-- ANSSI NIS2 : https://cyber.gouv.fr/directive-nis-2
+- ANSSI NIS2 : https://cyber.gouv.fr/reglementation/cybersecurite-systemes-dinformation

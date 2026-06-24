@@ -60,7 +60,7 @@ Le Ministère de la Justice, en tant qu'autorité administrative, doit :
 
 ## Sources
 
-- RGS v2.0 : https://www.ssi.gouv.fr/uploads/2014/11/RGS_v-2-0_Corps_du_texte.pdf
+- RGS v2.0 : https://cyber.gouv.fr/rgs
 - ANSSI RGS : https://www.ssi.gouv.fr/rgs
 - Ordonnance n°2005-1516 : https://www.legifrance.gouv.fr
 - Décret n°2010-112 : https://www.legifrance.gouv.fr
