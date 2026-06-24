@@ -55,3 +55,13 @@
 - Détection, analyse et réponse aux incidents.
 - Coordination et communication post-attaque.
 - Travaux pratiques : simulation d'une attaque et mise en œuvre d'un plan de réponse.
+
+---
+
+## Hors-Série — KillChainAgent
+
+- Développement d'un orchestrateur agentic de kill chain ATT&CK
+- Stack : Python + FastAPI + TailwindCSS
+- Architecture multi-agent (Supervisor, Recon, Exploit, PrivEsc, Persist, Report)
+- Méthodologie Agile / Scrum / Sprint
+- Référence au cours [agentic-developer-craftsmanship](https://github.com/yugmerabtene/agentic-developer-craftsmanship)

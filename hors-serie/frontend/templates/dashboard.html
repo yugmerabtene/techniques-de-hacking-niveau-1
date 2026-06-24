@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+    <div class="bg-slate-800 rounded-lg p-6 border border-slate-700">
+        <h2 class="text-lg font-semibold mb-4">Nouvelle Mission</h2>
+        <form id="mission-form" class="space-y-4"
+              onsubmit="event.preventDefault(); createMission();">
+            <div>
+                <label class="block text-sm text-slate-400 mb-1">Cible (IP)</label>
+                <input type="text" id="target" name="target" placeholder="192.168.1.10"
+                       class="w-full bg-slate-900 border border-slate-600 rounded px-3 py-2
+                              focus:border-red-500 focus:outline-none text-white">
+            </div>
+            <button type="submit"
+                    class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded transition font-medium">
+                Lancer la Kill Chain
+            </button>
+        </form>
+        <div id="mission-result" class="mt-4 hidden">
+            <div class="bg-slate-900 rounded p-3 text-sm">
+                <span class="text-green-400">Mission créée</span> :
+                <span id="mission-id" class="font-mono"></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-slate-800 rounded-lg p-6 border border-slate-700">
+        <h2 class="text-lg font-semibold mb-4">Kill Chain ATT&CK</h2>
+        <div class="space-y-3 text-sm">
+            <div class="flex items-center gap-3">
+                <span class="w-20 text-slate-500 font-mono">TA0007</span>
+                <span class="bg-blue-900/50 text-blue-300 px-2 py-1 rounded text-xs">Discovery</span>
+                <span class="text-slate-400">T1046 → nmap</span>
+            </div>
+            <div class="flex items-center gap-3">
+                <span class="w-20 text-slate-500 font-mono">TA0001</span>
+                <span class="bg-red-900/50 text-red-300 px-2 py-1 rounded text-xs">Initial Access</span>
+                <span class="text-slate-400">T1190 → msfconsole, sqlmap</span>
+            </div>
+            <div class="flex items-center gap-3">
+                <span class="w-20 text-slate-500 font-mono">TA0004</span>
+                <span class="bg-purple-900/50 text-purple-300 px-2 py-1 rounded text-xs">Privilege Escalation</span>
+                <span class="text-slate-400">T1068 → LinPEAS</span>
+            </div>
+            <div class="flex items-center gap-3">
+                <span class="w-20 text-slate-500 font-mono">TA0003</span>
+                <span class="bg-green-900/50 text-green-300 px-2 py-1 rounded text-xs">Persistence</span>
+                <span class="text-slate-400">T1098 → SSH key</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="bg-slate-800 rounded-lg p-6 border border-slate-700">
+    <h2 class="text-lg font-semibold mb-4">Agents disponibles</h2>
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        <div class="bg-slate-900 rounded-lg p-4 text-center border border-slate-700 hover:border-red-500 transition">
+            <div class="text-2xl mb-2">S</div>
+            <div class="text-sm font-medium">Supervisor</div>
+            <div class="text-xs text-slate-500">Planification</div>
+        </div>
+        <div class="bg-slate-900 rounded-lg p-4 text-center border border-slate-700 hover:border-blue-500 transition">
+            <div class="text-2xl mb-2">R</div>
+            <div class="text-sm font-medium">Recon</div>
+            <div class="text-xs text-slate-500">nmap · gobuster</div>
+        </div>
+        <div class="bg-slate-900 rounded-lg p-4 text-center border border-slate-700 hover:border-red-500 transition">
+            <div class="text-2xl mb-2">E</div>
+            <div class="text-sm font-medium">Exploit</div>
+            <div class="text-xs text-slate-500">msf · sqlmap</div>
+        </div>
+        <div class="bg-slate-900 rounded-lg p-4 text-center border border-slate-700 hover:border-purple-500 transition">
+            <div class="text-2xl mb-2">P</div>
+            <div class="text-sm font-medium">PrivEsc</div>
+            <div class="text-xs text-slate-500">LinPEAS</div>
+        </div>
+        <div class="bg-slate-900 rounded-lg p-4 text-center border border-slate-700 hover:border-green-500 transition">
+            <div class="text-2xl mb-2">Ps</div>
+            <div class="text-sm font-medium">Persist</div>
+            <div class="text-xs text-slate-500">SSH · cron</div>
+        </div>
+        <div class="bg-slate-900 rounded-lg p-4 text-center border border-slate-700 hover:border-yellow-500 transition">
+            <div class="text-2xl mb-2">Rp</div>
+            <div class="text-sm font-medium">Report</div>
+            <div class="text-xs text-slate-500">CVSS · ATT&CK</div>
+        </div>
+    </div>
+</div>
+
+<script>
+async function createMission() {
+    const target = document.getElementById('target').value;
+    const resp = await fetch('/missions', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({target})
+    });
+    const data = await resp.json();
+    document.getElementById('mission-id').textContent = data.id;
+    document.getElementById('mission-result').classList.remove('hidden');
+}
+</script>
+
+{% endblock %}
