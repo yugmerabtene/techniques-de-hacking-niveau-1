@@ -65,3 +65,9 @@
 - Architecture multi-agent (Supervisor, Recon, Exploit, PrivEsc, Persist, Report)
 - Méthodologie Agile / Scrum / Sprint
 - Référence au cours [agentic-developer-craftsmanship](https://github.com/yugmerabtene/agentic-developer-craftsmanship)
+
+---
+
+## Guide d'environnement
+
+Avant de commencer, lisez [ENVIRONNEMENT.md](./ENVIRONNEMENT.md) pour configurer votre lab selon votre scénario (Kali hôte ou Kali Docker).

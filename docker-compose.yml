@@ -1,4 +1,16 @@
 services:
+  # =================== Kali Attacker (Scenario B only) ===================
+  kali-attacker:
+    image: kalilinux/kali-rolling:latest
+    container_name: kali-attacker
+    command: tail -f /dev/null
+    profiles:
+      - full
+    volumes:
+      - ./scripts:/scripts:ro
+      - ./hors-serie:/opt/killchain:ro
+    restart: unless-stopped
+
   # =================== Day 1-2-3: Web vulnerabilities ===================
   dvwa:
     image: vulnerables/web-dvwa:latest
@@ -10,10 +22,10 @@ services:
       - RECAPTCHA_PUB_KEY=disabled
     restart: unless-stopped
 
-  # =================== Day 2: FTP backdoor ===================
+  # =================== Day 2: FTP/SMB/MySQL (Metasploitable 2) ===================
   vsftpd:
     image: tleemcjr/metasploitable2:latest
-    container_name: ftp-vuln
+    container_name: vsftpd-target
     ports:
       - "21:21"
       - "22:22"
@@ -33,10 +45,7 @@ services:
       - "8180:8180"
     restart: unless-stopped
 
-  # =================== Day 2 (J2) - SMB EternalBlue target ===================
-  # uses vsftpd container above (SMB on port 445)
-
-  # =================== Day 3: Buffer overflow target ===================
+  # =================== Day 3: Buffer overflow ===================
   buffovf:
     build: ./docker/buffovf
     container_name: buffovf-target
@@ -44,7 +53,7 @@ services:
       - "9001:9001"
     restart: unless-stopped
 
-  # =================== Day 3: WAF bypass target ===================
+  # =================== Day 3: WAF bypass ===================
   waf-target:
     build: ./docker/waf
     container_name: waf-target
@@ -52,7 +61,7 @@ services:
       - "8081:80"
     restart: unless-stopped
 
-  # =================== Day 4: Hardening lab ===================
+  # =================== Day 4: Hardening ===================
   secure-linux:
     build: ./docker/secure-linux
     container_name: secure-linux-target
@@ -61,7 +70,7 @@ services:
     privileged: true
     restart: unless-stopped
 
-  # =================== Day 5: Forensic victim ===================
+  # =================== Day 5: Forensic ===================
   forensic-victim:
     build: ./docker/forensic
     container_name: forensic-victim

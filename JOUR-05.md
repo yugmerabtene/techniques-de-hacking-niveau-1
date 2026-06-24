@@ -8,17 +8,19 @@
 - Maîtriser la notation CVSS v3.1 pour standardiser la criticité
 - Détecter, analyser et répondre aux incidents de sécurité
 - Reconstruire la kill chain ATT&CK d'un attaquant
-- Coordonner la communication post-incident
 
 ---
 
-## Introduction
+## Setup rapide
 
-Un pentest sans rapport n'a aucune valeur. Le rapport transforme des découvertes techniques en actions correctives. Face à un incident réel, la différence entre chaos et maîtrise tient dans la préparation.
-
-Ce dernier chapitre boucle la formation : vous saurez communiquer vos résultats, standardiser vos notations (CVSS), et structurer une réponse aux incidents avec ATT&CK.
-
-> **Sources :** [NIST SP 800-61r2](https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-61r2.pdf). [CVSS v3.1](https://www.first.org/cvss/v3-1/).
+```bash
+if [ -f /.dockerenv ]; then
+    TARGET_FORENSIC="forensic-victim" ; PORT_FORENSIC="80"
+else
+    TARGET_FORENSIC="localhost" ; PORT_FORENSIC="8082"
+fi
+echo "Forensic target : http://${TARGET_FORENSIC}:${PORT_FORENSIC}/"
+```
 
 ---
 
@@ -30,7 +32,7 @@ Le CVSS attribue un score de 0 à 10 basé sur des métriques mesurables.
 
 ```
 MÉTRIQUES CVSS v3.1
-├── Base Score (obligatoire)
+├── Base Score
 │   ├── AV (Attack Vector)      N:Network  A:Adjacent  L:Local  P:Physical
 │   ├── AC (Attack Complexity)  L:Low  H:High
 │   ├── PR (Privileges Required) N:None  L:Low  H:High
@@ -39,22 +41,22 @@ MÉTRIQUES CVSS v3.1
 │   ├── C (Confidentiality)     N:None  L:Low  H:High
 │   ├── I (Integrity)           N:None  L:Low  H:High
 │   └── A (Availability)        N:None  L:Low  H:High
-├── Temporal (optionnel): E (Exploit Maturity), RL (Remediation)
-└── Environmental (optionnel): CR, IR, AR (requirements)
+├── Temporal : E (Exploit Maturity), RL (Remediation)
+└── Environmental : CR, IR, AR (requirements)
 ```
 
 Seuils de criticité :
 
 | Score | Niveau |
 |---|---|
-| 9.0 - 10.0 | CRITIQUE |
-| 7.0 - 8.9 | ÉLEVÉE |
-| 4.0 - 6.9 | MODÉRÉE |
-| 0.1 - 3.9 | FAIBLE |
+| 9.0 - 10.0 | 🔴 CRITIQUE |
+| 7.0 - 8.9 | 🟠 ÉLEVÉE |
+| 4.0 - 6.9 | 🟡 MODÉRÉE |
+| 0.1 - 3.9 | 🟢 FAIBLE |
 
 > **Sources :** [CVSS v3.1 Calculator](https://www.first.org/cvss/calculator/3.1) — FIRST.org.
 
-### Exemples de notation
+### Exemples
 
 ```python
 class CVSS:
@@ -75,66 +77,47 @@ class CVSS:
         else: return score, "FAIBLE"
 
 # SQLi critique
-sqli = CVSS("AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H")
-print(f"SQLi: CVSS {sqli.severity()[0]:.1f} ({sqli.severity()[1]})")
-# → CVSS 9.8 (CRITIQUE)
+s, l = CVSS("AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H").severity()
+print(f"SQLi: CVSS {s:.1f} ({l})")  # → 9.8 (CRITIQUE)
 
 # XSS reflété
-xss = CVSS("AV:N/AC:L/PR:N/UI:R/S:U/C:L/I:L/A:N")
-print(f"XSS: CVSS {xss.severity()[0]:.1f} ({xss.severity()[1]})")
-# → CVSS 5.4 (MODEREE)
+s, l = CVSS("AV:N/AC:L/PR:N/UI:R/S:U/C:L/I:L/A:N").severity()
+print(f"XSS:  CVSS {s:.1f} ({l})")  # → 5.4 (MODEREE)
 ```
 
-### Template fiche de vulnérabilité
+---
+
+## 2. Template de fiche de vulnérabilité
 
 ```markdown
 # VULN-001 — Injection SQL sur paramètre 'id'
 
 | Propriété | Valeur |
 |---|---|
-| **Criticité** | CRITIQUE |
+| **Criticité** | 🔴 CRITIQUE |
 | **Score CVSS** | 9.8 (AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H) |
 | **Technique ATT&CK** | T1190 Exploit Public-Facing Application |
 | **Tactique** | TA0001 Initial Access |
 
 ## Description
-Le paramètre GET "id" est injecté directement dans une requête SQL.
+Le paramètre GET "id" est injecté sans filtrage dans une requête SQL.
 
-## Impact (CIA)
-- Confidentialité : HIGH (extraction BDD complète)
-- Intégrité : HIGH (modification/suppression)
+## Impact CIA
+- Confidentialité : HIGH (extraction BDD)
+- Intégrité : HIGH (modification/destruction)
 - Disponibilité : HIGH (DoS possible)
 
 ## Remédiation
 1. Requêtes préparées PDO → M1013 App Hardening
-2. Déploiement WAF → M1041 Encrypt/Protect Info
-3. Validation des entrées → M1054 Input Validation
-
-## Références
-- OWASP SQLi Prevention
-- ATT&CK T1190
-```
-
----
-
-## 2. Gestion des incidents — Cycle complet
-
-```mermaid
-flowchart LR
-    A["1.Préparation<br/>CSIRT, outils"] --> B["2.Détection<br/>SIEM, alertes"]
-    B --> C["3.Analyse<br/>Triage, scope"]
-    C --> D["4.Confinement<br/>Isolation réseau"]
-    D --> E["5.Éradication<br/>Malware, brèche"]
-    E --> F["6.Remédiation<br/>Patch, restauration"]
-    F --> G["7.REX<br/>Post-mortem"]
-    G --> A
+2. Déploiement WAF → M1041 Encrypt/Protect
+3. Validation entrées → M1054 Input Validation
 ```
 
 ---
 
 ## Lab 5.1 — Investigation forensique
 
-### Fiche de lab
+### 📋 Fiche de lab
 
 | Propriété | Valeur |
 |---|---|
@@ -143,30 +126,31 @@ flowchart LR
 | **Dossier de travail** | `~/cours-hacking/jour-5/labs/` |
 | **Objectif** | Analyser une machine compromise, collecter des preuves, reconstruire la kill chain |
 
-### Prérequis avant de commencer
+### Prérequis
 
-- [x] Conteneur buildé : `docker compose -f ~/cours-hacking/repo/docker-compose.yml up -d --build forensic-victim`
-- [x] Web app accessible : `curl -I http://localhost:8082/`
-- [x] Terminal dans `~/cours-hacking/jour-5/labs/` : `mkdir -p ~/cours-hacking/jour-5/labs && cd ~/cours-hacking/jour-5/labs`
+- [x] Conteneur buildé : `docker compose up -d --build forensic-victim`
+- [x] Web app accessible : `curl -I "http://${TARGET_FORENSIC}:${PORT_FORENSIC}/"`
+- [x] `mkdir -p ~/cours-hacking/jour-5/labs && cd ~/cours-hacking/jour-5/labs`
 
 ### Contexte
 
-Le conteneur `forensic-victim` simule un serveur web compromis. Un attaquant a exploité une injection de commandes sur la page de dashboard pour prendre le contrôle du serveur. Votre mission : analyser la scène de crime.
+Le conteneur simule un serveur web compromis via une injection de commandes. Votre mission : analyser la scène de crime.
 
 ### Étape 1 — Découverte du point d'entrée
 
 ```bash
-cd ~/cours-hacking/jour-5/labs
+curl "http://${TARGET_FORENSIC}:${PORT_FORENSIC}/"
+# → Internal Dashboard
 
-curl "http://localhost:8082/"
-# → Internal Dashboard — page de diagnostic
-
-# Test de la vulnérabilité de command injection
-curl "http://localhost:8082/?cmd=whoami"
+# Test command injection
+curl "http://${TARGET_FORENSIC}:${PORT_FORENSIC}/?cmd=whoami"
 # → uid=33(www-data)...
+
+curl "http://${TARGET_FORENSIC}:${PORT_FORENSIC}/?cmd=id"
+# → uid=33(www-data) gid=33(www-data)
 ```
 
-**Checkpoint A :** Command injection confirmée — retour `www-data`.
+**Checkpoint A :** Command injection confirmée.
 
 ### Étape 2 — Collecte de preuves volatiles
 
@@ -183,33 +167,35 @@ ls -la /tmp/evidence/
 "
 ```
 
-**Checkpoint B :** 5 fichiers de preuves créés dans `/tmp/evidence/`.
+**Checkpoint B :** 5 fichiers de preuves dans `/tmp/evidence/`.
 
-### Étape 3 — Recherche de signes de compromission
+### Étape 3 — Signes de compromission
 
 ```bash
-# Chercher des backdoors web (eval, system, exec)
-docker exec forensic-victim grep -r "eval\|system\|exec\|passthru" /var/www/html/ 2>/dev/null
+# Backdoors web (eval, system, exec)
+docker exec forensic-victim grep -rn "eval\|system\|exec\|passthru" /var/www/html/ 2>/dev/null
 
-# Chercher des connexions suspectes dans les logs Apache
+# Logs Apache avec commandes injectées
 docker exec forensic-victim cat /var/log/apache2/access.log 2>/dev/null | grep "cmd=" | tail -20
 
-# Vérifier les comptes récemment modifiés
+# Comptes récents
 docker exec forensic-victim tail -5 /etc/passwd
+
+# Sudoers modifié (www-data a tous les droits)
+docker exec forensic-victim grep www-data /etc/sudoers
+# → www-data ALL=(ALL) NOPASSWD: ALL
 ```
 
-### Étape 4 — Reconstruction de la kill chain ATT&CK
-
-À partir des preuves collectées, remplissez ce tableau :
+### Étape 4 — Reconstruction kill chain ATT&CK
 
 | Horodatage | Tactic | Technique | Preuve |
 |---|---|---|---|
-| | TA0001 Initial Access | T1190 Exploit Public-Facing App | GET /?cmd=whoami dans access.log |
+| | TA0001 Initial Access | T1190 Exploit Public-Facing | GET /?cmd=whoami dans access.log |
 | | TA0002 Execution | T1059.004 Unix Shell | Commande system() dans index.php |
-| | TA0003 Persistence | T1505.003 Web Shell | Code eval() trouvé dans PHP |
+| | TA0003 Persistence | T1505.003 Web Shell | Code eval() dans PHP |
 | | TA0004 PrivEsc | T1548.001 Sudo Caching | www-data ALL dans sudoers |
 
-### Étape 5 — Rédaction du rapport d'incident
+### Étape 5 — Rapport d'incident
 
 Créez `~/cours-hacking/jour-5/labs/incident_report.md` :
 
@@ -217,14 +203,13 @@ Créez `~/cours-hacking/jour-5/labs/incident_report.md` :
 # Rapport d'incident IR-2026-001
 
 **Date détection :** ...
-**Criticité :** CRITIQUE
-**Système :** forensic-victim (serveur web)
+**Criticité :** 🔴 CRITIQUE
+**Système :** forensic-victim
 
 ## Kill Chain ATT&CK
-
 1. TA0001 — T1190 : Command injection via ?cmd=
 2. TA0002 — T1059.004 : Exécution commandes arbitraires
-3. TA0003 — T1505.003 : Backdoor PHP déposée
+3. TA0003 — T1505.003 : Backdoor PHP
 4. TA0004 — T1548.001 : www-data ajouté aux sudoers
 
 ## Impact CIA
@@ -232,7 +217,7 @@ Créez `~/cours-hacking/jour-5/labs/incident_report.md` :
 - Intégrité : HIGH
 - Disponibilité : LOW
 
-## Actions entreprises
+## Actions
 1. Confinement : isolation réseau
 2. Collecte preuves volatiles
 3. Éradication backdoor
@@ -240,17 +225,10 @@ Créez `~/cours-hacking/jour-5/labs/incident_report.md` :
 
 ## Recommandations
 - Remplacer system() par escapeshellcmd()
-- Déployer WAF
+- Déployer WAF ModSecurity
 - Restreindre sudoers
+- Audit des comptes
 ```
-
-### Checkpoints
-
-- [ ] Command injection fonctionnelle sur forensic-victim
-- [ ] 5 fichiers de preuves volatiles collectés
-- [ ] Backdoor PHP identifiée
-- [ ] Kill chain ATT&CK documentée (4 étapes)
-- [ ] Rapport d'incident rédigé
 
 ---
 
@@ -271,13 +249,9 @@ TEMPLATE = """# Rapport de Test d'Intrusion
 **Risque global :** {risk}
 
 ## Résumé
-
 | Criticité | Nombre |
 |---|---|
-| Critique | {critical} |
-| Élevée | {high} |
-| Modérée | {medium} |
-| Faible | {low} |
+| Critique | {critical} | Élevée | {high} | Modérée | {medium} | Faible | {low} |
 
 ## Vulnérabilités
 {findings}
@@ -300,13 +274,10 @@ def generate(data, output):
 - Remédiation : {f.get('fix', 'N/A')}
 """
     risk = "CRITIQUE" if sev["CRITIQUE"] > 0 else "ÉLEVÉ" if sev["ÉLEVÉE"] > 0 else "MODÉRÉ"
-    report = TEMPLATE.format(
-        date=datetime.now().strftime("%Y-%m-%d"),
-        perimeter=data.get("perimeter", "N/A"),
-        risk=risk, **sev, findings=findings_md,
-        recos="\n".join(f"- {r}" for r in data.get("recos", [])))
-    with open(output, "w") as f:
-        f.write(report)
+    report = TEMPLATE.format(date=datetime.now().strftime("%Y-%m-%d"),
+        perimeter=data.get("perimeter", "N/A"), risk=risk, **sev,
+        findings=findings_md, recos="\n".join(f"- {r}" for r in data.get("recos", [])))
+    with open(output, "w") as f: f.write(report)
     print(f"Rapport généré : {output}")
 
 if __name__ == "__main__":
@@ -314,28 +285,40 @@ if __name__ == "__main__":
     p.add_argument("--input", required=True)
     p.add_argument("--output", default="rapport.md")
     args = p.parse_args()
-    with open(args.input) as f:
-        generate(json.load(f), args.output)
+    with open(args.input) as f: generate(json.load(f), args.output)
 ```
 
+Exemple d'utilisation :
+
 ```bash
-# Exemple d'utilisation
 cd ~/cours-hacking/jour-5/labs
 
 cat > findings.json << 'EOF'
 {
-  "perimeter": "192.168.1.0/24",
+  "perimeter": "Conteneurs Docker — lab formation",
   "findings": [
-    {"title":"SQLi sur param id","severity":"CRITIQUE","cvss":"9.8",
-     "attack":"T1190","desc":"Injection SQL non filtrée...","fix":"Requêtes préparées PDO"},
-    {"title":"XSS reflété","severity":"MODÉRÉE","cvss":"5.4",
-     "attack":"T1189","desc":"Reflet JS non échappé...","fix":"htmlspecialchars() + CSP"}
+    {"title":"SQLi sur DVWA","severity":"CRITIQUE","cvss":"9.8",
+     "attack":"T1190","desc":"Injection SQL non filtrée","fix":"Requêtes préparées PDO"},
+    {"title":"XSS reflété DVWA","severity":"MODÉRÉE","cvss":"5.4",
+     "attack":"T1189","desc":"Reflet JS non échappé","fix":"htmlspecialchars() + CSP"},
+    {"title":"Command Injection DVWA","severity":"CRITIQUE","cvss":"9.8",
+     "attack":"T1059.004","desc":"Exécution commandes arbitraires","fix":"escapeshellcmd()"},
+    {"title":"vsftpd 2.3.4 Backdoor","severity":"CRITIQUE","cvss":"9.8",
+     "attack":"T1190","desc":"Shell root via backdoor","fix":"Mettre à jour vsftpd"},
+    {"title":"Samba 3.0.20 usermap","severity":"CRITIQUE","cvss":"9.8",
+     "attack":"T1210","desc":"RCE via usermap script","fix":"Mettre à jour Samba"}
   ],
-  "recos": ["Déployer WAF ModSecurity", "Formation OWASP Top 10", "Audit de code trimestriel"]
+  "recos": [
+    "Déployer WAF ModSecurity en mode bloquant",
+    "Mettre en place un processus de patch management",
+    "Formation développeurs OWASP Top 10",
+    "Audit de sécurité trimestriel"
+  ]
 }
 EOF
 
 python3 generate_report.py --input findings.json --output rapport_final.md
+cat rapport_final.md
 ```
 
 ---
@@ -344,48 +327,46 @@ python3 generate_report.py --input findings.json --output rapport_final.md
 
 ### Exercice 1 : Calculer un CVSS
 
-**Énoncé :** Calculez le CVSS d'un XSS stocké exploitable sans interaction (admin visualise automatiquement). AV:N, AC:L, PR:N, UI:N, S:U, C:H, I:H, A:L.
+**Énoncé :** XSS stocké sans interaction utilisateur. AV:N, AC:L, PR:N, UI:N, S:U, C:H, I:H, A:L.
 
 <details>
 <summary><strong>Solution</strong></summary>
 
-Vecteur : `AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:L`
-
-Score : ~8.3 (ÉLEVÉ). Pas CRITIQUE car A:L (disponibilité faible). Technique ATT&CK : T1189.
+Vecteur : `AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:L` → Score ~8.3 (ÉLEVÉ)
+Pas CRITIQUE car A:L. ATT&CK : T1189.
 </details>
 
 ### Exercice 2 : Reconstruire une kill chain
 
-**Énoncé :** Un analyste reçoit : 08:00 alerte WAF (SQLi bloquée), 08:05 scan de ports, 08:15 reverse shell sur SRV-WEB01. Reconstruisez l'ordre chronologique réel.
+**Énoncé :** Alertes SOC : 08:00 WAF bloque SQLi, 08:05 scan ports, 08:15 reverse shell. Reconstruisez l'ordre chronologique.
 
 <details>
 <summary><strong>Solution</strong></summary>
 
-1. 07:55 — TA0007 Discovery : T1046 Network Scan
-2. 07:58 — TA0001 Initial Access : T1190 SQLi (tentative 1 bloquée)
-3. 08:00 — TA0001 Initial Access : T1190 SQLi (tentative 2 réussie via autre paramètre)
-4. 08:15 — TA0002 Execution : T1059.004 Unix Shell
-
-Leçon : le WAF a bloqué une tentative mais pas l'autre. Les alertes arrivent dans le désordre.
+07:55 — TA0007 T1046 (scan ports)
+07:58 — TA0001 T1190 (tentative SQLi 1, bloquée)
+08:00 — TA0001 T1190 (tentative SQLi 2, réussie via autre paramètre)
+08:15 — TA0002 T1059.004 (reverse shell)
 </details>
 
 ---
 
 ## Points clés à retenir
 
-- Un rapport parle à 2 audiences : direction (résumé exécutif) et technique (fiches détaillées)
-- Le CVSS standardise la criticité : reproductible, universel
-- Chaque vulnérabilité doit être taguée ATT&CK (Txxxx)
+- CVSS standardise la criticité : reproductible et universel
+- Chaque vulnérabilité doit être taguée ATT&CK (ID Txxxx)
 - La gestion d'incident suit un cycle en 7 phases
 - Reconstruire la kill chain de l'attaquant guide la remédiation
+- Un rapport parle à deux audiences : direction (exécutif) et technique (fiches)
 
 ## Pour aller plus loin
 
-- [NIST SP 800-61r2](https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-61r2.pdf)
-- [FIRST CVSS Calculator](https://www.first.org/cvss/calculator/3.1)
-- [MITRE ATT&CK Navigator](https://mitre-attack.github.io/attack-navigator/)
+- [CVSS v3.1 Calculator](https://www.first.org/cvss/calculator/3.1)
+- [NIST SP 800-61r2 — Incident Handling](https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-61r2.pdf)
+- [ATT&CK Navigator](https://mitre-attack.github.io/attack-navigator/)
 
 ---
 
-*Chapitre précédent : [Jour 4](./JOUR-04.md)*
 *Formation terminée — Remise du rapport final*
+*Chapitre précédent : [Jour 4](./JOUR-04.md)*
+*Guide Environnement : [ENVIRONNEMENT.md](./ENVIRONNEMENT.md)*
