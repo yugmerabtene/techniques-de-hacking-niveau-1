@@ -104,9 +104,9 @@ sshpass -p 'changeme' ssh -o StrictHostKeyChecking=no \
 
 ### Étape 2 — Script de durcissement
 
-Créez `~/cours-hacking/jour-4/labs/hardening.sh` :
-
 ```bash
+cd ~/cours-hacking/jour-4/labs
+cat > hardening.sh << 'SCRIPT_EOF'
 #!/bin/bash
 set -e
 echo "=== Hardening Linux — $(date) ==="
@@ -149,16 +149,24 @@ echo "[7/7] Audit SUID (M1022)..."
 find / -perm -4000 -type f -ls 2>/dev/null > /root/suid_audit.txt
 
 echo "=== Hardening terminé ==="
+SCRIPT_EOF
+chmod +x hardening.sh
+echo "Script hardening.sh créé"
 ```
 
 ### Étape 3 — Appliquer le durcissement
 
 ```bash
+cd ~/cours-hacking/jour-4/labs
 docker cp hardening.sh secure-linux-target:/root/
 docker exec secure-linux-target bash /root/hardening.sh
 ```
 
+Observez la sortie : chaque étape `[1/7]` à `[7/7]` doit afficher un message de succès. Si une erreur apparaît, lisez le message avant de poursuivre.
+
 ### Étape 4 — Vérification post-hardening
+
+Depuis votre terminal Kali (hôte) :
 
 ```bash
 # SSH root par mot de passe REFUSÉ ✓

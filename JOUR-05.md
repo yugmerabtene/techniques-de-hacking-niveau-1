@@ -176,6 +176,8 @@ curl "http://localhost:8082/?cmd=id"
 
 ### Étape 2 — Collecte des preuves volatiles (avant toute modification)
 
+Depuis votre terminal Kali :
+
 ```bash
 docker exec forensic-victim bash -c "
 mkdir -p /tmp/evidence
@@ -192,8 +194,10 @@ echo 'Evidence collected' && ls -la /tmp/evidence/
 
 ### Étape 3 — Recherche des signes de compromission
 
+Depuis votre terminal Kali, recherchez les indices laissés par l'attaquant :
+
 ```bash
-# Backdoors web (eval, system, exec)
+# Backdoors web (eval, system, exec) — un résultat dans /var/www/html/ est suspect
 docker exec forensic-victim grep -rn "eval\|system\|exec\|passthru" /var/www/html/
 
 # Logs Apache avec commandes injectées
@@ -218,9 +222,9 @@ docker exec forensic-victim grep www-data /etc/sudoers
 
 ### Étape 5 — Rapport d'incident (conforme NIS2)
 
-Créez `~/cours-hacking/jour-5/labs/incident_report.md` :
-
-```markdown
+```bash
+cd ~/cours-hacking/jour-5/labs
+cat > incident_report.md << 'EOF'
 # Rapport d'incident IR-2026-001
 
 **Date/heure détection :** ...
@@ -231,7 +235,7 @@ Créez `~/cours-hacking/jour-5/labs/incident_report.md` :
 
 ## Kill Chain ATT&CK
 | Phase | Tactic | Technique | Impact |
-|---|---|---|---|
+|---|---:|---:|---:|
 | 1 | TA0001 Initial Access | T1190 | Command injection |
 | 2 | TA0002 Execution | T1059.004 | Shell www-data |
 | 3 | TA0003 Persistence | T1505.003 | Backdoor PHP |
@@ -253,6 +257,8 @@ Créez `~/cours-hacking/jour-5/labs/incident_report.md` :
 - [✓] Notification CNIL < 72h (si données personnelles)
 - [ ] Rapport final < 1 mois (NIS2 art.23)
 - [ ] Mise à jour analyse de risques (RGS)
+EOF
+echo "Rapport créé : incident_report.md"
 ```
 
 ---
@@ -317,9 +323,9 @@ flowchart TB
 |---|---|---|
 | 30 min | `~/cours-hacking/jour-5/labs/` | `rapport_final.md` |
 
-Créez `~/cours-hacking/jour-5/labs/generate_report.py` :
-
-```python
+```bash
+cd ~/cours-hacking/jour-5/labs
+cat > generate_report.py << 'PYEOF'
 #!/usr/bin/env python3
 """Générateur de rapport de pentest avec CVSS + ATT&CK."""
 import json, argparse
@@ -364,6 +370,9 @@ if __name__ == "__main__":
     p.add_argument("--output", default="rapport_final.md")
     a = p.parse_args()
     with open(a.input) as fh: gen(json.load(fh), a.output)
+PYEOF
+chmod +x generate_report.py
+echo "Script generate_report.py créé"
 ```
 
 ```bash
@@ -386,13 +395,15 @@ python3 generate_report.py --input findings.json
 cat rapport_final.md
 ```
 
+Vérifiez que le rapport contient bien : 4 vulnérabilités (3 CRITIQUE + 1 MODEREE) taguées CVSS + ATT&CK, et 4 recommandations. C'est le format attendu par un client ou une autorité d'homologation.
+
 ---
 
 ## Exercices
 
-### Exercice 1 : Calcul CVSS XSS stocké
+### Exercice 1 : Calcul CVSS Stored XSS
 
-**Énoncé :** XSS stocké : AV:N, AC:L, PR:N, UI:N (admin visualise auto), S:U, C:H, I:H, A:L. Score ?
+**Énoncé :** Stored XSS : AV:N, AC:L, PR:N, UI:N (admin visualise auto), S:U, C:H, I:H, A:L. Score ?
 
 <details><summary><strong>Solution</strong></summary>
 Vecteur : `AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:L` → ~8.3 (ÉLEVÉ). Pas CRITIQUE car A:L.

