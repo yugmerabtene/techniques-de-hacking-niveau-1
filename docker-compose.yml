@@ -10,6 +10,14 @@ services:
       - RECAPTCHA_PUB_KEY=disabled
     restart: unless-stopped
 
+  # =================== Day 1: SQLi dedicated target ===================
+  sqli-app:
+    build: ./docker/sqli-app
+    container_name: sqli-app-target
+    ports:
+      - "8083:80"
+    restart: unless-stopped
+
   # =================== Day 2: FTP/SMB/MySQL (Metasploitable 2) ===================
   vsftpd:
     image: tleemcjr/metasploitable2:latest

