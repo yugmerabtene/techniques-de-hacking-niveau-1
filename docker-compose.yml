@@ -1,16 +1,4 @@
 services:
-  # =================== Kali Attacker (Scenario B only) ===================
-  kali-attacker:
-    image: kalilinux/kali-rolling:latest
-    container_name: kali-attacker
-    command: tail -f /dev/null
-    profiles:
-      - full
-    volumes:
-      - ./scripts:/scripts:ro
-      - ./hors-serie:/opt/killchain:ro
-    restart: unless-stopped
-
   # =================== Day 1-2-3: Web vulnerabilities ===================
   dvwa:
     image: vulnerables/web-dvwa:latest
