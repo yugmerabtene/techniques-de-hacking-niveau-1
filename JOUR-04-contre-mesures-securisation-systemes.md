@@ -9,7 +9,7 @@
 - Aligner le hardening avec les recommandations ANSSI et CERT-FR
 - Évaluer et prioriser les risques avec le triangle CIA
 - Construire une matrice de couverture défensive
-- Comprendre les niveaux de maturité RGS (*, **, ***)
+- Comprendre les niveaux de maturité RGS (élémentaire, standard, renforcé)
 
 ---
 
@@ -55,9 +55,9 @@ flowchart LR
 
 | Niveau | Équivalent RGS | Exigences |
 |---|---|---|
-| Basique | RGS * | Antivirus, mises à jour, pare-feu |
-| Standard | RGS ** | + IDS/IPS, WAF, hardening, pentest externe annuel |
-| Renforcé | RGS *** | + SOC 24/7, pentest interne trimestriel, Red Team, homologation formelle |
+| Basique | RGS élémentaire | Antivirus, mises à jour, pare-feu |
+| Standard | RGS standard | + IDS/IPS, WAF, hardening, pentest externe annuel |
+| Renforcé | RGS renforcé | + SOC 24/7, pentest interne trimestriel, Red Team, homologation formelle |
 
 ---
 
@@ -377,7 +377,7 @@ alert tcp any any -> $HOME_NET 80 (msg:"SQLi UNION SELECT detected";
 **Énoncé :** Une administration d'État manipule des données sensibles (informations réglementées). Quel niveau RGS recommandez-vous ? Quelles mesures associer ?
 
 <details><summary><strong>Solution</strong></summary>
-**RGS *** (renforcé)** — données à caractère personnel sensible.
+**RGS renforcé** — données à caractère personnel sensible.
 Mesures : chiffrement au repos et en transit, pentest interne trimestriel, SOC 24/7, WAF, IDS/IPS, double authentification, homologation formelle ANSSI.
 </details>
 
@@ -387,7 +387,7 @@ Mesures : chiffrement au repos et en transit, pentest interne trimestriel, SOC 2
 
 - Chaque technique ATT&CK a une mitigation (Mxxxx) documentée
 - **Hardening** = mises à jour + SSH + firewall + fail2ban + ASLR
-- Le RGS définit 3 niveaux de sécurité (*, **, ***) pour les administrations
+- Le RGS définit 3 niveaux de sécurité (élémentaire, standard, renforcé) pour les administrations
 - Les 10 règles d'or ANSSI sont la checklist de base de toute administration
 - La **matrice de couverture** visualise vos angles morts
 - Le CERT-FR publie des recommandations de durcissement (CERTFR-20XX-DUR-XXX)
