@@ -67,6 +67,8 @@ flowchart TB
     PRIVESC --> P
 ```
 
+**Fig 16** — Architecture KillChainAgent : 4 couches — Frontend TailwindCSS, API FastAPI, couche agentic (Supervisor + 5 agents spécialisés), outils Kali Linux. Le Supervisor orchestre les agents, chaque agent pilote ses outils.
+
 ### Les 6 agents
 
 | Agent | Rôle | Outils Kali | Input | Output |

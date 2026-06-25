@@ -51,7 +51,7 @@ docker compose up -d --build
 
 ```mermaid
 flowchart TB
-    KALI["Kali Linux (hôte)<br/>nmap · msfconsole · sqlmap · curl · nc"]
+    KALI["Kali Linux — hôte<br/>nmap · msfconsole · sqlmap · curl · nc"]
     DVWA["dvwa-target :8080<br/>XSS · CSRF · SQLi · CMDi"]
     SQLI["sqli-app-target :8083<br/>SQLi · hash cracking"]
     VSFTPD["vsftpd-target :21, :445<br/>FTP · SMB · MySQL"]
@@ -67,6 +67,8 @@ flowchart TB
     KALI -->|"localhost:2222"| SECLINUX
     KALI -->|"localhost:8082"| FORENSIC
 ```
+
+**Fig 1** — Topologie du lab : 7 conteneurs cibles exposés sur ports dédiés, orchestrés par Kali Linux hôte.
 
 ## A.4 Validation de chaque vulnérabilité
 
@@ -146,6 +148,8 @@ flowchart TB
     TA0013 --> TA0014["TA0014 Impact"]
 ```
 
+**Fig 2** — Chaîne complète MITRE ATT&CK v15 : 14 tactiques de TA0001 Reconnaissance à TA0014 Impact.
+
 | Attaque | Technique ATT&CK | ID | Tactic |
 |---|---|---|---|
 | Phishing | Spearphishing Attachment | T1566.001 | TA0003 Initial Access |
@@ -164,8 +168,10 @@ flowchart LR
     A --> C["Black Hat : Criminel, financier"]
     A --> D["Grey Hat : Zone grise"]
     A --> E["Hacktiviste : Politique"]
-    A --> F["APT : Étatique (APT29, Lazarus)"]
+    A --> F["APT : Étatique — APT29, Lazarus"]
 ```
+
+**Fig 3** — Taxonomie des profils d'attaquants : White Hat, Black Hat, Grey Hat, Hacktiviste, APT.
 
 ---
 
@@ -209,6 +215,8 @@ flowchart LR
     B -->|"2. Page + script"| A
     A -->|"3. Cookie volé"| C["Attaquant"]
 ```
+
+**Fig 4** — Flux d'attaque XSS réfléchie : injection de script dans la page, exécution côté victime, exfiltration du cookie de session.
 
 ```html
 <script>alert('XSS')</script>

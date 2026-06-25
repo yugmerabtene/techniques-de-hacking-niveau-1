@@ -120,6 +120,8 @@ flowchart LR
     G --> A
 ```
 
+**Fig 13** — Cycle de gestion d'incident de sécurité en 7 phases : Préparation, Détection, Analyse, Confinement, Éradication, Remédiation, Retour d'expérience (boucle d'amélioration continue).
+
 ### Calendrier NIS2 — Obligations de notification
 
 ```
@@ -131,9 +133,11 @@ Détection de l'incident
  72h → Notification complète
          Évaluation détaillée, indicateurs de compromission (IOC)
 
- 1 mois → Rapport final
+   1 mois → Rapport final
             Causes, remédiation, mesures correctives, REX
 ```
+
+**Fig 14** — Chronologie des obligations de notification NIS2 : alerte précoce sous 24h, notification complète sous 72h, rapport final sous 1 mois.
 
 **Double obligation :** si l'incident implique des données personnelles, notification CNIL sous 72h (RGPD art.33) en parallèle du CERT-FR.
 
@@ -296,13 +300,15 @@ flowchart TB
     A["Incident détecté"] --> B["Qualification<br/>Criticité ? Données perso ?"]
     B -->|Critique| C["Activation CSIRT<br/>Confinement immédiat"]
     B -->|Standard| D["Triage normal"]
-    C --> E["< 24h : Alerte CERT-FR"]
+    C --> E["Délai 24h : Alerte CERT-FR"]
     D --> E
-    E --> F["< 72h : Notification complète<br/>+ CNIL si données perso"]
+    E --> F["Délai 72h : Notification complète<br/>+ CNIL si données perso"]
     F --> G["Remédiation + Patch"]
-    G --> H["< 1 mois : Rapport final"]
-    H --> I["Mise à jour analyse risques<br/>(RGS homologation)"]
+    G --> H["Délai 1 mois : Rapport final"]
+    H --> I["Mise à jour analyse risques<br/>— RGS homologation"]
 ```
+
+**Fig 15** — Procédure NIS2 de bout en bout : qualification de l'incident, activation CSIRT si critique, notifications CERT-FR/CNIL aux échéances réglementaires, remédiation, rapport final, mise à jour RGS.
 
 ### Références officielles
 

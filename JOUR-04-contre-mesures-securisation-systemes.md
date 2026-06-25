@@ -40,6 +40,8 @@ flowchart LR
     T1566 --> M1017 ; T1190 --> M1013 ; T1210 --> M1041 ; T1068 --> M1050
 ```
 
+**Fig 11** — Mapping offensif-défensif : 4 techniques d'attaque majeures et leurs mitigations ATT&CK correspondantes, alignées avec les règles ANSSI.
+
 | Technique d'attaque | Mitigation | Action concrète | Règle ANSSI |
 |---|---|---|---|
 | T1566 Phishing | M1017 User Training | Formation anti-phishing | Règle 10 |
@@ -73,15 +75,17 @@ Un serveur de production non durci est une cible triviale. Dans un rapport de pe
 
 ```mermaid
 flowchart TB
-    A["Serveur vulnérable"] --> B["1. MàJ (M1051/Règle 1)"]
-    B --> C["2. Services inutiles (M1042)"]
-    C --> D["3. SSH durci (M1018/Règle 5)"]
-    D --> E["4. Pare-feu UFW (M1037/Règle 6)"]
-    E --> F["5. Fail2ban (M1036/Règle 5)"]
-    F --> G["6. Kernel protections (M1050)"]
-    G --> H["7. Audit SUID (M1022)"]
+    A["Serveur vulnérable"] --> B["1. MàJ — M1051 / Règle 1"]
+    B --> C["2. Services inutiles — M1042"]
+    C --> D["3. SSH durci — M1018 / Règle 5"]
+    D --> E["4. Pare-feu UFW — M1037 / Règle 6"]
+    E --> F["5. Fail2ban — M1036 / Règle 5"]
+    F --> G["6. Kernel protections — M1050"]
+    G --> H["7. Audit SUID — M1022"]
     H --> I["Serveur durci "]
 ```
+
+**Fig 12** — Pipeline de durcissement Linux en 7 étapes : mise à jour, services inutiles, SSH, pare-feu UFW, Fail2ban, protections noyau, audit SUID.
 
 ### Prérequis
 

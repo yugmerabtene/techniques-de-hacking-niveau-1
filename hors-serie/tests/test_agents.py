@@ -186,5 +186,66 @@ class TestReportAgent(unittest.TestCase):
         self.assertIn("export_formats", result)
 
 
+class TestEdgeCases(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "backend"))
+
+    def test_report_empty_context(self):
+        from agents.report import ReportAgent
+        agent = ReportAgent(target="x")
+        md = agent.generate_markdown()
+        self.assertIn("Aucun port ouvert", md)
+
+    def test_privesc_context_with_exploit_data(self):
+        from agents.privesc import PrivEscAgent
+        agent = PrivEscAgent(target="t", context={
+            "exploit": {"sqlmap": {"success": True}, "msfconsole": {"success": True}}
+        })
+        result = agent.run()
+        self.assertTrue(result["exploit_context"]["sqlmap_success"])
+        self.assertTrue(result["exploit_context"]["msfconsole_success"])
+
+    def test_privesc_empty_context(self):
+        from agents.privesc import PrivEscAgent
+        agent = PrivEscAgent(target="t")
+        result = agent.run()
+        self.assertEqual(result["exploit_context"], {})
+
+    def test_exploit_no_recon_context(self):
+        from agents.exploit import ExploitAgent
+        agent = ExploitAgent(target="127.0.0.1", context={})
+        result = agent.run()
+        self.assertIn("sqlmap", result)
+        self.assertIn("msfconsole", result)
+
+    def test_persist_context_passthrough(self):
+        from agents.persist import PersistAgent
+        agent = PersistAgent(target="10.0.0.1", context={"privesc": {"root": True}})
+        result = agent.run()
+        self.assertEqual(result["target"], "10.0.0.1")
+        self.assertEqual(len(result["persistence_methods"]), 4)
+
+    def test_supervisor_execute_step_unknown_agent(self):
+        from agents.supervisor import SupervisorAgent
+        s = SupervisorAgent(target="t")
+        result = s.execute_step({"agent": "nonexistent", "tool": "x"})
+        self.assertEqual(result["status"], "failed")
+        self.assertIn("error", result["output"])
+
+    def test_supervisor_plan_id_length(self):
+        from agents.supervisor import SupervisorAgent
+        s = SupervisorAgent(target="t")
+        plan = s.plan()
+        self.assertEqual(len(plan["id"]), 8)
+
+    def test_report_attack_navigator_gradient(self):
+        from agents.report import ReportAgent
+        agent = ReportAgent(target="t")
+        nav = agent.generate_attack_navigator_json()
+        self.assertEqual(nav["gradient"]["minValue"], 0)
+        self.assertEqual(nav["gradient"]["maxValue"], 100)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -41,14 +41,18 @@ Adresses hautes
 Adresses basses
 ```
 
+**Fig 8** — Organisation de la pile mémoire (stack frame) : le dépassement du buffer local de 64 octets écrase l'adresse de retour EIP, permettant de rediriger l'exécution.
+
 Si on écrit plus de 64 octets dans `buffer`, on déborde sur EIP. En y plaçant l'adresse de notre shellcode, on redirige l'exécution du programme.
 
 ```mermaid
 flowchart LR
     A["Payload :<br/>'A'*76 + NOP + Shellcode"] --> B["Débordement<br/>écrase EIP"]
     B --> C["EIP → Shellcode"]
-    C --> D["Exécution arbitr.")
+    C --> D["Exécution arbitraire"]
 ```
+
+**Fig 9** — Chaîne d'exploitation buffer overflow : le payload `'A'*76 + NOP sled + shellcode` déborde EIP, qui pointe vers le shellcode pour une exécution arbitraire.
 
 ---
 
@@ -164,6 +168,8 @@ flowchart LR
     A -->|"id=1/**/OR/**/1=1"| B
     B -->|"Pas de signature"| D["App → 200 OK"]
 ```
+
+**Fig 10** — Contournement WAF par fragmentation de payload : `id=1/**/OR/**/1=1` échappe à la détection de signature SQLi et atteint l'application.
 
 ### Étape 1 — Vérifier le blocage
 
