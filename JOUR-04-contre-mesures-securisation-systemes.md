@@ -123,7 +123,7 @@ systemctl disable bluetooth cups avahi-daemon 2>/dev/null || true
 
 echo "[3/7] SSH durci (M1018 / Règle 5 ANSSI)..."
 cp /etc/ssh/sshd_config /etc/ssh/sshd_config.bak
-sed -i 's/PermitRootLogin yes/PermitRootLogin no/' /etc/ssh/sshd_config
+sed -i 's/^#*PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config
 sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config
 systemctl restart sshd 2>/dev/null || systemctl restart ssh
 
@@ -136,7 +136,11 @@ ufw --force enable
 echo "[5/7] Fail2ban (M1036)..."
 apt-get install -y fail2ban
 cat > /etc/fail2ban/jail.local << 'EOF'
-[sshd] ; enabled = true ; port = 22 ; maxretry = 3 ; bantime = 3600
+[sshd]
+enabled = true
+port = 22
+maxretry = 3
+bantime = 3600
 EOF
 systemctl restart fail2ban
 

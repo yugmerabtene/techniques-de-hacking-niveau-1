@@ -257,8 +257,8 @@ cat > incident_report.md << 'EOF'
 4. [HH:MM] Remédiation : correction command injection
 
 ## Obligations réglementaires
-- [] Notification CERT-FR < 72h
-- [] Notification CNIL < 72h (si données personnelles)
+- [ ] Notification CERT-FR < 72h
+- [ ] Notification CNIL < 72h (si données personnelles)
 - [ ] Rapport final < 1 mois (NIS2 art.23)
 - [ ] Mise à jour analyse de risques (RGS)
 EOF
@@ -343,7 +343,10 @@ T = """# Rapport de Test d'Intrusion
 ## Résumé
 | Criticité | Nombre |
 |---|---|
-|  Critique | {c} |  Élevée | {h} |  Modérée | {m} |  Faible | {l} |
+| Critique | {c} |
+| Élevée | {h} |
+| Modérée | {m} |
+| Faible | {l} |
 
 ## Vulnérabilités
 {findings}

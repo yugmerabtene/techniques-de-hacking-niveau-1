@@ -638,6 +638,9 @@ guest:098f6bcd4621d373cade4e832627b4f6
 flag_user:21232f297a57a5a743894a0e4a801fc3
 EOF
 
+# Le fichier rockyou.txt est compressé par défaut sur Kali
+sudo gunzip /usr/share/wordlists/rockyou.txt.gz 2>/dev/null || true
+
 # Crack avec john (format raw-md5)
 john --format=raw-md5 hashes.txt --wordlist=/usr/share/wordlists/rockyou.txt 2>/dev/null
 john --show --format=raw-md5 hashes.txt
@@ -666,7 +669,8 @@ flag_user:admin
 #### Méthode 3 : hashcat (si GPU disponible)
 
 ```bash
-hashcat -m 0 -a 0 hashes.txt /usr/share/wordlists/rockyou.txt --force
+cd ~/cours-hacking/jour-1/labs
+hashcat -m 0 -a 0 --username hashes.txt /usr/share/wordlists/rockyou.txt --force
 ```
 
 **Checkpoint C :** Au moins 3 mots de passe craqués. Le flag_user utilise `admin` comme mot de passe — une erreur classique.

@@ -8,11 +8,13 @@ void vulnerable_function(char *input) {
     printf("Input received: %s\n", buffer);
 }
 
-int main(int argc, char *argv[]) {
-    if (argc != 2) {
-        printf("Usage: %s <input>\n", argv[0]);
+int main() {
+    char input[256];
+    if (fgets(input, sizeof(input), stdin) == NULL) {
+        printf("Usage: echo <input> | %s\n", "vuln");
         return 1;
     }
-    vulnerable_function(argv[1]);
+    input[strcspn(input, "\n")] = 0;
+    vulnerable_function(input);
     return 0;
 }
