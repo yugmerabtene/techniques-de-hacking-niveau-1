@@ -1,9 +1,25 @@
+<!-- ============================================================================
+     dashboard.html — page d'accueil de KillChainAgent
+     Hérite du layout base.html via {% extends "base.html" %}
+     Injecte le contenu ci-dessous dans le bloc {% block content %} du parent.
+     ============================================================================ -->
 {% extends "base.html" %}
 {% block content %}
 
+<!-- ========================================================================
+     SECTION 1 — Grille supérieure (2 colonnes sur desktop, 1 sur mobile)
+     grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8 : responsive 1→2 colonnes
+     ======================================================================== -->
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+    <!-- ====================================================================
+         CARTE — Formulaire de création de mission
+         bg-slate-800 rounded-lg : fond carte + coins arrondis
+         border border-slate-700 : bordure subtile
+         Envoi POST /missions au submit → fonction createMission()
+         ==================================================================== -->
     <div class="bg-slate-800 rounded-lg p-6 border border-slate-700">
         <h2 class="text-lg font-semibold mb-4">Nouvelle Mission</h2>
+        <!-- onsubmit empêche le rechargement de la page et appelle createMission() -->
         <form id="mission-form" class="space-y-4"
               onsubmit="event.preventDefault(); createMission();">
             <div>
@@ -25,6 +41,11 @@
         </div>
     </div>
 
+    <!-- ====================================================================
+         CARTE — Référence de la Kill Chain ATT&CK
+         Affiche les 4 phases fixes : Discovery, Initial Access,
+         Privilege Escalation, Persistence avec leurs IDs MITRE.
+         ==================================================================== -->
     <div class="bg-slate-800 rounded-lg p-6 border border-slate-700">
         <h2 class="text-lg font-semibold mb-4">Kill Chain ATT&CK</h2>
         <div class="space-y-3 text-sm">
@@ -52,6 +73,11 @@
     </div>
 </div>
 
+<!-- ========================================================================
+     SECTION 2 — Liste des missions récentes
+     Peuplée dynamiquement par loadMissions() au chargement et via le
+     bouton "Rafraîchir". Les missions sont affichées dans un tableau.
+     ======================================================================== -->
 <div class="bg-slate-800 rounded-lg p-6 border border-slate-700 mb-8">
     <div class="flex items-center justify-between mb-4">
         <h2 class="text-lg font-semibold">Missions récentes</h2>
@@ -64,6 +90,13 @@
     </div>
 </div>
 
+<!-- ========================================================================
+     SECTION 3 — Grille des agents
+     Présente les 6 agents du système (Supervisor, Recon, Exploit,
+     PrivEsc, Persist, Report) sous forme de cartes en grille responsive
+     grid-cols-2 → md:grid-cols-3 → lg:grid-cols-6.
+     Le statut de santé vient de checkHealth() (endpoint GET /health).
+     ======================================================================== -->
 <div class="bg-slate-800 rounded-lg p-6 border border-slate-700">
     <div class="flex items-center justify-between mb-4">
         <h2 class="text-lg font-semibold">Agents</h2>
@@ -103,9 +136,26 @@
     </div>
 </div>
 
+<!-- ========================================================================
+     JAVASCRIPT — Fonctions du dashboard
+     Trois fonctions principales :
+       - createMission() : crée une nouvelle mission (POST /missions)
+       - loadMissions()  : charge la liste des missions (GET /missions)
+       - checkHealth()   : vérifie l'état de l'API (GET /health)
+     ======================================================================== -->
 <script>
+// =========================================================================
+// createMission()
+// Appelée au submit du formulaire de création de mission.
+//   - Lit la valeur du champ #target
+//   - Envoie POST /missions avec body JSON { target: "..." }
+//   - L'API répond avec { id: "uuid" }
+//   - Affiche le lien vers la mission créée
+//   - Recharge la liste des missions après 500ms
+// =========================================================================
 async function createMission() {
     const target = document.getElementById('target').value;
+    // Requête AJAX POST → endpoint /missions
     const resp = await fetch('/missions', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
@@ -113,24 +163,38 @@ async function createMission() {
     });
     const data = await resp.json();
 
+    // Mise à jour du lien dans la bannière "Mission créée"
     const link = document.getElementById('mission-link');
-    link.href = `/missions/${data.id}`;
+    link.href = `/missions/${data.id}`; // Lien vers la page de détail
     link.textContent = data.id;
     document.getElementById('mission-result').classList.remove('hidden');
+    // Rafraîchit la liste des missions récentes (ci-dessous)
     setTimeout(loadMissions, 500);
 }
 
+// =========================================================================
+// loadMissions()
+// Charge et affiche la liste des missions récentes.
+//   - GET /missions → l'API répond { missions: [...] }
+//   - Chaque mission a : id, target, status
+//   - Rend un tableau HTML dans #missions-list
+//   - Si le tableau est vide, affiche un message d'invitation
+// =========================================================================
 async function loadMissions() {
+    // Requête AJAX GET → endpoint /missions
     const resp = await fetch('/missions');
     const data = await resp.json();
     const missions = data.missions || [];
     const container = document.getElementById('missions-list');
 
+    // Aucune mission → message informatif
     if (!missions.length) {
         container.innerHTML = '<p class="text-slate-500 text-sm">Aucune mission. Créez-en une ci-dessus.</p>';
         return;
     }
 
+    // Construction du tableau HTML avec template literal
+    // Badge de statut : vert pour "completed", jaune pour les autres
     container.innerHTML = `
         <div class="overflow-x-auto">
             <table class="w-full text-sm">
@@ -162,16 +226,26 @@ async function loadMissions() {
         </div>`;
 }
 
+// =========================================================================
+// checkHealth()
+// Vérifie l'état de santé de l'API backend.
+//   - GET /health → l'API répond { status: "ok", agents: [...] }
+//   - Affiche le résultat dans #health-status
+//   - En cas d'échec réseau, affiche "API: unreachable"
+// =========================================================================
 async function checkHealth() {
     try {
+        // Requête AJAX GET → endpoint /health
         const resp = await fetch('/health');
         const data = await resp.json();
         document.getElementById('health-status').textContent = `API: ${data.status} · ${data.agents.length} agents`;
     } catch(e) {
+        // API injoignable (réseau, serveur down…)
         document.getElementById('health-status').textContent = 'API: unreachable';
     }
 }
 
+// Chargement initial au chargement de la page
 loadMissions();
 checkHealth();
 </script>

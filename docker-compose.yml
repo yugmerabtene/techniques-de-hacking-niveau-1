@@ -1,90 +1,99 @@
+# =============================================================================
+# Lab de pentest — Techniques de hacking et contre-mesures (Niveau 1)
+#
+# Usage : docker compose up -d [service]
+# Tous   : docker compose up -d --build
+# Profil agent : docker compose --profile agent up -d killchain
+# =============================================================================
+
 services:
-  # =================== KillChainAgent orchestrator ===================
+  # ========== KillChainAgent — Orchestrateur agentic (profil optionnel) ======
   killchain:
-    build: ./hors-serie
+    build: ./hors-serie                    # Kali Linux + FastAPI + agents
     container_name: killchain-agent
     ports:
-      - "8000:8000"
+      - "8000:8000"                        # Dashboard web + API REST
     restart: unless-stopped
     profiles:
-      - agent
+      - agent                              # Lancé uniquement avec --profile agent
 
-  # =================== Day 1-2-3: Web vulnerabilities ===================
+  # ========== Jour 1-2-3 : Vulnérabilités web ===============================
   dvwa:
-    image: vulnerables/web-dvwa:latest
+    image: vulnerables/web-dvwa:latest     # DVWA — XSS, CSRF, SQLi, CMDi
     container_name: dvwa-target
     ports:
-      - "8080:80"
+      - "8080:80"                          # Interface web DVWA
     environment:
-      - RECAPTCHA_PRIV_KEY=disabled
+      - RECAPTCHA_PRIV_KEY=disabled        # Désactive reCAPTCHA (mode lab)
       - RECAPTCHA_PUB_KEY=disabled
     restart: unless-stopped
 
-  # =================== Day 1: SQLi dedicated target ===================
+  # ========== Jour 1 : Application SQLi dédiée ==============================
   sqli-app:
-    build: ./docker/sqli-app
+    build: ./docker/sqli-app               # PHP + SQLite, 3 points d'injection
     container_name: sqli-app-target
     ports:
-      - "8083:80"
+      - "8083:80"                          # Injection numérique, auth bypass, LIKE
     restart: unless-stopped
 
-  # =================== Day 2: FTP/SMB/MySQL (Metasploitable 2) ===================
+  # ========== Jour 2 : Metasploitable 2 (FTP, SMB, SSH, MySQL...) ===========
   vsftpd:
-    image: tleemcjr/metasploitable2:latest
+    image: tleemcjr/metasploitable2:latest # Ubuntu 8.04 multi-vulnérable
     container_name: vsftpd-target
     ports:
-      - "21:21"
-      - "22:22"
-      - "23:23"
-      - "25:25"
-      - "53:53"
-      - "80:80"
-      - "110:110"
-      - "139:139"
-      - "143:143"
-      - "445:445"
-      - "3306:3306"
-      - "3632:3632"
-      - "5432:5432"
-      - "6667:6667"
-      - "6200:6200"
-      - "8009:8009"
-      - "8180:8180"
+      - "21:21"        # FTP   — vsftpd 2.3.4 (backdoor)
+      - "22:22"        # SSH   — OpenSSH 4.7p1
+      - "23:23"        # Telnet
+      - "25:25"        # SMTP
+      - "53:53"        # DNS
+      - "80:80"        # HTTP  — Apache 2.2.8
+      - "110:110"      # POP3
+      - "139:139"      # NetBIOS
+      - "143:143"      # IMAP
+      - "445:445"      # SMB   — Samba 3.0.20 (usermap_script)
+      - "3306:3306"    # MySQL 5.0.51a
+      - "3632:3632"    # DistCC
+      - "5432:5432"    # PostgreSQL 8.3.0
+      - "6667:6667"    # IRC   — UnrealIRCd
+      - "6200:6200"    # Backdoor vsftpd 2.3.4 (shell root)
+      - "8009:8009"    # AJP
+      - "8180:8180"    # Tomcat
     restart: unless-stopped
 
-  # =================== Day 3: Buffer overflow ===================
+  # ========== Jour 3 : Buffer overflow ======================================
   buffovf:
-    build: ./docker/buffovf
+    build: ./docker/buffovf                # Binaire C vulnérable (strcpy)
     container_name: buffovf-target
     ports:
-      - "9001:9001"
+      - "9001:9001"                        # Service TCP exposé via socat
     restart: unless-stopped
 
-  # =================== Day 3: WAF bypass ===================
+  # ========== Jour 3 : WAF bypass ===========================================
   waf-target:
-    build: ./docker/waf
+    build: ./docker/waf                    # nginx + ModSecurity CRS + PHP-FPM
     container_name: waf-target
     ports:
-      - "8081:80"
+      - "8081:80"                          # App PHP derrière pare-feu applicatif
     restart: unless-stopped
 
-  # =================== Day 4: Hardening ===================
+  # ========== Jour 4 : Durcissement Linux ===================================
   secure-linux:
-    build: ./docker/secure-linux
+    build: ./docker/secure-linux           # Debian/Ubuntu avec configs faibles
     container_name: secure-linux-target
     ports:
-      - "2222:22"
-    privileged: true
+      - "2222:22"                          # SSH à durcir (PermitRootLogin yes)
+    privileged: true                       # Nécessaire pour iptables (UFW) et sysctl
     restart: unless-stopped
 
-  # =================== Day 5: Forensic ===================
+  # ========== Jour 5 : Investigation forensique =============================
   forensic-victim:
-    build: ./docker/forensic
+    build: ./docker/forensic               # Serveur compromis (cmd injection + backdoor)
     container_name: forensic-victim
     ports:
-      - "8082:80"
+      - "8082:80"                          # Interface web vulnérable à ?cmd=
     restart: unless-stopped
 
+# Réseau unique pour tous les conteneurs (pentest-lab)
 networks:
   default:
     name: pentest-lab

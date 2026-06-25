@@ -1,10 +1,26 @@
 <?php
-// ============================================
-// SQLi Shop — Application VOLONTAIREMENT vulnérable
-// Lab : trouver et exploiter des injections SQL
-// ============================================
+/**
+ * =====================================================================
+ * index.php — SQLi Shop — Application VOLONTAIREMENT vulnérable
+ * =====================================================================
+ * Lab complet d'injection SQL avec 3 points d'injection exploitables.
+ * Chaque point est documenté pour l'apprentissage :
+ *   1. Injection numérique dans ?id=       (UNION-based)
+ *   2. Injection chaîne dans username      (bypass d'authentification)
+ *   3. Injection chaîne dans ?filter=      (LIKE, blind SQLi)
+ *
+ * IMPORTANT : Aucune requête préparée n'est utilisée. Les entrées
+ * utilisateur sont concaténées directement dans les requêtes SQL.
+ * PDO::ERRMODE_WARNING au lieu d'EXCEPTION pour ne pas bloquer
+ * l'exploitation.
+ * =====================================================================
+ */
 
+// Connexion à la base SQLite via PDO — fichier shop.db dans le même répertoire
 $db = new PDO('sqlite:' . __DIR__ . '/shop.db');
+// ERRMODE_WARNING au lieu d'ERKMODE_EXCEPTION : les erreurs SQL sont
+// affichées comme warnings, ce qui permet à l'attaquant de voir
+// les messages d'erreur (utile pour l'injection error-based)
 $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_WARNING);
 ?>
 <!DOCTYPE html>
@@ -31,7 +47,11 @@ $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_WARNING);
 <h1>🛒 SQLi Shop — Lab d'injection SQL</h1>
 <p>Cette application contient <strong style="color:#e74c3c">3 points d'injection SQL exploitables</strong>. À vous de les trouver.</p>
 
-<!-- ============ PAGE : RECHERCHE PRODUIT (SQLi dans id) ============ -->
+<!-- ================================================================= -->
+<!-- POINT D'INJECTION 1 : Recherche par ID produit                    -->
+<!-- Injection NUMÉRIQUE — pas de guillemets autour de $id             -->
+<!-- Vecteur : ?page=search&id=1 UNION SELECT ...                      -->
+<!-- ================================================================= -->
 <h2>🔍 Recherche par ID produit</h2>
 <form method="GET" action="index.php">
     <input type="hidden" name="page" value="search">
@@ -42,8 +62,12 @@ $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_WARNING);
 <?php if (($_GET['page'] ?? '') === 'search' && isset($_GET['id'])): ?>
     <?php
     $id = $_GET['id'];
-    // VULNÉRABLE : injection SQL directe
+    // VULNÉRABLE : $id est concaténé directement dans la requête SQL.
+    // Aucune validation de type, aucun échappement.
+    // Injection numérique : pas besoin de briser des guillemets.
+    // Payload exemple : 1 UNION SELECT 1,2,3,4,sqlite_version()
     $query = "SELECT id, name, price, description FROM products WHERE id = $id";
+    // Affichage de la requête exécutée — utile pour comprendre et déboguer
     echo "<div class='query'>Query: " . htmlspecialchars($query) . "</div>";
 
     $result = $db->query($query);
@@ -63,12 +87,19 @@ $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_WARNING);
             echo "<p>Aucun produit trouvé.</p>";
         }
     } else {
+        // Affichage des erreurs PDO — information leakage utile pour error-based SQLi
         echo "<div class='error'>Erreur SQL : " . htmlspecialchars(implode(' ', $db->errorInfo())) . "</div>";
     }
     ?>
 <?php endif; ?>
 
-<!-- ============ PAGE : CONNEXION (SQLi dans username) ============ -->
+<!-- ================================================================= -->
+<!-- POINT D'INJECTION 2 : Connexion (bypass d'authentification)       -->
+<!-- Injection de type STRING — guillemets simples autour de $u        -->
+<!-- Le mot de passe est hashé en MD5 (faible) AVANT la requête,       -->
+<!-- mais l'injection dans username permet de contourner le WHERE.     -->
+<!-- Vecteur : username=admin'-- avec password quelconque               -->
+<!-- ================================================================= -->
 <h2>🔐 Connexion</h2>
 <form method="POST" action="index.php">
     <input type="hidden" name="page" value="login">
@@ -81,7 +112,9 @@ $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_WARNING);
     <?php
     $u = $_POST['username'] ?? '';
     $p = $_POST['password'] ?? '';
-    // VULNÉRABLE : injection SQL dans username
+    // VULNÉRABLE : $u concaténé directement dans la requête.
+    // Le mot de passe est hashé en MD5 — algorithme faible et non salé.
+    // Injection : admin'-- permet de commenter la partie password du WHERE.
     $hash = md5($p);
     $query = "SELECT id, username, email, role FROM users WHERE username = '$u' AND password = '$hash'";
     echo "<div class='query'>Query: " . htmlspecialchars($query) . "</div>";
@@ -104,7 +137,11 @@ $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_WARNING);
     ?>
 <?php endif; ?>
 
-<!-- ============ PAGE : LISTE UTILISATEURS (SQLi dans filter) ============ -->
+<!-- ================================================================= -->
+<!-- POINT D'INJECTION 3 : Liste des utilisateurs (filtre LIKE)        -->
+<!-- Injection de type STRING dans une clause LIKE — blind SQLi idéal  -->
+<!-- Vecteur : ?page=users&filter=%' UNION SELECT ...--                 -->
+<!-- ================================================================= -->
 <h2>👥 Liste des utilisateurs</h2>
 <form method="GET" action="index.php">
     <input type="hidden" name="page" value="users">
@@ -115,7 +152,9 @@ $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_WARNING);
 <?php if (($_GET['page'] ?? '') === 'users'): ?>
     <?php
     $filter = $_GET['filter'] ?? '';
-    // VULNÉRABLE : pas de requête préparée, pas de validation
+    // VULNÉRABLE : $filter est injecté dans un LIKE sans requête préparée.
+    // Le % autour de $filter est dans la chaîne SQL, pas dans l'entrée.
+    // Payload exemple : %' UNION SELECT id,username,password,role FROM users--
     $query = "SELECT id, username, email, role FROM users WHERE username LIKE '%$filter%'";
     echo "<div class='query'>Query: " . htmlspecialchars($query) . "</div>";
 

