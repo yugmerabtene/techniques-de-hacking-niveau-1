@@ -78,7 +78,8 @@ flowchart TB
 | **ExploitAgent** | Exploitation des vulnérabilités | Metasploit, sqlmap | Vulnérabilités | Session shell |
 | **PrivEscAgent** | Élévation de privilèges | LinPEAS, pwn, GTFOBins | Shell user | Root / SYSTEM |
 | **PersistAgent** | Persistance et C2 | SSH key, cron, netcat | Shell root | Canal persistant |
-| **ReportAgent** | Génération rapport | Python, ATT&CK Navigator | Kill chain | Rapport Markdown/JSON |
+| **ReportAgent**    | Génération rapport | Python, ATT&CK Navigator | Kill chain | Rapport Markdown/JSON |
+| **DefenseAgent** *(Sprint 6)* | Contre-mesures automatiques | UFW, fail2ban, apt, PDO | Vulnérabilités découvertes | Cibles corrigées |
 
 ---
 
@@ -101,7 +102,9 @@ Si ce n'est pas fait, lisez au minimum :
 # Cloner le dépôt du cours (déjà fait en J1)
 cd ~/cours-hacking/repo/hors-serie
 
-# Environnement Python
+# Environnement Python (isole les dépendances du projet pour ne pas polluer le système)
+# python3 -m venv .venv = crée un environnement virtuel Python dans le dossier .venv/
+# source .venv/bin/activate = active l'environnement virtuel (modifie le PATH pour utiliser le Python local)
 python3 -m venv .venv
 source .venv/bin/activate
 pip install fastapi uvicorn jinja2 httpx
@@ -131,6 +134,7 @@ which nmap && which msfconsole && which sqlmap
 | US-07 | ReportAgent : Markdown + ATT&CK JSON | 5 | Sprint 4 |
 | US-08 | Dashboard TailwindCSS | 5 | Sprint 4 |
 | US-09 | Tests + Docker packaging | 5 | Sprint 5 |
+| US-10 | DefenseAgent : remediation automatique | 8 | Sprint 6 |
 
 ### Sprints sur les 5 jours
 
@@ -886,6 +890,8 @@ class ReconAgent:
 - L'architecture agentic sépare les responsabilités : chaque agent est spécialisé
 - Le SupervisorAgent orchestre, les agents spécialisés exécutent (pattern Chapitre 6)
 - KillChainAgent automatise ce que vous avez fait manuellement pendant 5 jours
+- **Le DefenseAgent (Sprint 6) applique automatiquement les contre-mesures** apprises en J1-J4
+- Chaque vulnérabilité découverte génère sa correction : SQLi → PDO, XSS → htmlspecialchars, BOF → stack protector
 - La méthodologie Scrum structure le développement en sprints incrémentaux
 - Chaque étape est taguée ATT&CK (tactique + technique)
 - Le dashboard TailwindCSS offre une interface temps réel

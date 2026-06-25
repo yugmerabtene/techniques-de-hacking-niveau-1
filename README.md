@@ -70,4 +70,4 @@
 
 ## Guide d'environnement
 
-Avant de commencer, lisez [ENVIRONNEMENT.md](./ENVIRONNEMENT.md) pour configurer votre lab selon votre scénario (Kali hôte ou Kali Docker).
+Avant de commencer, lisez la section A.1-A.3 du [Jour 1](./JOUR-01-introduction-hacking-ethique-vulnerabilites.md) pour configurer votre lab (Kali, Docker, conteneurs).

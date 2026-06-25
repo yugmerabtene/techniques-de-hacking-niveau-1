@@ -8,14 +8,14 @@
 
 # Image de base Ubuntu 22.04 LTS — distribution cible pour le hardening
 FROM ubuntu:22.04
-
+ENV TZ=UTC
 # Installation des paquets à configurer/auditer dans le lab :
 #   openssh-server → service SSH à durcir (clés, ports, utilisateurs)
 #   ufw            → pare-feu (Uncomplicated Firewall) — à configurer
 #   fail2ban       → protection anti-brute-force — à activer et configurer
 #   sudo           → gestion des privilèges — à restreindre
 #   vim            → éditeur pour modifier les fichiers de configuration
-RUN apt-get update && apt-get install -y \
+RUN DEBIAN_FRONTEND=noninteractive apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     openssh-server \
     ufw \
     fail2ban \

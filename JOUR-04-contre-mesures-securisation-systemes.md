@@ -15,13 +15,13 @@
 
 ## Contexte réglementaire
 
-En France, toute administration (dont le Ministère de la Justice) doit :
+En France, toute administration et institution de l'État doit :
 1. **Analyser ses risques** et faire **homologuer** ses SI (RGS, décret 2010-112)
 2. **Déployer des mesures proportionnées** (NIS2 art.21, 10 règles d'or ANSSI)
 3. **Durcir ses systèmes** selon les recommandations CERT-FR (publications DUR)
 4. **Notifier les incidents** dans les 24h/72h (NIS2 art.23)
 
-La check-list de durcissement ci-dessous répond directement à ces exigences.
+La check-list de durcissement ci-dessous s'inscrit dans ce cadre réglementaire.
 
 > **Sources :** [10 règles d'or ANSSI](https://cyber.gouv.fr/securisation/10-regles-or-securite-numerique/). [CERT-FR recommandations DUR](https://www.cert.ssi.gouv.fr/). [RGS v2.0](https://www.ssi.gouv.fr/rgs).
 
@@ -40,7 +40,7 @@ flowchart LR
     T1566 --> M1017 ; T1190 --> M1013 ; T1210 --> M1041 ; T1068 --> M1050
 ```
 
-**Fig 11** — Mapping offensif-défensif : 4 techniques d'attaque majeures et leurs mitigations ATT&CK correspondantes, alignées avec les règles ANSSI.
+**Fig 12** — Mapping offensif-défensif : 4 techniques d'attaque majeures et leurs mitigations ATT&CK correspondantes, alignées avec les règles ANSSI.
 
 | Technique d'attaque | Mitigation | Action concrète | Règle ANSSI |
 |---|---|---|---|
@@ -67,35 +67,33 @@ flowchart LR
 
 | Durée | Conteneur | Dossier | Mitigations |
 |---|---|---|---|
-| 1h30 | secure-linux (port 2222) | `~/cours-hacking/jour-4/labs/` | M1051, M1037, M1036, M1050, M1022 |
+| 1h30 | secure-linux (port 2224) | `~/cours-hacking/jour-4/labs/` | M1051, M1037, M1036, M1050, M1022 |
 
 ### Contexte métier
 
 Un serveur de production non durci est une cible triviale. Dans un rapport de pentest, la section "recommandations" liste systématiquement le hardening. Pour une homologation RGS, la preuve du durcissement est exigée.
 
-```mermaid
-flowchart TB
-    A["Serveur vulnérable"] --> B["1. MàJ — M1051 / Règle 1"]
-    B --> C["2. Services inutiles — M1042"]
-    C --> D["3. SSH durci — M1018 / Règle 5"]
-    D --> E["4. Pare-feu UFW — M1037 / Règle 6"]
-    E --> F["5. Fail2ban — M1036 / Règle 5"]
-    F --> G["6. Kernel protections — M1050"]
-    G --> H["7. Audit SUID — M1022"]
-    H --> I["Serveur durci "]
-```
+| Étape | Action | Mitigation | Règle ANSSI |
+|-------|--------|------------|-------------|
+| 1 | Mise à jour sécurité | M1051 Update Software | Règle 1 |
+| 2 | Désactiver services inutiles | M1042 Disable Service | — |
+| 3 | Durcir SSH (root login, clés) | M1018 Account Management | Règle 5 |
+| 4 | Pare-feu UFW | M1037 Network Filtering | Règle 6 |
+| 5 | Fail2ban anti brute-force | M1036 Brute Force Protection | Règle 5 |
+| 6 | Protections kernel (ASLR, etc.) | M1050 Exploit Protection | — |
+| 7 | Audit SUID / file integrity | M1022 File Integrity | — |
 
-**Fig 12** — Pipeline de durcissement Linux en 7 étapes : mise à jour, services inutiles, SSH, pare-feu UFW, Fail2ban, protections noyau, audit SUID.
+**Fig 13** — Pipeline de durcissement Linux en 7 étapes : mise à jour, services inutiles, SSH, pare-feu UFW, Fail2ban, protections noyau, audit SUID.
 
 ### Prérequis
 
 ```bash
 # -d : démarre les conteneurs en arrière-plan (detached), libère le terminal
 # --build : reconstruit l'image à chaque fois pour intégrer les dernières modifications
-docker compose up -d --build secure-linux
+cd ~/cours-hacking/repo && docker compose up -d --build secure-linux
 # -z : scan passif (zero-I/O), teste la connectivité TCP sans envoyer de données
-# Vérifie que le service SSH est bien accessible sur le port 2222 avant de continuer
-nc -z localhost 2222 && echo "SSH OK"
+# Vérifie que le service SSH est bien accessible sur le port 2224 avant de continuer
+nc -z localhost 2224 && echo "SSH OK"
 # -p : crée récursivement les répertoires parents s'ils n'existent pas (mkdir --parents)
 mkdir -p ~/cours-hacking/jour-4/labs && cd ~/cours-hacking/jour-4/labs
 ```
@@ -104,11 +102,13 @@ mkdir -p ~/cours-hacking/jour-4/labs && cd ~/cours-hacking/jour-4/labs
 
 ```bash
 # État initial : connexion root par mot de passe faible — cela ne doit plus fonctionner après durcissement
+# ssh = Secure Shell, connexion chiffrée et authentifiée à un serveur distant
+# root@localhost = utilisateur@hôte ; la commande entre guillemets est exécutée sur le serveur distant
 # sshpass -p : injecte le mot de passe dans stdin du processus SSH (usage lab uniquement, dangereux en prod car visible dans /proc)
 # -o StrictHostKeyChecking=no : désactive la vérification de la clé hôte (uniquement pour l'automatisation en lab fermé)
-# -p 2222 : port SSH alternatif exposé par le conteneur Docker
+# -p 2224 : port SSH alternatif exposé par le conteneur Docker
 sshpass -p 'changeme' ssh -o StrictHostKeyChecking=no \
-  -p 2222 root@localhost "whoami && hostname"
+  -p 2224 root@localhost "whoami && hostname"
 # Sortie attendue → root / <ID_conteneur> — preuve que l'accès root non sécurisé fonctionne avant durcissement
 ```
 
@@ -153,6 +153,8 @@ systemctl disable bluetooth cups avahi-daemon 2>/dev/null || true
 # Interdire le login root force l'usage d'un compte utilisateur + sudo (traçabilité).
 # Interdire le mot de passe impose l'authentification par clé (résistante au brute-force).
 echo "[3/7] SSH durci (M1018 / Règle 5 ANSSI)..."
+# Sauvegarde de la configuration originale avant modification (bonne pratique de rollback)
+# cp = copie un fichier ou dossier (source → destination)
 # Sauvegarde de la configuration originale avant modification (bonne pratique de rollback)
 cp /etc/ssh/sshd_config /etc/ssh/sshd_config.bak
 # sed -i : édition in-place (modifie directement le fichier, sans créer de copie)
@@ -287,7 +289,7 @@ Depuis votre terminal Kali (hôte) :
 #   Si sshpass réussit (&&) → le durcissement a échoué → "ÉCHEC"
 #   Si sshpass échoue (||) → PermitRootLogin=no fonctionne → "✓ SSH root désactivé"
 sshpass -p 'changeme' ssh -o StrictHostKeyChecking=no \
-  -o ConnectTimeout=3 -p 2222 root@localhost "id" 2>/dev/null \
+  -o ConnectTimeout=3 -p 2224 root@localhost "id" 2>/dev/null \
   && echo "ÉCHEC" || echo "✓ SSH root désactivé"
 
 # === VÉRIFICATION 2 : Pare-feu UFW actif ===
@@ -321,18 +323,9 @@ docker exec secure-linux-target fail2ban-client status sshd
 
 ## 2. Évaluation des risques — Triangle CIA
 
-```
-                    CONFIDENTIALITÉ (C)
-                    données protégées
-                         
-                        /|\
-                       / | \
-                      /  |  \
-           INTÉGRITÉ (I)  DISPONIBILITÉ (A)
-          données exactes        service accessible
-```
+![Triangle CIA — Confidentialité, Intégrité, Disponibilité](triade-en.png)
 
-Chaque incident impacte un ou plusieurs piliers. L'analyse CIA est exigée par le RGS pour l'homologation.
+**Fig 18** — Triangle CIA : les 3 piliers de la sécurité de l'information. Chaque incident impacte un ou plusieurs piliers. L'analyse CIA est exigée par le RGS pour l'homologation.
 
 ### Matrice de couverture défensive
 
@@ -381,7 +374,7 @@ alert tcp any any -> $HOME_NET 80 (msg:"SQLi UNION SELECT detected";
 
 ### Exercice 3 : Niveau RGS
 
-**Énoncé :** Un système de la Justice manipule des données sensibles (casiers judiciaires). Quel niveau RGS recommandez-vous ? Quelles mesures associer ?
+**Énoncé :** Une administration d'État manipule des données sensibles (informations réglementées). Quel niveau RGS recommandez-vous ? Quelles mesures associer ?
 
 <details><summary><strong>Solution</strong></summary>
 **RGS *** (renforcé)** — données à caractère personnel sensible.
@@ -408,6 +401,4 @@ Mesures : chiffrement au repos et en transit, pentest interne trimestriel, SOC 2
 - [MITRE D3FEND](https://d3fend.mitre.org/)
 
 ---
-*Chapitre précédent : [Jour 3](./JOUR-03-vulnerabilites-avancees-contournement-protections.md)*
 
-*Chapitre suivant : [Jour 5 — Reporting et normes](./JOUR-05-reporting-gestion-incidents-conformite.md)*

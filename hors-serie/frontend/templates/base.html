@@ -3,7 +3,7 @@
      Définit la structure commune à toutes les pages :
        - nav    : barre de navigation fixe (titre + lien dashboard + version)
        - main   : conteneur principal, les templates enfants injectent leur
-                  contenu via le bloc Jinja {% block content %}{% endblock %}
+                  contenu via le bloc Jinja { % block content %}{ % endblock %}
      ============================================================================ -->
 <!DOCTYPE html>
 <html lang="fr">
@@ -39,7 +39,7 @@
          MAIN — conteneur principal du contenu
          max-w-7xl mx-auto : largeur max 80rem, centré horizontalement
          p-6 : padding intérieur 1.5rem
-         Le bloc Jinja {% block content %} est remplacé par le contenu
+         Le bloc Jinja { % block content %} est remplacé par le contenu
          des templates enfants (dashboard.html, mission.html, etc.)
          ======================================================================== -->
     <main class="max-w-7xl mx-auto p-6">

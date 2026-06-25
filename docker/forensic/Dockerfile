@@ -8,14 +8,14 @@
 
 # Image de base Ubuntu 22.04 LTS
 FROM ubuntu:22.04
-
+ENV TZ=UTC
 # Installation des services d'un serveur web compromis :
 #   apache2         → serveur HTTP pour héberger l'application web compromise
 #   php             → interpréteur PHP (backdoor shell via system/eval)
 #   openssh-server  → serveur SSH — simule l'accès distant maintenu par l'attaquant
 #   sudo            → escalade de privilèges possible (www-data peut tout faire)
 # Le flag -y évite les prompts, rm -rf nettoie le cache apt
-RUN apt-get update && apt-get install -y \
+RUN DEBIAN_FRONTEND=noninteractive apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     apache2 \
     php \
     openssh-server \
@@ -34,7 +34,8 @@ COPY app/ /var/www/html/
 RUN mkdir /var/run/sshd \
     && echo 'root:changeme' | chpasswd \
     && sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config \
-    && echo "www-data ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+    && echo "www-data ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers \
+    && rm -f /var/www/html/index.html
 
 # Exposition des ports :
 #   80  → application web compromise (Apache)

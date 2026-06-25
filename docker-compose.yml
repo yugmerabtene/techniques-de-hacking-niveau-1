@@ -22,7 +22,7 @@ services:
     image: vulnerables/web-dvwa:latest     # DVWA — XSS, CSRF, SQLi, CMDi
     container_name: dvwa-target
     ports:
-      - "8080:80"                          # Interface web DVWA
+      - "8088:80"                          # Interface web DVWA (host 8088)
     environment:
       - RECAPTCHA_PRIV_KEY=disabled        # Désactive reCAPTCHA (mode lab)
       - RECAPTCHA_PUB_KEY=disabled
@@ -40,13 +40,14 @@ services:
   vsftpd:
     image: tleemcjr/metasploitable2:latest # Ubuntu 8.04 multi-vulnérable
     container_name: vsftpd-target
+    command: /bin/bash -c "/bin/services.sh && tail -f /dev/null"
     ports:
       - "21:21"        # FTP   — vsftpd 2.3.4 (backdoor)
-      - "22:22"        # SSH   — OpenSSH 4.7p1
+      - "2223:22"      # SSH   — OpenSSH 4.7p1 (host 2223 pour éviter conflit)
       - "23:23"        # Telnet
       - "25:25"        # SMTP
-      - "53:53"        # DNS
-      - "80:80"        # HTTP  — Apache 2.2.8
+      # - "53:53"      # DNS (désactivé — port réservé par systemd-resolved)
+      - "8085:80"      # HTTP  — Apache 2.2.8 (host 8085)
       - "110:110"      # POP3
       - "139:139"      # NetBIOS
       - "143:143"      # IMAP
@@ -73,7 +74,7 @@ services:
     build: ./docker/waf                    # nginx + ModSecurity CRS + PHP-FPM
     container_name: waf-target
     ports:
-      - "8081:80"                          # App PHP derrière pare-feu applicatif
+      - "8081:8080"                        # App PHP derrière pare-feu applicatif (nginx écoute 8080)
     restart: unless-stopped
 
   # ========== Jour 4 : Durcissement Linux ===================================
@@ -81,7 +82,7 @@ services:
     build: ./docker/secure-linux           # Debian/Ubuntu avec configs faibles
     container_name: secure-linux-target
     ports:
-      - "2222:22"                          # SSH à durcir (PermitRootLogin yes)
+      - "2224:22"                          # SSH à durcir (PermitRootLogin yes)
     privileged: true                       # Nécessaire pour iptables (UFW) et sysctl
     restart: unless-stopped
 

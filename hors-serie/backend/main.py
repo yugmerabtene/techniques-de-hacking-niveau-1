@@ -17,6 +17,8 @@ Routes :
     GET  /health                        — Vérifier l'état de l'API
 """
 
+import os
+
 from fastapi import FastAPI
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
@@ -31,7 +33,9 @@ from agents.supervisor import SupervisorAgent
 app = FastAPI(title="KillChainAgent", version="0.1.0")
 
 # Moteur de templates Jinja2 pointant vers le dossier frontend
-templates = Jinja2Templates(directory="../frontend/templates")
+# Chemin relatif au fichier courant pour supporter les imports depuis les tests
+_TEMPLATES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "frontend", "templates")
+templates = Jinja2Templates(directory=_TEMPLATES_DIR)
 
 # Stockage en mémoire des missions (clé = mission_id, valeur = dict mission)
 missions_store = {}
@@ -55,7 +59,7 @@ async def dashboard(request: Request):
     Returns:
         TemplateResponse: Rendu du template Jinja2 `dashboard.html`.
     """
-    return templates.TemplateResponse("dashboard.html", {"request": request})
+    return templates.TemplateResponse(request, "dashboard.html")
 
 
 # ---------------------------------------------------------------------------
@@ -81,6 +85,8 @@ async def create_mission(mission: MissionRequest):
     supervisor = SupervisorAgent(target=mission.target)
     # Planification de la kill chain (étapes ordonnancées)
     result = supervisor.plan()
+    # Ajout du statut initial avant stockage
+    result["status"] = "planned"
     # Stockage en mémoire pour les appels ultérieurs
     missions_store[result["id"]] = result
     return MissionResponse(
@@ -126,8 +132,7 @@ async def get_mission(mission_id: str, request: Request):
     accept = request.headers.get("accept", "")
     if "text/html" in accept:
         # Rendu HTML pour navigation dans le navigateur
-        return templates.TemplateResponse("mission.html", {
-            "request": request,
+        return templates.TemplateResponse(request, "mission.html", {
             "mission_id": mission_id,
         })
     # Fallback JSON pour les clients API

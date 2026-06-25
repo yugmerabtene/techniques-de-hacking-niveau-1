@@ -8,13 +8,13 @@
 
 # Image de base Ubuntu 22.04 LTS — stable et largement supportée
 FROM ubuntu:22.04
-
+ENV TZ=UTC
 # Installation des outils de compilation et de débogage :
 #   gcc      → compilateur C nécessaire pour compiler vuln.c
 #   gdb      → débogueur GNU pour analyser le crash et le shellcode
 #   socat    → expose le binaire sur le réseau (équivalent netcat amélioré)
 # Le flag -y évite les prompts interactifs, rm -rf nettoie le cache apt
-RUN apt-get update && apt-get install -y \
+RUN DEBIAN_FRONTEND=noninteractive apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     gcc \
     gdb \
     socat \

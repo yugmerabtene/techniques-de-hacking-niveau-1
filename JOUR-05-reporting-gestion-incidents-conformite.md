@@ -94,10 +94,12 @@ class CVSS:
         #   L/H      = 0.62 : nécessite un compte utilisateur/administrateur
         pr = 0.85 if self.m.get("PR")=="N" else 0.62
 
-        # Formule simplifiée du score CVSS de base :
+        # Formule simplifiée du score CVSS de base (pédagogique) :
         # (exploitabilité × complexité × privilèges + impact) × 1.2
         # min(10.0, ...) : plafonne le score à 10.0 (score maximum CVSS)
-        # Le facteur 1.2 est une constante d'échelle de la formule CVSS officielle
+        # Note : cette formule est une approximation. La formule CVSS v3.1 officielle
+        # est plus complexe (https://www.first.org/cvss/v3-1/specification-document).
+        # Pour les rapports professionnels, utilisez le calculateur officiel FIRST.org.
         s = min(10.0, (exploit*ac*pr+impact)*1.2)
 
         # Classification CVSS v3.1 officielle
@@ -207,7 +209,7 @@ Un serveur web vient d'être compromis. En tant que RSSI, vous devez analyser la
 # Démarrage du conteneur victime forensique en arrière-plan avec reconstruction de l'image
 # -d : mode détaché (le terminal reste libre)
 # --build : force la reconstruction de l'image (nécessaire si le Dockerfile a changé)
-docker compose up -d --build forensic-victim
+cd ~/cours-hacking/repo && docker compose up -d --build forensic-victim
 # curl -I : méthode HTTP HEAD, ne récupère que les en-têtes (pas le corps de la réponse)
 # Permet de vérifier rapidement que le serveur web répond (code 200 = OK) sans télécharger la page
 curl -I http://localhost:8082/
@@ -398,7 +400,7 @@ echo "Rapport créé : incident_report.md"
 
 ## 3. Conformité réglementaire — Cadre européen et français
 
-Cette section résume les obligations qui s'appliquent au Ministère de la Justice et à toute administration française.
+Cette section résume les obligations qui s'appliquent aux institutions de l'État et à toute administration française.
 
 ### Tableau des normes applicables
 
@@ -410,7 +412,7 @@ Cette section résume les obligations qui s'appliquent au Ministère de la Justi
 | **LPM 2024-2030** | France | Renforcement capacités cyber, SOC interministériels | OIV, administrations | Budget |
 | **Directive Résilience** | UE (Dir. 2022/2557) | Résilience des infrastructures critiques | Entités critiques | Harmonisation |
 
-### Comment cette formation répond aux exigences
+### Correspondance entre réglementations et contenu du cours
 
 | Exigence réglementaire | Jour concerné | Contenu |
 |---|---|---|
@@ -583,7 +585,7 @@ Vérifiez que le rapport contient bien : 4 vulnérabilités (3 CRITIQUE + 1 MODE
 **Énoncé :** Stored XSS : AV:N, AC:L, PR:N, UI:N (admin visualise auto), S:U, C:H, I:H, A:L. Score ?
 
 <details><summary><strong>Solution</strong></summary>
-Vecteur : `AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:L` → ~8.3 (ÉLEVÉ). Pas CRITIQUE car A:L.
+Vecteur : `AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:L` → ~8.3 (ÉLEVÉ). Pas CRITIQUE car la métrique Disponibilité (A) est à `L` (Low) au lieu de `H` (High) — l'XSS n'affecte pas la disponibilité du serveur. Le score reste sous le seuil CRITIQUE (9.0).
 ATT&CK : T1189.
 </details>
 
@@ -632,4 +634,3 @@ Leçon : le WAF bloque une signature mais pas l'autre. La défense en profondeur
 ---
 
 *Formation terminée — Remise du rapport final*
-*Chapitre précédent : [Jour 4](./JOUR-04-contre-mesures-securisation-systemes.md)*

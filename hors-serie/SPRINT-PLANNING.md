@@ -72,6 +72,7 @@ Jour 5 (30 min) -> Sprint 4 : ReportAgent + Dashboard
 | Sprint 3 | US-05 + US-06 SupervisorAgent + PersistAgent |  |
 | Sprint 4 | US-07 + US-08 ReportAgent + Dashboard |  |
 | Sprint 5 | US-09 Tests + Docker packaging |  |
+| Sprint 6 | US-10 DefenseAgent : contre-mesures automatiques |  |
 
 ### Pour lancer
 

@@ -15,7 +15,7 @@
 
 Les défenses évoluent. Firewalls, WAF, IDS/IPS forment un maillage que les attaquants contournent quotidiennement. Le CERT-FR documente ces techniques d'évasion dans ses bulletins d'actualité hebdomadaires — les vrais attaquants utilisent exactement ces méthodes.
 
-Ce chapitre est centré sur la tactique **TA0005 Defense Evasion** (50+ techniques). Vous apprendrez à contourner les protections par obfuscation et exploitation mémoire.
+Ce chapitre est centré sur la tactique **TA0005 Defense Evasion** (50+ techniques). Les techniques de contournement par obfuscation et exploitation mémoire y sont abordées.
 
 > **Sources :** [ATT&CK Defense Evasion](https://attack.mitre.org/tactics/TA0005/). [CERT-FR](https://www.cert.ssi.gouv.fr/).
 
@@ -41,7 +41,7 @@ Adresses hautes
 Adresses basses
 ```
 
-**Fig 8** — Organisation de la pile mémoire (stack frame) : le dépassement du buffer local de 64 octets écrase l'adresse de retour EIP, permettant de rediriger l'exécution.
+**Fig 9** — Organisation de la pile mémoire (stack frame) : le dépassement du buffer local de 64 octets écrase l'adresse de retour EIP, permettant de rediriger l'exécution.
 
 Si on écrit plus de 64 octets dans `buffer`, on déborde sur EIP. En y plaçant l'adresse de notre shellcode, on redirige l'exécution du programme.
 
@@ -52,7 +52,7 @@ flowchart LR
     C --> D["Exécution arbitraire"]
 ```
 
-**Fig 9** — Chaîne d'exploitation buffer overflow : le payload `'A'*76 + NOP sled + shellcode` déborde EIP, qui pointe vers le shellcode pour une exécution arbitraire.
+**Fig 10** — Chaîne d'exploitation buffer overflow : le payload `'A'*76 + NOP sled + shellcode` déborde EIP, qui pointe vers le shellcode pour une exécution arbitraire.
 
 ---
 
@@ -73,12 +73,13 @@ Les buffer overflows restent dans le top 3 des vulnérabilités critiques (MITRE
 ```bash
 # Démarre le conteneur vulnérable en arrière-plan et reconstruit l'image si nécessaire
 # -d : mode détaché (arrière-plan), --build : rebuild l'image avant de lancer
-docker compose up -d --build buffovf
+cd ~/cours-hacking/repo && docker compose up -d --build buffovf
 
 # Teste la connectivité TCP sur le port 9001 ; si le port est ouvert, affiche "OK"
 # -z : scan TCP sans envoyer de données (zero I/O mode)
 nc -z localhost 9001 && echo "OK"
 
+# pip = gestionnaire de paquets Python (télécharge et installe des bibliothèques depuis PyPI)
 # Installe pwntools (bibliothèque d'exploitation binaire) en ignorant les restrictions PEP 668
 # --break-system-packages : autorise pip à écrire dans l'environnement système (Debian/Kali)
 pip install --break-system-packages pwntools
@@ -96,6 +97,8 @@ cd ~/cours-hacking/jour-3/labs
 # Génère 100 caractères 'A' et les envoie via netcat au service vulnérable (port 9001)
 # 'A'*100 = 100 octets > buffer[64] → débordement dans saved EBP et EIP
 # Le pipe | redirige la sortie de python3 vers l'entrée standard de netcat
+# python3 -c = exécute la chaîne de caractères comme du code Python, sans créer de fichier .py
+# 'A'*100 = 100 octets > buffer[64] → débordement dans saved EBP et EIP
 python3 -c "print('A'*100)" | nc localhost 9001
 # → Input received: AAAA... (le programme répond avant de crasher — overflow confirmé)
 ```
@@ -223,8 +226,40 @@ ip addr show docker0 | grep 'inet ' | awk '{print $2}' | cut -d/ -f1
 # Vérifie que le conteneur buffovf-target peut joindre l'hôte Kali via le bridge docker0
 # docker exec : exécute une commande à l'intérieur du conteneur sans shell interactif
 # -c 1 : envoie un seul paquet ICMP (un seul ping, pas de boucle infinie)
+# ping = teste la connectivité réseau en envoyant des paquets ICMP Echo Request
+# -c 1 = envoie un seul paquet (sans -c, ping boucle indéfiniment sous Linux)
 docker exec buffovf-target ping -c 1 172.17.0.1
 ```
+
+### 🔒 Contre-mesure (M1050 Exploit Protection)
+
+Le buffer overflow a réussi parce que le binaire a été compilé **sans aucune protection**. En réactivant les protections standard, l'exploit devient impossible :
+
+| Protection | Flag gcc | Effet sur l'exploit |
+|---|---|---|
+| **Stack Canary** | `-fstack-protector-strong` | Valeur aléatoire entre buffer et EIP — écrasée → crash détecté |
+| **NX/DEP** | `-z noexecstack` (retiré) | La pile n'est plus exécutable → shellcode inutilisable |
+| **ASLR** | `kernel.randomize_va_space=2` | Adresses aléatoires → impossible de prédire `EIP_ADDR` |
+| **PIE** | `-pie -fPIE` | Le binaire lui-même est randomisé |
+| **FORTIFY_SOURCE** | `-D_FORTIFY_SOURCE=2` | Remplace `strcpy()` par `__strcpy_chk()` avec vérification de taille |
+
+```bash
+# Recompiler le binaire AVEC protections
+docker exec buffovf-target bash -c "
+  # gcc = GNU Compiler Collection, compile du code source C en binaire exécutable
+# -o /opt/vuln_secure = nomme le fichier binaire de sortie ; les flags de sécurité sont détaillés ci-dessus
+gcc -fstack-protector-strong -D_FORTIFY_SOURCE=2 -pie -fPIE -g -o /opt/vuln_secure /tmp/vuln.c
+  chmod 4755 /opt/vuln_secure
+  echo 'Compilation sécurisée terminée'
+"
+# Activer ASLR complet sur le conteneur
+docker exec buffovf-target bash -c "echo 2 > /proc/sys/kernel/randomize_va_space"
+# Re-tester le crash : le stack canary détecte le dépassement
+python3 -c "print('A'*100)" | docker exec -i buffovf-target /opt/vuln_secure 2>&1
+# → *** stack smashing detected *** (le canary a bloqué l'overflow !)
+```
+
+> **Checkpoint défensif :** Avec `-fstack-protector-strong` et ASLR, le binaire résiste à l'overflow. Le shellcode ne s'exécute plus.
 
 ---
 
@@ -248,7 +283,7 @@ flowchart LR
     B -->|"Pas de signature"| D["App → 200 OK"]
 ```
 
-**Fig 10** — Contournement WAF par fragmentation de payload : `id=1/**/OR/**/1=1` échappe à la détection de signature SQLi et atteint l'application.
+**Fig 11** — Contournement WAF par fragmentation de payload : `id=1/**/OR/**/1=1` échappe à la détection de signature SQLi et atteint l'application.
 
 ### Étape 1 — Vérifier le blocage
 
@@ -301,6 +336,34 @@ sqlmap -u "http://localhost:8081/?id=1" \
 | `charencode` | Encode les caractères spéciaux | `'` → `%27` |
 | `randomcase` | Casse aléatoire | `SELECT` → `sELeCt` |
 
+### 🔒 Contre-mesure (M1041 WAF + M1054 Input Validation)
+
+Le WAF a été contourné parce qu'il fait du **pattern matching** (regex), pas de l'analyse sémantique. Pour bloquer ces contournements :
+
+| Contournement | Contre-mesure WAF | Défense en profondeur |
+|---|---|---|
+| `space2comment` (`/**/`) | Anomaly scoring → détecter le burst de tentatives | Validation applicative : n'autoriser que `[0-9]+` pour le paramètre `id` |
+| `charencode` (`%27`) | Décodeur d'entités → normaliser avant analyse | Requêtes préparées (défense ultime, indépendante du WAF) |
+| `randomcase` (`sELeCt`) | `SecDefaultAction` avec `t:lowercase` | Pare-feu applicatif + PDO = double couche |
+
+```bash
+# Durcir le WAF ModSecurity avec le mode Anomaly Scoring (bloque après N détections)
+docker exec waf-target bash -c "
+  cat >> /etc/modsecurity.d/modsecurity.conf << 'EOF'
+# Mode détection → blocage : après 5 anomalies, l'IP est bannie 10 minutes
+SecAction \"id:900001,phase:1,nolog,pass,setvar:tx.anomaly_score=0\"
+SecRule TX:ANOMALY_SCORE \"@ge 5\" \"id:900002,phase:2,deny,status:403,log,msg:'WAF bloque: score anormal'\"
+EOF
+"
+# Re-tester sqlmap avec tamper scripts après durcissement WAF :
+curl -s -o /dev/null -w "%{http_code}" "http://localhost:8081/?id=1%20OR%201=1"
+# Toujours 403 — mais cette fois le score d'anomalie s'accumule et l'IP est bannie
+# sqlmap --tamper=space2comment,charencode,randomcase échouera après quelques requêtes
+# → Le WAF en mode scoring bloque même les payloads obfusquées
+```
+
+> **Checkpoint défensif :** Le WAF en mode anomaly scoring détecte le burst de tentatives sqlmap et bloque l'IP. La défense en profondeur (WAF + requêtes préparées + validation applicative) rend l'injection SQL impossible.
+
 ---
 
 ## Exercices
@@ -319,6 +382,8 @@ docker exec -it buffovf-target bash
 
 # Se place dans /opt et lance GDB en mode silencieux sur le binaire vulnérable
 # -q : quiet, supprime le message de bienvenue GDB
+# gdb = GNU Debugger, débogueur pour examiner mémoire, registres et flux d'exécution d'un programme
+# -q = mode quiet, supprime le message de bienvenue
 cd /opt && gdb -q ./vuln
 
 # Dans GDB : exécute le programme avec 100 'A' en entrée pour provoquer le buffer overflow
@@ -374,6 +439,4 @@ cd /opt && gdb -q ./vuln
 - [CERT-FR](https://www.cert.ssi.gouv.fr/)
 
 ---
-*Chapitre précédent : [Jour 2](./JOUR-02-tests-penetration-exploitation.md)*
 
-*Chapitre suivant : [Jour 4](./JOUR-04-contre-mesures-securisation-systemes.md)*

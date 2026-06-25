@@ -15,8 +15,8 @@ FROM php:8.1-apache
 #   sqlite3      → client SQLite en ligne de commande (sqlite3) utilisé
 #                  pour initialiser la base via le script init.sql
 # Le flag -y évite les prompts, rm -rf nettoie le cache apt
-RUN docker-php-ext-install pdo pdo_sqlite \
-    && apt-get update && apt-get install -y sqlite3 \
+RUN apt-get update && apt-get install -y libsqlite3-dev sqlite3 \
+    && docker-php-ext-install pdo pdo_sqlite \
     && rm -rf /var/lib/apt/lists/*
 
 # Copie du code source de l'application vulnérable dans la racine web d'Apache

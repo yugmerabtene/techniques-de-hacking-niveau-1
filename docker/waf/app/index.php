@@ -21,8 +21,13 @@ header("Content-Type: text/html; charset=utf-8");
 echo "<h1>Product Search</h1>";
 
 // Tentative de connexion à la base MySQL "db" (hôte externe)
-// @ supprime les warnings si la connexion échoue (lab autonome)
-$con = @mysqli_connect("db", "root", "rootpass", "testdb");
+// try-catch nécessaire en PHP 8+ (les exceptions ne sont plus supprimées par @)
+try {
+    mysqli_report(MYSQLI_REPORT_OFF);
+    $con = mysqli_connect("db", "root", "rootpass", "testdb");
+} catch (Exception $e) {
+    $con = false;
+}
 
 // Si la base de données n'est PAS disponible, on affiche uniquement
 // la requête SQL construite — cela suffit pour le lab de bypass WAF
