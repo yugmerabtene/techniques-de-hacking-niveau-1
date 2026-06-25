@@ -42,6 +42,33 @@ cd ~/cours-hacking
 git clone https://github.com/yugmerabtene/techniques-hacking-mdj.git repo
 ```
 
+Une fois le dépôt cloné, votre arborescence de travail est la suivante :
+
+```
+~/cours-hacking/
+├── jour-1/
+│   └── labs/              # Travaux pratiques J1
+├── jour-2/
+│   └── labs/              # Travaux pratiques J2
+├── jour-3/
+│   └── labs/              # Travaux pratiques J3
+├── jour-4/
+│   └── labs/              # Travaux pratiques J4
+├── jour-5/
+│   └── labs/              # Travaux pratiques J5
+├── hors-serie/            # Projet KillChainAgent
+└── repo/                  # Dépôt du cours (ce répertoire)
+    ├── JOUR-01*.md        # Supports de cours
+    ├── JOUR-02*.md
+    ├── JOUR-03*.md
+    ├── JOUR-04*.md
+    ├── JOUR-05*.md
+    ├── HORS-SERIE-AGENTIC.md
+    ├── docker-compose.yml # Conteneurs cibles
+    ├── docker/            # Dockerfiles par lab
+    └── hors-serie/        # Code source KillChainAgent
+```
+
 ## A.3 Lancement des conteneurs
 
 ```bash
