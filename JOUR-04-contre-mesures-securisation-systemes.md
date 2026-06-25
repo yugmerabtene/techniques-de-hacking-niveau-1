@@ -283,6 +283,6 @@ Mesures : chiffrement au repos et en transit, pentest interne trimestriel, SOC 2
 - [MITRE D3FEND](https://d3fend.mitre.org/)
 
 ---
+*Chapitre précédent : [Jour 3](./JOUR-03-vulnerabilites-avancees-contournement-protections.md)*
 
-*Chapitre précédent : [Jour 3](./JOUR-03.md)*
-*Chapitre suivant : [Jour 5 — Reporting et normes](./JOUR-05.md)*
+*Chapitre suivant : [Jour 5 — Reporting et normes](./JOUR-05-reporting-gestion-incidents-conformite.md)*

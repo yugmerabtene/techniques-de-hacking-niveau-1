@@ -455,5 +455,5 @@ Leçon : le WAF bloque une signature mais pas l'autre. La défense en profondeur
 ---
 
 *Formation terminée — Remise du rapport final*
-*Chapitre précédent : [Jour 4](./JOUR-04.md)*
+*Chapitre précédent : [Jour 4](./JOUR-04-contre-mesures-securisation-systemes.md)*
 *Recherches : [Normes France/Europe](../search/normes-france-europe.md)*

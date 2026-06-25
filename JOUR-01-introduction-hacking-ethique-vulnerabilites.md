@@ -714,5 +714,5 @@ sqlmap -u "http://localhost:8083/?page=search&id=1" \
 
 ---
 
-*Chapitre suivant : [Jour 2 — Tests de pénétration](./JOUR-02.md)*
+*Chapitre suivant : [Jour 2 — Tests de pénétration](./JOUR-02-tests-penetration-exploitation.md)*
 *Hors-Série : [KillChainAgent](./HORS-SERIE-AGENTIC.md)*

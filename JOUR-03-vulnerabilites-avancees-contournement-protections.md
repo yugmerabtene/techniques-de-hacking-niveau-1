@@ -260,6 +260,6 @@ cd /opt && gdb -q ./vuln
 - [CERT-FR](https://www.cert.ssi.gouv.fr/)
 
 ---
+*Chapitre précédent : [Jour 2](./JOUR-02-tests-penetration-exploitation.md)*
 
-*Chapitre précédent : [Jour 2](./JOUR-02.md)*
-*Chapitre suivant : [Jour 4](./JOUR-04.md)*
+*Chapitre suivant : [Jour 4](./JOUR-04-contre-mesures-securisation-systemes.md)*
