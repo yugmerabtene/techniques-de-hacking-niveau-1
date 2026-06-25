@@ -7,7 +7,7 @@
 - Exploiter un buffer overflow avec contrôle du flux d'exécution (EIP)
 - Maîtriser les injections SQL avancées : blind, time-based
 - Contourner un WAF (ModSecurity) avec sqlmap tamper scripts
-- Appliquer les techniques d'évasion (TA0005 Defense Evasion)
+- Appliquer les techniques d'évasion ([TA0005](https://attack.mitre.org/tactics/TA0005/) Defense Evasion)
 
 ---
 
@@ -15,13 +15,13 @@
 
 Les défenses évoluent. Firewalls, WAF, IDS/IPS forment un maillage que les attaquants contournent quotidiennement. Le CERT-FR documente ces techniques d'évasion dans ses bulletins d'actualité hebdomadaires — les vrais attaquants utilisent exactement ces méthodes.
 
-Ce chapitre est centré sur la tactique **TA0005 Defense Evasion** (50+ techniques). Les techniques de contournement par obfuscation et exploitation mémoire y sont abordées.
+Ce chapitre est centré sur la tactique **[TA0005](https://attack.mitre.org/tactics/TA0005/) Defense Evasion** (50+ techniques). Les techniques de contournement par obfuscation et exploitation mémoire y sont abordées.
 
-> **Sources :** [ATT&CK Defense Evasion](https://attack.mitre.org/tactics/TA0005/). [CERT-FR](https://www.cert.ssi.gouv.fr/).
+> **Sources :** [ATT&CK Defense Evasion](https://attack.mitre.org/tactics/[TA0005](https://attack.mitre.org/tactics/TA0005/)/). [CERT-FR](https://www.cert.ssi.gouv.fr/).
 
 ---
 
-## 1. Buffer overflow — T1068 Exploitation for Privilege Escalation
+## 1. Buffer overflow — [T1068](https://attack.mitre.org/techniques/T1068/) Exploitation for Privilege Escalation
 
 ### Fonctionnement technique
 
@@ -62,11 +62,11 @@ flowchart LR
 
 | Durée | Conteneur | Dossier | Technique ATT&CK |
 |---|---|---|---|
-| 1h | buffovf-target (port 9001) | `~/cours-hacking/jour-3/labs/` | T1068 |
+| 1h | buffovf-target (port 9001) | `~/cours-hacking/jour-3/labs/` | [T1068](https://attack.mitre.org/techniques/T1068/) |
 
 ### Contexte métier
 
-Les buffer overflows restent dans le top 3 des vulnérabilités critiques (MITRE CWE Top 25). Exploiter un BOF démontre la maîtrise de la mémoire — compétence exigée pour les certifications OSCP, OSED.
+Les buffer overflows restent dans le top 3 des vulnérabilités critiques (MITRE CWE Top 25). Exploiter un BOF démontre la maîtrise de la mémoire — une compétence clé en sécurité offensive.
 
 ### Prérequis
 
@@ -269,7 +269,7 @@ python3 -c "print('A'*100)" | docker exec -i buffovf-target /opt/vuln_secure 2>&
 
 | Durée | Conteneur | Technique ATT&CK |
 |---|---|---|
-| 45 min | waf-target (port 8081) | T1562.001 Impair Defenses |
+| 45 min | waf-target (port 8081) | [T1562.001](https://attack.mitre.org/techniques/T1562/001/) Impair Defenses |
 
 ### Contexte technique
 
@@ -416,9 +416,9 @@ cd /opt && gdb -q ./vuln
 3. Exfiltration malgré firewall qui bloque le port 443
 
 <details><summary><strong>Solution</strong></summary>
-1. T1001 Data Obfuscation → `nmap -f -T1`
-2. T1562.001 Impair Defenses → `sqlmap --tamper=space2comment,randomcase`
-3. T1572 Protocol Tunneling → DNS tunnel (iodine) ou T1048.003 Exfiltration Over Alternative Protocol
+1. [T1001](https://attack.mitre.org/techniques/T1001/) Data Obfuscation → `nmap -f -T1`
+2. [T1562.001](https://attack.mitre.org/techniques/T1562/001/) Impair Defenses → `sqlmap --tamper=space2comment,randomcase`
+3. [T1572](https://attack.mitre.org/techniques/T1572/) Protocol Tunneling → DNS tunnel (iodine) ou [T1048.003](https://attack.mitre.org/techniques/T1048/003/) Exfiltration Over Alternative Protocol
 </details>
 
 ---
@@ -428,12 +428,12 @@ cd /opt && gdb -q ./vuln
 - **Buffer overflow** : écrire au-delà du buffer → contrôler EIP → exécuter du code arbitraire
 - **Reverse shell IP** : depuis un conteneur Docker vers Kali, utiliser `docker0` (172.17.0.1)
 - **WAF bypass** : le WAF fait du pattern matching, pas de la compréhension sémantique
-- **TA0005 Defense Evasion** : 50+ techniques documentées dans ATT&CK
+- **[TA0005](https://attack.mitre.org/tactics/TA0005/) Defense Evasion** : 50+ techniques documentées dans ATT&CK
 - Les vrais attaquants utilisent ces méthodes — le CERT-FR les documente chaque semaine
 
 ## Pour aller plus loin
 
-- [ATT&CK Defense Evasion (TA0005)](https://attack.mitre.org/tactics/TA0005/)
+- [ATT&CK Defense Evasion ([TA0005](https://attack.mitre.org/tactics/TA0005/))](https://attack.mitre.org/tactics/[TA0005](https://attack.mitre.org/tactics/TA0005/)/)
 - [Corelan Exploit Development](https://www.corelan.be/index.php/articles/)
 - [Awesome WAF](https://github.com/0xInfection/Awesome-WAF)
 - [CERT-FR](https://www.cert.ssi.gouv.fr/)

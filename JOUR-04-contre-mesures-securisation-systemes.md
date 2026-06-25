@@ -44,12 +44,12 @@ flowchart LR
 
 | Technique d'attaque | Mitigation | Action concrète | Règle ANSSI |
 |---|---|---|---|
-| T1566 Phishing | M1017 User Training | Formation anti-phishing | Règle 10 |
-| T1190 SQLi | M1013 App Hardening | WAF, requêtes préparées | Règle 6, 8 |
-| T1210 SMB Exploit | M1042 Disable SMBv1 | Patch management | Règle 1, 6 |
-| T1068 Buffer Overf | M1050 Exploit Protection | ASLR, DEP, Stack Canary | Règle 1, 5 |
-| T1046 Nmap Scan | M1031 IDS/IPS | Snort, Suricata | Règle 6 |
-| T1027 Obfuscation | M1049 Antivirus | Analyse heuristique | Règle 5 |
+| [T1566](https://attack.mitre.org/techniques/T1566/) Phishing | M1017 User Training | Formation anti-phishing | Règle 10 |
+| [T1190](https://attack.mitre.org/techniques/T1190/) SQLi | M1013 App Hardening | WAF, requêtes préparées | Règle 6, 8 |
+| [T1210](https://attack.mitre.org/techniques/T1210/) SMB Exploit | M1042 Disable SMBv1 | Patch management | Règle 1, 6 |
+| [T1068](https://attack.mitre.org/techniques/T1068/) Buffer Overf | M1050 Exploit Protection | ASLR, DEP, Stack Canary | Règle 1, 5 |
+| [T1046](https://attack.mitre.org/techniques/T1046/) Nmap Scan | M1031 IDS/IPS | Snort, Suricata | Règle 6 |
+| [T1027](https://attack.mitre.org/techniques/T1027/) Obfuscation | M1049 Antivirus | Analyse heuristique | Règle 5 |
 
 ### Niveaux de maturité défensive (inspirés du RGS)
 
@@ -352,7 +352,7 @@ Couverture       25%         25%         25%          50%
 
 <details><summary><strong>Solution</strong></summary>
 1. M1051 (Updates) — transversale, bloque des centaines de CVE
-2. M1017 (User Training) — couvre T1566, 1er vecteur d'accès initial
+2. M1017 (User Training) — couvre [T1566](https://attack.mitre.org/techniques/T1566/), 1er vecteur d'accès initial
 3. M1037 (Firewall) — réduit la surface d'attaque immédiatement
 
 Justification : défense tôt dans la kill chain → plus efficace.

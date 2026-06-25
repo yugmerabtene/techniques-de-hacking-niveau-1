@@ -1,3 +1,6 @@
 .DS_Store
 /tests/
 /search/
+__pycache__/
+*.pyc
+export/

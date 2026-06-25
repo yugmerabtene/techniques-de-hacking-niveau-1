@@ -243,7 +243,7 @@ curl "http://localhost:8082/?cmd=id"
 # → uid=33(www-data) gid=33(www-data)
 ```
 
-**Checkpoint A :** Command injection confirmée → T1190.
+**Checkpoint A :** Command injection confirmée → [T1190](https://attack.mitre.org/techniques/T1190/).
 
 ### Étape 2 — Collecte des preuves volatiles (avant toute modification)
 
@@ -345,10 +345,10 @@ docker exec forensic-victim grep www-data /etc/sudoers
 
 | Heure estimée | Tactic | Technique | Preuve |
 |---|---|---|---|
-| | TA0001 Initial Access | T1190 Exploit Public-Facing | GET /?cmd=whoami |
-| | TA0002 Execution | T1059.004 Unix Shell | Commande system() |
-| | TA0003 Persistence | T1505.003 Web Shell | eval() dans PHP |
-| | TA0004 PrivEsc | T1548.001 Sudo Caching | www-data ALL |
+| | [TA0001](https://attack.mitre.org/tactics/TA0001/) Initial Access | [T1190](https://attack.mitre.org/techniques/T1190/) Exploit Public-Facing | GET /?cmd=whoami |
+| | [TA0002](https://attack.mitre.org/tactics/TA0002/) Execution | [T1059.004](https://attack.mitre.org/techniques/T1059/004/) Unix Shell | Commande system() |
+| | [TA0003](https://attack.mitre.org/tactics/TA0003/) Persistence | [T1505.003](https://attack.mitre.org/techniques/T1505/003/) Web Shell | eval() dans PHP |
+| | [TA0004](https://attack.mitre.org/tactics/TA0004/) PrivEsc | [T1548.001](https://attack.mitre.org/techniques/T1548/001/) Sudo Caching | www-data ALL |
 
 ### Étape 5 — Rapport d'incident (conforme NIS2)
 
@@ -426,20 +426,16 @@ Cette section résume les obligations qui s'appliquent aux institutions de l'Ét
 
 ### Procédure type — De la détection à la remédiation
 
-```mermaid
-flowchart TB
-    A["Incident détecté"] --> B["Qualification<br/>Criticité ? Données perso ?"]
-    B -->|Critique| C["Activation CSIRT<br/>Confinement immédiat"]
-    B -->|Standard| D["Triage normal"]
-    C --> E["Délai 24h : Alerte CERT-FR"]
-    D --> E
-    E --> F["Délai 72h : Notification complète<br/>+ CNIL si données perso"]
-    F --> G["Remédiation + Patch"]
-    G --> H["Délai 1 mois : Rapport final"]
-    H --> I["Mise à jour analyse risques<br/>— RGS homologation"]
-```
+| Phase | Délai | Action |
+|-------|-------|--------|
+| Détection | Immédiat | Analyse de l'incident, qualification, détermination criticité |
+| Activation CSIRT | Si critique | Confinement immédiat, isolation réseau |
+| Alerte précoce | 24h | Notification au CERT-FR (nature, impact estimé, mesures) |
+| Notification complète | 72h | Rapport détaillé + CNIL si données personnelles (RGPD art.33) |
+| Remédiation | 1 mois | Patch, correction, restauration des services |
+| Rapport final | 1 mois | Causes, REX, mesures correctives, mise à jour RGS |
 
-**Fig 15** — Procédure NIS2 de bout en bout : qualification de l'incident, activation CSIRT si critique, notifications CERT-FR/CNIL aux échéances réglementaires, remédiation, rapport final, mise à jour RGS.
+**Fig 15** — Procédure NIS2 de bout en bout : délais réglementaires de notification et actions associées.
 
 ### Références officielles
 
@@ -586,7 +582,7 @@ Vérifiez que le rapport contient bien : 4 vulnérabilités (3 CRITIQUE + 1 MODE
 
 <details><summary><strong>Solution</strong></summary>
 Vecteur : `AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:L` → ~8.3 (ÉLEVÉ). Pas CRITIQUE car la métrique Disponibilité (A) est à `L` (Low) au lieu de `H` (High) — l'XSS n'affecte pas la disponibilité du serveur. Le score reste sous le seuil CRITIQUE (9.0).
-ATT&CK : T1189.
+ATT&CK : [T1189](https://attack.mitre.org/techniques/T1189/).
 </details>
 
 ### Exercice 2 : Reconstruire une chronologie
@@ -594,10 +590,10 @@ ATT&CK : T1189.
 **Énoncé :** Alertes SOC : 08:00 WAF bloque SQLi, 08:05 scan ports, 08:15 reverse shell. Reconstruisez l'ordre réel et les techniques ATT&CK.
 
 <details><summary><strong>Solution</strong></summary>
-07:55 — T1046 (scan ports)
-07:58 — T1190 (SQLi tentative 1, bloquée)
-08:00 — T1190 (SQLi tentative 2, réussie via autre paramètre)
-08:15 — T1059.004 (reverse shell)
+07:55 — [T1046](https://attack.mitre.org/techniques/T1046/) (scan ports)
+07:58 — [T1190](https://attack.mitre.org/techniques/T1190/) (SQLi tentative 1, bloquée)
+08:00 — [T1190](https://attack.mitre.org/techniques/T1190/) (SQLi tentative 2, réussie via autre paramètre)
+08:15 — [T1059.004](https://attack.mitre.org/techniques/T1059/004/) (reverse shell)
 
 Leçon : le WAF bloque une signature mais pas l'autre. La défense en profondeur est indispensable.
 </details>
