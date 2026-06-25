@@ -107,7 +107,7 @@ curl "http://localhost:8082/?cmd=id"
 # → uid=33(www-data)
 
 # Validation automatique
-cd ~/cours-hacking/repo && bash tests/run_all.sh
+cd ~/cours-hacking/repo
 ```
 
 ---

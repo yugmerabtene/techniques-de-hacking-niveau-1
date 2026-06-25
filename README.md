@@ -131,15 +131,4 @@ techniques-hacking-mdj/
 │       ├── run_tests.sh
 │       ├── test_agents.py                # 20 tests unitaires
 │       └── test_api.py                   # 15 tests intégration
-│
-├── tests/                                # Scripts de validation environnement (local)
-│   ├── run_all.sh
-│   └── test_jour01.sh ... test_jour05.sh
-│
-└── search/                               # Veille réglementaire (local)
-    ├── anssi-certfr.md
-    ├── nis2-directive.md
-    ├── rgs-france.md
-    ├── normes-france-europe.md
-    └── integration-cours.md
 ```
