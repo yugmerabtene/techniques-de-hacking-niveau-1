@@ -4,7 +4,8 @@ Pattern : Supervisor (Chapitre 6, agentic-developer-craftsmanship)
 """
 
 import uuid
-from typing import Dict
+from datetime import datetime
+from typing import Dict, List
 
 
 class SupervisorAgent:
@@ -43,7 +44,7 @@ class SupervisorAgent:
             "killchain": self.KILLCHAIN_TEMPLATE,
         }
 
-    def execute_step(self, step: Dict) -> Dict:
+    def _get_agent(self, name: str):
         from .recon import ReconAgent
         from .exploit import ExploitAgent
         from .privesc import PrivEscAgent
@@ -57,15 +58,45 @@ class SupervisorAgent:
             "persist": PersistAgent,
             "report": ReportAgent,
         }
+        return agents.get(name)
 
-        agent_class = agents.get(step["agent"])
-        if not agent_class:
+    def execute(self) -> List[Dict]:
+        steps = []
+        context = {"target": self.target, "mission_id": self.mission_id}
+
+        for step_template in self.KILLCHAIN_TEMPLATE:
+            step = dict(step_template)
+            step["status"] = "running"
+            step["timestamp"] = datetime.now().isoformat()
+
+            agent_cls = self._get_agent(step["agent"])
+            if not agent_cls:
+                step["status"] = "failed"
+                step["output"] = {"error": f"Agent {step['agent']} inconnu"}
+                steps.append(step)
+                continue
+
+            agent = agent_cls(target=self.target, context=context)
+            step["output"] = agent.run()
+            step["status"] = "completed"
+
+            context[step["agent"]] = step["output"]
+
+            steps.append(step)
+
+        return steps
+
+    def execute_step(self, step: Dict, context: Dict = None) -> Dict:
+        step = dict(step)
+        step["timestamp"] = datetime.now().isoformat()
+
+        agent_cls = self._get_agent(step["agent"])
+        if not agent_cls:
             step["status"] = "failed"
             step["output"] = {"error": f"Agent {step['agent']} inconnu"}
             return step
 
-        agent = agent_class(target=self.target)
-        result = agent.run()
-        step["output"] = result
+        agent = agent_cls(target=self.target, context=context or {})
+        step["output"] = agent.run()
         step["status"] = "completed"
         return step

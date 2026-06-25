@@ -14,13 +14,13 @@
             </div>
             <button type="submit"
                     class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded transition font-medium">
-                Lancer la Kill Chain
+                Créer la Mission
             </button>
         </form>
         <div id="mission-result" class="mt-4 hidden">
-            <div class="bg-slate-900 rounded p-3 text-sm">
+            <div class="bg-green-900/30 border border-green-700 rounded p-3 text-sm">
                 <span class="text-green-400">Mission créée</span> :
-                <span id="mission-id" class="font-mono"></span>
+                <a id="mission-link" href="#" class="font-mono text-green-300 hover:underline"></a>
             </div>
         </div>
     </div>
@@ -31,12 +31,12 @@
             <div class="flex items-center gap-3">
                 <span class="w-20 text-slate-500 font-mono">TA0007</span>
                 <span class="bg-blue-900/50 text-blue-300 px-2 py-1 rounded text-xs">Discovery</span>
-                <span class="text-slate-400">T1046 → nmap</span>
+                <span class="text-slate-400">T1046 → nmap · T1595 → gobuster</span>
             </div>
             <div class="flex items-center gap-3">
                 <span class="w-20 text-slate-500 font-mono">TA0001</span>
                 <span class="bg-red-900/50 text-red-300 px-2 py-1 rounded text-xs">Initial Access</span>
-                <span class="text-slate-400">T1190 → msfconsole, sqlmap</span>
+                <span class="text-slate-400">T1190 → msfconsole · sqlmap</span>
             </div>
             <div class="flex items-center gap-3">
                 <span class="w-20 text-slate-500 font-mono">TA0004</span>
@@ -46,14 +46,29 @@
             <div class="flex items-center gap-3">
                 <span class="w-20 text-slate-500 font-mono">TA0003</span>
                 <span class="bg-green-900/50 text-green-300 px-2 py-1 rounded text-xs">Persistence</span>
-                <span class="text-slate-400">T1098 → SSH key</span>
+                <span class="text-slate-400">T1098 → SSH key · cron</span>
             </div>
         </div>
     </div>
 </div>
 
+<div class="bg-slate-800 rounded-lg p-6 border border-slate-700 mb-8">
+    <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-semibold">Missions récentes</h2>
+        <button onclick="loadMissions()" class="text-sm text-slate-400 hover:text-white transition">
+            Rafraîchir
+        </button>
+    </div>
+    <div id="missions-list">
+        <p class="text-slate-500 text-sm">Chargement...</p>
+    </div>
+</div>
+
 <div class="bg-slate-800 rounded-lg p-6 border border-slate-700">
-    <h2 class="text-lg font-semibold mb-4">Agents disponibles</h2>
+    <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-semibold">Agents</h2>
+        <span id="health-status" class="text-xs text-slate-500">—</span>
+    </div>
     <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         <div class="bg-slate-900 rounded-lg p-4 text-center border border-slate-700 hover:border-red-500 transition">
             <div class="text-2xl mb-2">S</div>
@@ -97,9 +112,68 @@ async function createMission() {
         body: JSON.stringify({target})
     });
     const data = await resp.json();
-    document.getElementById('mission-id').textContent = data.id;
+
+    const link = document.getElementById('mission-link');
+    link.href = `/missions/${data.id}`;
+    link.textContent = data.id;
     document.getElementById('mission-result').classList.remove('hidden');
+    setTimeout(loadMissions, 500);
 }
+
+async function loadMissions() {
+    const resp = await fetch('/missions');
+    const data = await resp.json();
+    const missions = data.missions || [];
+    const container = document.getElementById('missions-list');
+
+    if (!missions.length) {
+        container.innerHTML = '<p class="text-slate-500 text-sm">Aucune mission. Créez-en une ci-dessus.</p>';
+        return;
+    }
+
+    container.innerHTML = `
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="text-left text-slate-500 border-b border-slate-700">
+                        <th class="pb-2 pr-4">ID</th>
+                        <th class="pb-2 pr-4">Cible</th>
+                        <th class="pb-2 pr-4">Statut</th>
+                        <th class="pb-2">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${missions.map(m => `
+                        <tr class="border-b border-slate-700/50">
+                            <td class="py-2 pr-4 font-mono">
+                                <a href="/missions/${m.id}" class="text-red-400 hover:underline">${m.id}</a>
+                            </td>
+                            <td class="py-2 pr-4">${m.target || '—'}</td>
+                            <td class="py-2 pr-4">
+                                <span class="px-2 py-0.5 rounded text-xs ${m.status === 'completed' ? 'bg-green-900/50 text-green-300' : 'bg-yellow-900/50 text-yellow-300'}">${m.status}</span>
+                            </td>
+                            <td class="py-2">
+                                <a href="/missions/${m.id}" class="text-slate-400 hover:text-white text-xs">Détail</a>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>`;
+}
+
+async function checkHealth() {
+    try {
+        const resp = await fetch('/health');
+        const data = await resp.json();
+        document.getElementById('health-status').textContent = `API: ${data.status} · ${data.agents.length} agents`;
+    } catch(e) {
+        document.getElementById('health-status').textContent = 'API: unreachable';
+    }
+}
+
+loadMissions();
+checkHealth();
 </script>
 
 {% endblock %}

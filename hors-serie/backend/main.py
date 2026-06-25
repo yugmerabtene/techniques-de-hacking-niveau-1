@@ -44,7 +44,13 @@ async def list_missions():
 
 
 @app.get("/missions/{mission_id}")
-async def get_mission(mission_id: str):
+async def get_mission(mission_id: str, request: Request):
+    accept = request.headers.get("accept", "")
+    if "text/html" in accept:
+        return templates.TemplateResponse("mission.html", {
+            "request": request,
+            "mission_id": mission_id,
+        })
     return missions_store.get(mission_id, {"error": "Mission not found"})
 
 
@@ -57,14 +63,16 @@ async def execute_mission(mission_id: str):
     supervisor = SupervisorAgent(target=mission["target"])
     supervisor.mission_id = mission_id
 
-    results = []
-    for step in mission["killchain"]:
-        step_result = supervisor.execute_step(step)
-        results.append(step_result)
+    results = supervisor.execute()
 
     mission["killchain"] = results
     mission["status"] = "completed"
-    return {"mission_id": mission_id, "status": "completed", "steps": len(results)}
+    return {
+        "mission_id": mission_id,
+        "status": "completed",
+        "steps": len(results),
+        "killchain": results,
+    }
 
 
 @app.get("/health")

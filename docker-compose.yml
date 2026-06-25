@@ -1,4 +1,14 @@
 services:
+  # =================== KillChainAgent orchestrator ===================
+  killchain:
+    build: ./hors-serie
+    container_name: killchain-agent
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+    profiles:
+      - agent
+
   # =================== Day 1-2-3: Web vulnerabilities ===================
   dvwa:
     image: vulnerables/web-dvwa:latest

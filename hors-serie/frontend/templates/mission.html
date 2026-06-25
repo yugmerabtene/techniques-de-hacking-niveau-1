@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="mb-6">
+    <a href="/" class="text-slate-400 hover:text-white transition text-sm">&larr; Retour au Dashboard</a>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+    <div class="bg-slate-800 rounded-lg p-6 border border-slate-700">
+        <h2 class="text-lg font-semibold mb-2">Mission</h2>
+        <div class="space-y-2 text-sm">
+            <div><span class="text-slate-500">ID :</span> <span id="m-id" class="font-mono"></span></div>
+            <div><span class="text-slate-500">Cible :</span> <span id="m-target"></span></div>
+            <div><span class="text-slate-500">Statut :</span> <span id="m-status"></span></div>
+            <div><span class="text-slate-500">Étapes :</span> <span id="m-steps"></span></div>
+        </div>
+    </div>
+
+    <div class="lg:col-span-2 bg-slate-800 rounded-lg p-6 border border-slate-700">
+        <h2 class="text-lg font-semibold mb-4">Kill Chain Progression</h2>
+        <div id="killchain-steps" class="space-y-3"></div>
+    </div>
+</div>
+
+<div class="bg-slate-800 rounded-lg p-6 border border-slate-700">
+    <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-semibold">Détail des agents</h2>
+        <div class="flex gap-3">
+            <button onclick="executeMission()" id="btn-execute"
+                    class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded text-sm font-medium transition">
+                Exécuter la Kill Chain
+            </button>
+            <button onclick="location.reload()"
+                    class="bg-slate-700 hover:bg-slate-600 px-4 py-2 rounded text-sm transition">
+                Rafraîchir
+            </button>
+        </div>
+    </div>
+    <div id="agent-results" class="space-y-4"></div>
+</div>
+
+<script>
+const missionId = "{{ mission_id }}";
+
+async function loadMission() {
+    const resp = await fetch(`/missions/${missionId}`);
+    const data = await resp.json();
+    if (data.error) return;
+
+    document.getElementById('m-id').textContent = missionId;
+    document.getElementById('m-target').textContent = data.target || '—';
+    document.getElementById('m-status').textContent = data.status || '—';
+
+    const killchain = data.killchain || [];
+    document.getElementById('m-steps').textContent = killchain.length;
+
+    renderKillChain(killchain);
+    renderAgentResults(killchain);
+
+    if (data.status === 'completed') {
+        document.getElementById('btn-execute').classList.add('hidden');
+    }
+}
+
+function statusBadge(status) {
+    const colors = {
+        completed: 'bg-green-900/50 text-green-300 border-green-700',
+        running: 'bg-yellow-900/50 text-yellow-300 border-yellow-700',
+        failed: 'bg-red-900/50 text-red-300 border-red-700',
+        idle: 'bg-slate-700 text-slate-400 border-slate-600',
+    };
+    const c = colors[status] || colors.idle;
+    return `<span class="px-2 py-0.5 rounded text-xs border ${c}">${status}</span>`;
+}
+
+function renderKillChain(steps) {
+    const container = document.getElementById('killchain-steps');
+    if (!steps.length) {
+        container.innerHTML = '<p class="text-slate-500 text-sm">Aucune étape planifiée.</p>';
+        return;
+    }
+    container.innerHTML = steps.map((s, i) => `
+        <div class="flex items-center gap-3 text-sm">
+            <span class="w-6 h-6 rounded-full bg-slate-700 flex items-center justify-center text-xs text-slate-400">${s.order}</span>
+            <span class="w-24 font-mono text-slate-500">${s.tactic_id}</span>
+            <span class="bg-slate-700 px-2 py-0.5 rounded text-xs text-slate-300">${s.tactic_name}</span>
+            <span class="text-slate-400">${s.technique_id}</span>
+            <span class="text-slate-500">→ ${s.tool}</span>
+            <span class="text-xs">${statusBadge(s.status || 'idle')}</span>
+        </div>
+    `).join('');
+}
+
+function renderAgentResults(steps) {
+    const container = document.getElementById('agent-results');
+    const withOutput = steps.filter(s => s.output);
+    if (!withOutput.length) {
+        container.innerHTML = '<p class="text-slate-500 text-sm">Agent en attente d\'exécution.</p>';
+        return;
+    }
+    container.innerHTML = withOutput.map(s => `
+        <details class="bg-slate-900 rounded-lg border border-slate-700">
+            <summary class="px-4 py-3 cursor-pointer hover:bg-slate-800 transition rounded-lg">
+                <span class="font-medium">${s.agent}</span>
+                <span class="text-slate-500 ml-2">${s.tool}</span>
+                ${statusBadge(s.status)}
+            </summary>
+            <pre class="px-4 py-3 text-xs text-slate-400 overflow-x-auto border-t border-slate-700 whitespace-pre-wrap">${JSON.stringify(s.output, null, 2)}</pre>
+        </details>
+    `).join('');
+}
+
+async function executeMission() {
+    const btn = document.getElementById('btn-execute');
+    btn.disabled = true;
+    btn.textContent = 'Exécution en cours...';
+
+    const resp = await fetch(`/missions/${missionId}/execute`, { method: 'POST' });
+    const data = await resp.json();
+    await loadMission();
+
+    btn.disabled = false;
+    btn.textContent = 'Exécuter la Kill Chain';
+}
+
+loadMission();
+setInterval(loadMission, 5000);
+</script>
+
+{% endblock %}

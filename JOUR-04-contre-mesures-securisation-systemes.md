@@ -1,4 +1,4 @@
-# Chapitre 04 : Contre-mesures et sécurisation des systèmes
+# Chapitre 04 : Contre-mesures et sécurisation des systèmes — Techniques de hacking et contre-mesures - Niveau 1
 
 ---
 

@@ -1,4 +1,4 @@
-# Chapitre 03 : Vulnérabilités avancées et contournement des protections
+# Chapitre 03 : Vulnérabilités avancées et contournement des protections — Techniques de hacking et contre-mesures - Niveau 1
 
 ---
 
