@@ -61,7 +61,7 @@ flowchart LR
 
 ## Lab 4.1 — Durcissement complet d'un serveur Linux
 
-### 📋 Fiche
+###  Fiche
 
 | Durée | Conteneur | Dossier | Mitigations |
 |---|---|---|---|
@@ -80,7 +80,7 @@ flowchart TB
     E --> F["5. Fail2ban (M1036/Règle 5)"]
     F --> G["6. Kernel protections (M1050)"]
     G --> H["7. Audit SUID (M1022)"]
-    H --> I["Serveur durci ✓"]
+    H --> I["Serveur durci "]
 ```
 
 ### Prérequis
@@ -169,10 +169,10 @@ Observez la sortie : chaque étape `[1/7]` à `[7/7]` doit afficher un message d
 Depuis votre terminal Kali (hôte) :
 
 ```bash
-# SSH root par mot de passe REFUSÉ ✓
+# SSH root par mot de passe REFUSÉ 
 sshpass -p 'changeme' ssh -o StrictHostKeyChecking=no \
   -o ConnectTimeout=3 -p 2222 root@localhost "id" 2>/dev/null \
-  && echo "ÉCHEC" || echo "✓ SSH root désactivé"
+  && echo "ÉCHEC" || echo " SSH root désactivé"
 
 # UFW actif
 docker exec secure-linux-target ufw status verbose
@@ -199,11 +199,11 @@ docker exec secure-linux-target fail2ban-client status sshd
 ```
                     CONFIDENTIALITÉ (C)
                     données protégées
-                         ▲
+                         
                         /|\
                        / | \
                       /  |  \
-           INTÉGRITÉ (I) ◄─► DISPONIBILITÉ (A)
+           INTÉGRITÉ (I)  DISPONIBILITÉ (A)
           données exactes        service accessible
 ```
 
@@ -213,14 +213,14 @@ Chaque incident impacte un ou plusieurs piliers. L'analyse CIA est exigée par l
 
 ```
               M1013(WAF)  M1037(FW)  M1031(IDS)  M1050(ASLR)
-T1190 (SQLi)     ✅          ❌          ✅           ❌
-T1210 (SMB)      ❌          ✅          ❌           ✅
-T1068 (BOF)      ❌          ❌          ❌           ✅
-T1566 (Phish)    ❌          ❌          ❌           ❌
-──────────────────────────────────────────────────────────
+T1190 (SQLi)                                    
+T1210 (SMB)                                     
+T1068 (BOF)                                     
+T1566 (Phish)                                   
+
 Couverture       25%         25%         25%          50%
 
-⚠ ANGLE MORT : T1566 (Phishing) — aucune mitigation
+ ANGLE MORT : T1566 (Phishing) — aucune mitigation
 → Action : déployer M1017 (formation utilisateurs)
 ```
 

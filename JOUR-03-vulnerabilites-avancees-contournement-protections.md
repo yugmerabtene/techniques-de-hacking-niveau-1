@@ -54,7 +54,7 @@ flowchart LR
 
 ## Lab 3.1 — Buffer Overflow avec pwntools
 
-### 📋 Fiche
+###  Fiche
 
 | Durée | Conteneur | Dossier | Technique ATT&CK |
 |---|---|---|---|
@@ -147,7 +147,7 @@ docker exec buffovf-target ping -c 1 172.17.0.1
 
 ## Lab 3.2 — Contournement WAF avec sqlmap
 
-### 📋 Fiche
+###  Fiche
 
 | Durée | Conteneur | Technique ATT&CK |
 |---|---|---|

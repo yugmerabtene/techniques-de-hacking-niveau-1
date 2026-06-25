@@ -66,12 +66,12 @@ Jour 5 (30 min) -> Sprint 4 : ReportAgent + Dashboard
 
 | Sprint | User Stories | Status |
 |---|---|---|
-| Sprint 0 | US-01 Setup projet | ✅ |
-| Sprint 1 | US-02 ReconAgent | ✅ |
-| Sprint 2 | US-03 + US-04 ExploitAgent + PrivEscAgent | ✅ |
-| Sprint 3 | US-05 + US-06 SupervisorAgent + PersistAgent | ✅ |
-| Sprint 4 | US-07 + US-08 ReportAgent + Dashboard | ✅ |
-| Sprint 5 | US-09 Tests + Docker packaging | ✅ |
+| Sprint 0 | US-01 Setup projet |  |
+| Sprint 1 | US-02 ReconAgent |  |
+| Sprint 2 | US-03 + US-04 ExploitAgent + PrivEscAgent |  |
+| Sprint 3 | US-05 + US-06 SupervisorAgent + PersistAgent |  |
+| Sprint 4 | US-07 + US-08 ReportAgent + Dashboard |  |
+| Sprint 5 | US-09 Tests + Docker packaging |  |
 
 ### Pour lancer
 

@@ -30,22 +30,22 @@ CVSS v3.1 attribue un score de 0 à 10 basé sur 8 métriques de base.
 
 ```
 MÉTRIQUES DE BASE CVSS v3.1
-├── AV (Attack Vector)      N:Network  A:Adjacent  L:Local  P:Physical
-├── AC (Attack Complexity)  L:Low  H:High
-├── PR (Privileges Required) N:None  L:Low  H:High
-├── UI (User Interaction)   N:None  R:Required
-├── S  (Scope)              U:Unchanged  C:Changed
-├── C (Confidentiality)     N:None  L:Low  H:High
-├── I (Integrity)           N:None  L:Low  H:High
-└── A (Availability)        N:None  L:Low  H:High
+ AV (Attack Vector)      N:Network  A:Adjacent  L:Local  P:Physical
+ AC (Attack Complexity)  L:Low  H:High
+ PR (Privileges Required) N:None  L:Low  H:High
+ UI (User Interaction)   N:None  R:Required
+ S  (Scope)              U:Unchanged  C:Changed
+ C (Confidentiality)     N:None  L:Low  H:High
+ I (Integrity)           N:None  L:Low  H:High
+ A (Availability)        N:None  L:Low  H:High
 ```
 
 | Score | Niveau |
 |---|---|
-| 9.0 - 10.0 | 🔴 CRITIQUE |
-| 7.0 - 8.9 | 🟠 ÉLEVÉE |
-| 4.0 - 6.9 | 🟡 MODÉRÉE |
-| 0.1 - 3.9 | 🟢 FAIBLE |
+| 9.0 - 10.0 |  CRITIQUE |
+| 7.0 - 8.9 |  ÉLEVÉE |
+| 4.0 - 6.9 |  MODÉRÉE |
+| 0.1 - 3.9 |  FAIBLE |
 
 > **Sources :** [CVSS v3.1 Calculator](https://www.first.org/cvss/calculator/3.1) — FIRST.org.
 
@@ -82,7 +82,7 @@ print(f"XSS:  CVSS {xss.severity()}")  # → CVSS 5.4 (MODEREE)
 
 | Propriété | Valeur |
 |---|---|
-| Criticité | 🔴 CRITIQUE |
+| Criticité |  CRITIQUE |
 | Score CVSS | 9.8 (AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H) |
 | Technique ATT&CK | T1190 Exploit Public-Facing Application |
 | Tactique | TA0001 Initial Access |
@@ -124,14 +124,14 @@ flowchart LR
 
 ```
 Détection de l'incident
-│
-├── 24h → Alerte précoce au CSIRT national (CERT-FR)
-│         Nature de l'incident, impact estimé, mesures immédiates
-│
-├── 72h → Notification complète
-│         Évaluation détaillée, indicateurs de compromission (IOC)
-│
-└── 1 mois → Rapport final
+
+ 24h → Alerte précoce au CSIRT national (CERT-FR)
+         Nature de l'incident, impact estimé, mesures immédiates
+
+ 72h → Notification complète
+         Évaluation détaillée, indicateurs de compromission (IOC)
+
+ 1 mois → Rapport final
             Causes, remédiation, mesures correctives, REX
 ```
 
@@ -141,7 +141,7 @@ Détection de l'incident
 
 ## Lab 5.1 — Investigation forensique
 
-### 📋 Fiche
+###  Fiche
 
 | Durée | Conteneur | Dossier |
 |---|---|---|
@@ -229,8 +229,8 @@ cat > incident_report.md << 'EOF'
 
 **Date/heure détection :** ...
 **Date/heure compromission estimée :** ...
-**Délai notification CERT-FR :** < 24h ✓ | < 72h ✓
-**Criticité :** 🔴 CRITIQUE
+**Délai notification CERT-FR :** < 24h  | < 72h 
+**Criticité :**  CRITIQUE
 **Système :** forensic-victim (serveur web production)
 
 ## Kill Chain ATT&CK
@@ -253,8 +253,8 @@ cat > incident_report.md << 'EOF'
 4. [HH:MM] Remédiation : correction command injection
 
 ## Obligations réglementaires
-- [✓] Notification CERT-FR < 72h
-- [✓] Notification CNIL < 72h (si données personnelles)
+- [] Notification CERT-FR < 72h
+- [] Notification CNIL < 72h (si données personnelles)
 - [ ] Rapport final < 1 mois (NIS2 art.23)
 - [ ] Mise à jour analyse de risques (RGS)
 EOF
@@ -317,7 +317,7 @@ flowchart TB
 
 ## Lab 5.2 — Génération automatisée de rapport
 
-### 📋 Fiche
+###  Fiche
 
 | Durée | Dossier | Output |
 |---|---|---|
@@ -337,7 +337,7 @@ T = """# Rapport de Test d'Intrusion
 ## Résumé
 | Criticité | Nombre |
 |---|---|
-| 🔴 Critique | {c} | 🟠 Élevée | {h} | 🟡 Modérée | {m} | 🟢 Faible | {l} |
+|  Critique | {c} |  Élevée | {h} |  Modérée | {m} |  Faible | {l} |
 
 ## Vulnérabilités
 {findings}
@@ -362,7 +362,7 @@ def gen(data, out):
         date=datetime.now().strftime("%Y-%m-%d"), risk=risk,
         c=sev["CRITIQUE"], h=sev["ELEVEE"], m=sev["MODEREE"], l=sev["FAIBLE"],
         findings=f, recos="\n".join(f"- {r}" for r in data.get("recos",[]))))
-    print(f"✓ {out}")
+    print(f" {out}")
 
 if __name__ == "__main__":
     p = argparse.ArgumentParser()

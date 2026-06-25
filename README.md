@@ -78,57 +78,57 @@ Avant de commencer, lisez [ENVIRONNEMENT.md](./ENVIRONNEMENT.md) pour configurer
 
 ```
 techniques-hacking-mdj/
-├── README.md
-├── JOUR-01-introduction-hacking-ethique-vulnerabilites.md
-├── JOUR-02-tests-penetration-exploitation.md
-├── JOUR-03-vulnerabilites-avancees-contournement-protections.md
-├── JOUR-04-contre-mesures-securisation-systemes.md
-├── JOUR-05-reporting-gestion-incidents-conformite.md
-├── HORS-SERIE-AGENTIC.md
-├── docker-compose.yml
-│
-├── docker/                               # Conteneurs cibles par journée
-│   ├── buffovf/                          # J3 — Buffer overflow
-│   │   ├── Dockerfile
-│   │   └── vuln.c
-│   ├── forensic/                         # J5 — Forensic + command injection
-│   │   ├── Dockerfile
-│   │   └── app/index.php
-│   ├── secure-linux/                     # J4 — Durcissement Linux
-│   │   └── Dockerfile
-│   ├── sqli-app/                         # J1 — Application SQLi
-│   │   ├── Dockerfile
-│   │   ├── app/index.php
-│   │   └── db/init.sql
-│   └── waf/                              # J3 — WAF bypass
-│       ├── Dockerfile
-│       └── app/
-│           ├── default.conf
-│           └── index.php
-│
-├── hors-serie/                           # KillChainAgent — Orchestrateur agentic
-│   ├── Dockerfile
-│   ├── requirements.txt
-│   ├── SPRINT-PLANNING.md
-│   ├── backend/
-│   │   ├── main.py                       # FastAPI app (7 routes)
-│   │   ├── models.py                     # Pydantic models
-│   │   ├── database.py                   # SQLite
-│   │   └── agents/
-│   │       ├── __init__.py
-│   │       ├── supervisor.py             # Orchestration kill chain
-│   │       ├── recon.py                  # nmap + gobuster (TA0007)
-│   │       ├── exploit.py                # msfconsole + sqlmap (TA0001)
-│   │       ├── privesc.py                # LinPEAS + checks (TA0004)
-│   │       ├── persist.py                # SSH/cron/systemd (TA0003)
-│   │       └── report.py                 # Markdown + ATT&CK JSON
-│   ├── frontend/
-│   │   └── templates/
-│   │       ├── base.html                 # Layout TailwindCSS
-│   │       ├── dashboard.html            # Missions + kill chain
-│   │       └── mission.html              # Vue live (auto-refresh)
-│   └── tests/
-│       ├── run_tests.sh
-│       ├── test_agents.py                # 20 tests unitaires
-│       └── test_api.py                   # 15 tests intégration
+ README.md
+ JOUR-01-introduction-hacking-ethique-vulnerabilites.md
+ JOUR-02-tests-penetration-exploitation.md
+ JOUR-03-vulnerabilites-avancees-contournement-protections.md
+ JOUR-04-contre-mesures-securisation-systemes.md
+ JOUR-05-reporting-gestion-incidents-conformite.md
+ HORS-SERIE-AGENTIC.md
+ docker-compose.yml
+
+ docker/                               # Conteneurs cibles par journée
+    buffovf/                          # J3 — Buffer overflow
+       Dockerfile
+       vuln.c
+    forensic/                         # J5 — Forensic + command injection
+       Dockerfile
+       app/index.php
+    secure-linux/                     # J4 — Durcissement Linux
+       Dockerfile
+    sqli-app/                         # J1 — Application SQLi
+       Dockerfile
+       app/index.php
+       db/init.sql
+    waf/                              # J3 — WAF bypass
+        Dockerfile
+        app/
+            default.conf
+            index.php
+
+ hors-serie/                           # KillChainAgent — Orchestrateur agentic
+    Dockerfile
+    requirements.txt
+    SPRINT-PLANNING.md
+    backend/
+       main.py                       # FastAPI app (7 routes)
+       models.py                     # Pydantic models
+       database.py                   # SQLite
+       agents/
+           __init__.py
+           supervisor.py             # Orchestration kill chain
+           recon.py                  # nmap + gobuster (TA0007)
+           exploit.py                # msfconsole + sqlmap (TA0001)
+           privesc.py                # LinPEAS + checks (TA0004)
+           persist.py                # SSH/cron/systemd (TA0003)
+           report.py                 # Markdown + ATT&CK JSON
+    frontend/
+       templates/
+           base.html                 # Layout TailwindCSS
+           dashboard.html            # Missions + kill chain
+           mission.html              # Vue live (auto-refresh)
+    tests/
+        run_tests.sh
+        test_agents.py                # 20 tests unitaires
+        test_api.py                   # 15 tests intégration
 ```

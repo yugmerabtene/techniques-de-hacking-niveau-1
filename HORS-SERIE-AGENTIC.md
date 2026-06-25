@@ -148,27 +148,27 @@ Jour 5 (30 min) → Sprint 4-5 : ReportAgent + Dashboard
 
 ```
 hors-serie/
-├── backend/
-│   ├── __init__.py
-│   ├── main.py              # FastAPI app
-│   ├── models.py            # Pydantic models
-│   ├── database.py          # SQLite (missions, killchains)
-│   └── agents/
-│       ├── __init__.py
-│       ├── supervisor.py
-│       ├── recon.py
-│       ├── exploit.py
-│       ├── privesc.py
-│       ├── persist.py
-│       └── report.py
-├── frontend/
-│   ├── templates/
-│   │   ├── base.html        # Layout TailwindCSS
-│   │   ├── dashboard.html   # Vue principale
-│   │   └── mission.html     # Détail mission
-├── requirements.txt
-├── Dockerfile
-└── SPRINT-PLANNING.md
+ backend/
+    __init__.py
+    main.py              # FastAPI app
+    models.py            # Pydantic models
+    database.py          # SQLite (missions, killchains)
+    agents/
+        __init__.py
+        supervisor.py
+        recon.py
+        exploit.py
+        privesc.py
+        persist.py
+        report.py
+ frontend/
+    templates/
+       base.html        # Layout TailwindCSS
+       dashboard.html   # Vue principale
+       mission.html     # Détail mission
+ requirements.txt
+ Dockerfile
+ SPRINT-PLANNING.md
 ```
 
 ### Étape 1 — Créer le backend FastAPI
@@ -617,7 +617,7 @@ class ReportAgent:
     <nav class="bg-gray-900 border-b border-gray-700 px-6 py-4">
         <div class="max-w-7xl mx-auto flex items-center justify-between">
             <h1 class="text-xl font-bold text-white">
-                🎯 KillChainAgent
+                 KillChainAgent
             </h1>
             <div class="flex gap-4 text-sm">
                 <a href="/" class="hover:text-red-400 transition">Dashboard</a>
@@ -691,32 +691,32 @@ class ReportAgent:
     <h2 class="text-lg font-semibold mb-4">Agents disponibles</h2>
     <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         <div class="bg-gray-900 rounded p-4 text-center border border-gray-700">
-            <div class="text-2xl mb-2">🧠</div>
+            <div class="text-2xl mb-2"></div>
             <div class="text-sm font-medium">Supervisor</div>
             <div class="text-xs text-gray-500">Planification</div>
         </div>
         <div class="bg-gray-900 rounded p-4 text-center border border-gray-700">
-            <div class="text-2xl mb-2">🔍</div>
+            <div class="text-2xl mb-2"></div>
             <div class="text-sm font-medium">Recon</div>
             <div class="text-xs text-gray-500">nmap · gobuster</div>
         </div>
         <div class="bg-gray-900 rounded p-4 text-center border border-gray-700">
-            <div class="text-2xl mb-2">💣</div>
+            <div class="text-2xl mb-2"></div>
             <div class="text-sm font-medium">Exploit</div>
             <div class="text-xs text-gray-500">msf · sqlmap</div>
         </div>
         <div class="bg-gray-900 rounded p-4 text-center border border-gray-700">
-            <div class="text-2xl mb-2">⬆️</div>
+            <div class="text-2xl mb-2"></div>
             <div class="text-sm font-medium">PrivEsc</div>
             <div class="text-xs text-gray-500">LinPEAS · pwn</div>
         </div>
         <div class="bg-gray-900 rounded p-4 text-center border border-gray-700">
-            <div class="text-2xl mb-2">📌</div>
+            <div class="text-2xl mb-2"></div>
             <div class="text-sm font-medium">Persist</div>
             <div class="text-xs text-gray-500">SSH · cron</div>
         </div>
         <div class="bg-gray-900 rounded p-4 text-center border border-gray-700">
-            <div class="text-2xl mb-2">📊</div>
+            <div class="text-2xl mb-2"></div>
             <div class="text-sm font-medium">Report</div>
             <div class="text-xs text-gray-500">CVSS · ATT&CK</div>
         </div>
