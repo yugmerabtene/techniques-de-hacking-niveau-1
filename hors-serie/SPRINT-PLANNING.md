@@ -19,7 +19,7 @@ Automatiser une kill chain ATT&CK via des agents specialises.
 
 ## Sprints sur 5 jours
 
-```
+```text
 Jour 1 (30 min) -> Sprint 0 : Setup projet
 Jour 2 (30 min) -> Sprint 1 : ReconAgent
 Jour 3 (30 min) -> Sprint 2 : ExploitAgent + PrivEscAgent

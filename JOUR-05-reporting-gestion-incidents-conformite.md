@@ -28,7 +28,7 @@ Ce chapitre vous donne les outils pour communiquer vos résultats avec impact et
 
 CVSS v3.1 attribue un score de 0 à 10 basé sur 8 métriques de base.
 
-```
+```text
 MÉTRIQUES DE BASE CVSS v3.1
  AV (Attack Vector)      N:Network  A:Adjacent  L:Local  P:Physical
  AC (Attack Complexity)  L:Low  H:High
@@ -172,7 +172,7 @@ flowchart LR
 
 ### Calendrier NIS2 — Obligations de notification
 
-```
+```text
 Détection de l'incident
 
  24h → Alerte précoce au CSIRT national (CERT-FR)

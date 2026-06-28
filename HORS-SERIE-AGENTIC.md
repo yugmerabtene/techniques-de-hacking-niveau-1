@@ -138,7 +138,7 @@ which nmap && which msfconsole && which sqlmap
 
 ### Sprints sur les 5 jours
 
-```
+```text
 Jour 1 (30 min) → Sprint 0 : Setup projet
 Jour 2 (30 min) → Sprint 1 : ReconAgent
 Jour 3 (30 min) → Sprint 2 : ExploitAgent + PrivEscAgent
@@ -152,7 +152,7 @@ Jour 5 (30 min) → Sprint 4-5 : ReportAgent + Dashboard
 
 ### Structure à créer
 
-```
+```text
 hors-serie/
  backend/
     __init__.py
@@ -736,7 +736,7 @@ class ReportAgent:
 
 **`hors-serie/requirements.txt`** :
 
-```
+```text
 fastapi==0.111.0
 uvicorn==0.30.1
 jinja2==3.1.4

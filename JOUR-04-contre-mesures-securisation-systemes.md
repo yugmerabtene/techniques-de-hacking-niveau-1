@@ -329,7 +329,7 @@ docker exec secure-linux-target fail2ban-client status sshd
 
 ### Matrice de couverture défensive
 
-```
+```text
               M1013(WAF)  M1037(FW)  M1031(IDS)  M1050(ASLR)
 T1190 (SQLi)                                    
 T1210 (SMB)                                     
@@ -364,7 +364,7 @@ Justification : défense tôt dans la kill chain → plus efficace.
 
 <details><summary><strong>Solution</strong></summary>
 
-```
+```snort
 alert tcp any any -> $HOME_NET 80 (msg:"SQLi UNION SELECT detected";
     flow:to_server,established;
     content:"UNION"; nocase; content:"SELECT"; nocase; distance:0;

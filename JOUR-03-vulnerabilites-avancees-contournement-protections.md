@@ -27,7 +27,7 @@ Ce chapitre est centré sur la tactique **[TA0005](https://attack.mitre.org/tact
 
 Quand un programme appelle une fonction, il réserve un espace mémoire (stack frame). Les variables locales sont stockées avant l'adresse de retour :
 
-```
+```text
 Adresses hautes
 +-----------------------------+
 |  arguments                  |
