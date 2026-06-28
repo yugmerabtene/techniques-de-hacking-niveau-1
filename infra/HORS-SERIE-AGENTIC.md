@@ -100,7 +100,7 @@ Si ce n'est pas fait, lisez au minimum :
 
 ```bash
 # Cloner le dépôt du cours (déjà fait en J1)
-cd ~/cours-hacking/repo/hors-serie
+cd ~/cours-hacking/repo/extra/hors-serie
 
 # Environnement Python (isole les dépendances du projet pour ne pas polluer le système)
 # python3 -m venv .venv = crée un environnement virtuel Python dans le dossier .venv/
@@ -153,7 +153,7 @@ Jour 5 (30 min) → Sprint 4-5 : ReportAgent + Dashboard
 ### Structure à créer
 
 ```text
-hors-serie/
+extra/hors-serie/
  backend/
     __init__.py
     main.py              # FastAPI app
@@ -734,7 +734,7 @@ class ReportAgent:
 
 ### Étape 5 — Configuration Docker
 
-**`hors-serie/requirements.txt`** :
+**`extra/hors-serie/requirements.txt`** :
 
 ```text
 fastapi==0.111.0
@@ -744,7 +744,7 @@ httpx==0.27.0
 pydantic==2.7.4
 ```
 
-**`hors-serie/Dockerfile`** :
+**`extra/hors-serie/Dockerfile`** :
 
 ```dockerfile
 FROM kalilinux/kali-rolling:latest
@@ -768,7 +768,7 @@ CMD ["python3", "-m", "uvicorn", "backend.main:app", "--host", "0.0.0.0", "--por
 
 ### Étape 6 — Sprint Planning
 
-**`hors-serie/SPRINT-PLANNING.md`** :
+**`extra/hors-serie/SPRINT-PLANNING.md`** :
 
 ```markdown
 # KillChainAgent — Sprint Planning
@@ -814,7 +814,7 @@ Automatiser une kill chain ATT&CK complète via des agents spécialisés.
 ## Vérification — Fin de Sprint 0
 
 ```bash
-cd ~/cours-hacking/repo/hors-serie
+cd ~/cours-hacking/repo/extra/hors-serie
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt

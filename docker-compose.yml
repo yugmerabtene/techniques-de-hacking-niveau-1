@@ -9,7 +9,7 @@
 services:
   # ========== KillChainAgent — Orchestrateur agentic (profil optionnel) ======
   killchain:
-    build: ./hors-serie                    # Kali Linux + FastAPI + agents
+    build: ./extra/hors-serie              # Kali Linux + FastAPI + agents
     container_name: killchain-agent
     ports:
       - "8000:8000"                        # Dashboard web + API REST

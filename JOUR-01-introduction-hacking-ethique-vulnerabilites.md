@@ -44,7 +44,7 @@ sudo usermod -aG docker $USER  # -aG = append to Group (préserve les groupes ex
 
 ```bash
 # Création de l'arborescence de travail pour les 5 jours de cours + hors-série (-p = crée les parents si absents)
-mkdir -p ~/cours-hacking/{jour-1,jour-2,jour-3,jour-4,jour-5,hors-serie}
+mkdir -p ~/cours-hacking/{jour-1,jour-2,jour-3,jour-4,jour-5,extra}
 # Création des sous-dossiers labs/ pour chaque jour (brace expansion : génère jour-1/labs, jour-2/labs, etc.)
 mkdir -p ~/cours-hacking/jour-{1,2,3,4,5}/labs
 # cd (change directory) = se déplacer dans le dossier spécifié ; ~/ = raccourci vers le home directory
@@ -67,7 +67,7 @@ Une fois le dépôt cloné, votre arborescence de travail est la suivante :
 │   └── labs/              # Travaux pratiques J4
 ├── jour-5/
 │   └── labs/              # Travaux pratiques J5
-├── hors-serie/            # Projet KillChainAgent
+├── extra/                 # Projets complémentaires
 └── repo/                  # Dépôt du cours (ce répertoire)
     ├── JOUR-01*.md        # Supports de cours
     ├── JOUR-02*.md
@@ -77,7 +77,8 @@ Une fois le dépôt cloné, votre arborescence de travail est la suivante :
     ├── HORS-SERIE-AGENTIC.md
     ├── docker-compose.yml # Conteneurs cibles
     ├── docker/            # Dockerfiles par lab
-    └── hors-serie/        # Code source KillChainAgent
+    └── extra/             # Projets complémentaires (Docker, scripts)
+        └── hors-serie/    # Code source KillChainAgent
 ```
 
 ## A.3 Lancement des conteneurs

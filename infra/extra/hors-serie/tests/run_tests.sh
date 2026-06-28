@@ -1,6 +1,6 @@
 #!/bin/bash
 # run_tests.sh — KillChainAgent test suite
-# Usage: bash hors-serie/tests/run_tests.sh
+# Usage: bash extra/hors-serie/tests/run_tests.sh
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"

@@ -78,11 +78,11 @@ Jour 5 (30 min) -> Sprint 4 : ReportAgent + Dashboard
 
 ```bash
 # Backend (local)
-cd hors-serie && pip install -r requirements.txt && cd backend && python3 main.py
+cd extra/hors-serie && pip install -r requirements.txt && cd backend && python3 main.py
 
 # Backend (Docker)
 docker compose --profile agent up -d killchain
 
 # Tests
-cd hors-serie && pip install -r requirements.txt && python3 -m pytest tests/
+cd extra/hors-serie && pip install -r requirements.txt && python3 -m pytest tests/
 ```
