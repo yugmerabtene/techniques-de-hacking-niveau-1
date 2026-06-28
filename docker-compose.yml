@@ -77,13 +77,6 @@ services:
       - "8081:8080"                        # App PHP derrière pare-feu applicatif (nginx écoute 8080)
     restart: unless-stopped
 
-  # ========== Jour 3 : Trojan Windows 10 (wine) ==============================
-  win10-target:
-    build: ./docker/win10-target            # Ubuntu + wine pour exécuter PE
-    container_name: win10-target
-    restart: unless-stopped
-    # Aucun port exposé — le trojan reverse connecte vers Kali (attaquant)
-
   # ========== Jour 4 : Durcissement Linux ===================================
   secure-linux:
     build: ./docker/secure-linux           # Debian/Ubuntu avec configs faibles

