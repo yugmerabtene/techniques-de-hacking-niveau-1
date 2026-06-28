@@ -30,7 +30,7 @@ export METASPLOITABLE_IP="172.18.0.4"
 # Ports locaux (mapping hôte)
 export DVWA_PORT="8088"
 export SQLI_APP_PORT="8083"
-export WAF_PORT="8081"
+export WAF_PORT="8080"
 export FORENSIC_PORT="8082"
 export BUFFOVF_PORT="9001"
 export SECURE_LINUX_PORT="2224"
