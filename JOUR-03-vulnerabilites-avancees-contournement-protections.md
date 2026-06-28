@@ -437,6 +437,7 @@ cd /opt && gdb -q ./vuln
 - [Corelan Exploit Development](https://www.corelan.be/index.php/articles/)
 - [Awesome WAF](https://github.com/0xInfection/Awesome-WAF)
 - [CERT-FR](https://www.cert.ssi.gouv.fr/)
+- TryHackMe : [Buffer Overflow Prep](https://tryhackme.com/room/bufferoverflowprep), [SQL Injection](https://tryhackme.com/room/sqlilab)
 
 ---
 

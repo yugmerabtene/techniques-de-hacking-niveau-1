@@ -316,39 +316,43 @@ Avant tout pentest, on scanne la cible pour cartographier sa surface d'attaque. 
 
 ```bash
 cd ~/cours-hacking/jour-1/labs
-# Scan nmap : détection de version (-sV) sur le port DVWA (-p 8088), sortie sauvegardée dans un fichier avec tee (affiche ET écrit)
+# 📌 Scan nmap du port DVWA : détection de version du service web
+# 🔍 -sV = probe les bannières pour identifier la version précise du service
+# 🔍 -p 8088 = port cible, tee = affiche la sortie ET la sauvegarde dans un fichier
 nmap -sV -p 8088 localhost | tee nmap_dvwa.txt
-# PORT     STATE SERVICE VERSION
-# 8088/tcp open  http    Apache httpd 2.4.X  (confirme le service web Apache sur le port attendu)
+# → PORT 8088/tcp open http Apache httpd 2.4.X  (service web Apache confirmé)
 ```
 
 ### Étape 2 — Énumération gobuster
 
 ```bash
-# Toujours dans ~/cours-hacking/jour-1/labs/
 cd ~/cours-hacking/jour-1/labs
-# Énumération de répertoires web avec gobuster : mode dir, url cible (-u), wordlist de noms communs (-w), mode silencieux (-q sans bannière)
+# 📌 Énumération des répertoires web cachés avec gobuster
+# 🔍 dir = mode scan de répertoires, -u = URL cible, -w = wordlist de noms communs
+# 🔍 -q = mode silencieux (masque la bannière), | tee = affiche + sauvegarde
 gobuster dir -u http://localhost:8088 \
   -w /usr/share/wordlists/dirb/common.txt -q | tee gobuster_dvwa.txt
-# /login.php (Status: 200)         → page de connexion accessible
-# /vulnerabilities (Status: 301)   → répertoire des pages vulnérables (redirection)
-# /config (Status: 301)            → répertoire de configuration (potentiellement sensible)
+# → /login.php (200)        page de connexion accessible
+# → /vulnerabilities (301)  répertoire des pages vulnérables
+# → /config (301)           répertoire de configuration (potentiellement sensible)
 ```
 
 ### Étape 3 — Connexion DVWA
 
 ```bash
-# Connexion à DVWA : -s = silencieux, -c = sauvegarde le cookie de session dans un fichier, -d = données POST (formulaire)
-# grep -o extrait soit "Welcome" (succès) soit "Login failed" (échec) pour valider le login admin/password
+# 📌 Connexion à DVWA via le formulaire d'authentification admin/password
+# 🔍 -s = silencieux (pas de barre de progression), -c = sauvegarde le cookie dans un fichier
+# 🔍 -d = données POST (username=admin&password=password&Login=Login)
+# 🔍 grep -o extrait "Welcome" (succès) ou "Login failed" (échec) pour validation
 curl -s -c /tmp/dvwa_cookie.txt \
   -d "username=admin&password=password&Login=Login" \
   "http://localhost:8088/login.php" | grep -o "Welcome\|Login failed"
-# → Welcome  (authentification réussie, le cookie est stocké dans /tmp/dvwa_cookie.txt)
+# → Welcome  (authentification réussie, cookie stocké dans /tmp/dvwa_cookie.txt)
 
+# 📌 Définir le niveau de sécurité sur "low" (obligatoire pour les labs)
 # Firefox : http://localhost:8088 → DVWA Security → low
-
-# Alternative sans navigateur : définir le niveau de sécurité directement via curl
-# -b lit le cookie d'authentification, -c met à jour le fichier avec le nouveau cookie security=low
+# Alternative sans navigateur :
+# 🔍 -b = envoie le cookie d'auth, -c = met à jour le fichier avec le nouveau cookie security=low
 curl -s -b /tmp/dvwa_cookie.txt -c /tmp/dvwa_cookie.txt \
   -d "security=low&seclev_submit=Submit" \
   "http://localhost:8088/security.php"
@@ -928,7 +932,7 @@ sqlmap -u "http://localhost:8083/?page=search&id=1" --batch 2>&1 | grep -i "inje
 **Énoncé :** WannaCry (2017) utilisait EternalBlue. Quelles techniques ATT&CK ?
 
 <details><summary><strong>Solution</strong></summary>
-- EternalBlue → [T1210](https://attack.mitre.org/techniques/T1210/) ([TA0008](https://attack.mitre.org/tactics/TA0008/)), DoublePulsar → [T1543.003](https://attack.mitre.org/techniques/T1543/003/) ([TA0003](https://attack.mitre.org/tactics/TA0003/)), Chiffrement → [T1486](https://attack.mitre.org/techniques/T1486/) ([TA0014](https://attack.mitre.org/tactics/TA0014/))
+- EternalBlue (CVE-2017-0144) → [T1210](https://attack.mitre.org/techniques/T1210/) ([TA0008](https://attack.mitre.org/tactics/TA0008/)), DoublePulsar → [T1543.003](https://attack.mitre.org/techniques/T1543/003/) ([TA0003](https://attack.mitre.org/tactics/TA0003/)), Chiffrement → [T1486](https://attack.mitre.org/techniques/T1486/) ([TA0014](https://attack.mitre.org/tactics/TA0014/))
 </details>
 
 ### Exercice 3 : Mini-rapport DVWA
@@ -971,6 +975,7 @@ sqlmap -u "http://localhost:8083/?page=search&id=1" --batch 2>&1 | grep -i "inje
 - [MITRE ATT&CK Navigator](https://mitre-attack.github.io/attack-navigator/)
 - [OWASP Top 10](https://owasp.org/www-project-top-ten/)
 - [DVWA GitHub](https://github.com/digininja/DVWA)
+- TryHackMe : [Jr Penetration Tester Path](https://tryhackme.com/path/jr-penetration-tester) — room [DVWA](https://tryhackme.com/room/dvwa)
 
 ---
 

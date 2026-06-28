@@ -399,6 +399,7 @@ Mesures : chiffrement au repos et en transit, pentest interne trimestriel, SOC 2
 - [CERT-FR — Durcissement](https://www.cert.ssi.gouv.fr/)
 - [CIS Benchmarks](https://www.cisecurity.org/cis-benchmarks)
 - [MITRE D3FEND](https://d3fend.mitre.org/)
+- TryHackMe : [Linux PrivEsc](https://tryhackme.com/room/linuxprivesc), [Wazuh SOC](https://tryhackme.com/room/wazuh)
 
 ---
 
