@@ -102,6 +102,24 @@ services:
     restart: unless-stopped
 
 # Réseau unique pour tous les conteneurs (pentest-lab)
+  # ========== SOC : ELK Stack (Elasticsearch + Logstash + Kibana) =============
+  # Profil optionnel (soc) : ne démarre que quand demandé explicitement
+  # Usage : docker compose --profile soc up -d elk
+  elk:
+    image: sebp/elk:latest                     # ELK 8.x tout-en-un
+    container_name: elk-soc
+    ports:
+      - "5601:5601"                            # Kibana interface web
+      - "9200:9200"                            # Elasticsearch API
+      - "5044:5044"                            # Logstash Beats input (Filebeat)
+    environment:
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m         # Limite mémoire Elasticsearch
+      - LOGSTASH_START=1                       # Démarrage automatique Logstash
+      - KIBANA_START=1                         # Démarrage automatique Kibana
+    profiles:
+      - soc                                    # Lancé uniquement avec --profile soc
+    restart: unless-stopped
+
 networks:
   default:
     name: pentest-lab

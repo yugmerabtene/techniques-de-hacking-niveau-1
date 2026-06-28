@@ -321,6 +321,190 @@ docker exec secure-linux-target fail2ban-client status sshd
 
 ---
 
+## Lab 4.2 — SOC : Centralisation des logs avec ELK Stack
+
+###  Fiche
+
+| Durée | Conteneur | Dossier | Mitigations |
+|---|---|---|---|
+| 1h | elk-soc (Kibana 5601) | `~/cours-hacking/jour-4/labs/` | M1047 Log Collection + M1030 SIEM |
+
+### Contexte métier
+
+Un SOC (Security Operations Center) centralise les logs de tous les systèmes pour détecter les incidents en temps réel. ELK (Elasticsearch, Logstash, Kibana) est la stack open-source la plus déployée au monde pour le logging et le SIEM. L'ANSSI recommande la centralisation des logs comme mesure de base (Règle 9 : journaliser et superviser).
+
+**Principe :** Chaque conteneur envoie ses logs à Logstash via Filebeat. Elasticsearch indexe et stocke. Kibana visualise. En conditions réelles, un SOC traite des millions d'événements par jour sur Kibana.
+
+```mermaid
+flowchart LR
+    DVWA["dvwa-target"] --> F1["Filebeat"]
+    VSFTPD["vsftpd-target"] --> F2["Filebeat"]
+    WAF["waf-target"] --> F3["Filebeat"]
+    F1 --> L["Logstash :5044"]
+    F2 --> L
+    F3 --> L
+    L --> ES["Elasticsearch :9200"]
+    ES --> K["Kibana :5601"]
+    K --> Analyste
+```
+
+**Fig 15** — Architecture ELK du lab : chaque conteneur envoie ses logs Apache/syslog à Logstash via Filebeat ; Elasticsearch indexe ; Kibana visualise.
+
+### Prérequis
+
+```bash
+cd ~/cours-hacking
+
+# 📌 Démarrer ELK (profil soc, compter 2-3 min pour Elasticsearch)
+# ELK est lourd : chaque étudiant doit avoir au moins 4 Go RAM alloués à Docker
+docker compose --profile soc up -d elk
+
+# 📌 Vérifier l'état des services ELK
+# Attendre que Elasticsearch soit prêt (green status)
+sleep 30 && curl -s http://localhost:9200/_cluster/health | python3 -m json.tool
+# → {"status":"yellow","cluster_name":"elasticsearch","number_of_nodes":1,...}
+# 📌 Vérifier Kibana
+curl -s -o /dev/null -w "%{http_code}" http://localhost:5601
+# → 200  (Kibana est prêt)
+
+# 📌 Créer le dossier de travail
+mkdir -p ~/cours-hacking/jour-4/labs
+cd ~/cours-hacking/jour-4/labs
+```
+
+> **Note mémoire :** Kibana nécessite ~2 Go RAM pour Elasticsearch. Si votre VM Kali plante, réduisez `ES_JAVA_OPTS=-Xms256m -Xms256m` dans docker-compose.yml.
+
+### Étape 1 — Envoyer les logs des conteneurs à Logstash
+
+```bash
+cd ~/cours-hacking/jour-4/labs
+
+# 📌 Configuration Filebeat pour DVWA (envoie les logs Apache vers Logstash)
+# Filebeat est un shipper léger qui lit les fichiers de logs et les envoie à Logstash/Elasticsearch
+cat > filebeat-dvwa.yml << 'EOF'
+filebeat.inputs:
+- type: log
+  enabled: true
+  paths:
+    - /var/log/apache2/access.log   # Logs HTTP Apache
+    - /var/log/apache2/error.log    # Logs d'erreurs Apache
+  fields:
+    service: dvwa
+    env: lab
+
+output.logstash:
+  hosts: ["elk-soc:5044"]            # Logstash dans le conteneur elk-soc (même réseau)
+EOF
+
+# 📌 Copier et démarrer Filebeat dans le conteneur DVWA
+# wget = télécharge le binaire Filebeat depuis Elastic
+docker exec dvwa-target bash -c "
+  wget -q https://artifacts.elastic.co/downloads/beats/filebeat/filebeat-8.12.0-linux-x86_64.tar.gz -O /tmp/filebeat.tar.gz && \
+  tar xzf /tmp/filebeat.tar.gz -C /opt/ && \
+  mv /opt/filebeat-8.12.0-linux-x86_64 /opt/filebeat && \
+  echo 'Filebeat installé'"
+
+# Copier la configuration dans le conteneur
+docker cp filebeat-dvwa.yml dvwa-target:/opt/filebeat/filebeat.yml
+
+# Lancer Filebeat en arrière-plan
+docker exec -d dvwa-target bash -c "cd /opt/filebeat && ./filebeat -c filebeat.yml &"
+
+# 📌 Générer du trafic pour produire des logs
+curl -s "http://localhost:8088/login.php" > /dev/null
+curl -s "http://localhost:8088/?id=1%20OR%201=1" > /dev/null
+
+echo "Les logs DVWA sont envoyés à Logstash"
+```
+
+### Étape 2 — Indexer les logs dans Kibana
+
+```bash
+cd ~/cours-hacking/jour-4/labs
+
+# 📌 Créer le data view dans Kibana via l'API (ou interface web)
+# Un data view = un "pointeur" vers un index Elasticsearch (le pattern filebeat-* matche tous les logs Filebeat)
+
+# Méthode A : via l'API Kibana
+curl -X POST "http://localhost:5601/api/data_views/data_view" \
+  -H "kbn-xsrf: true" \
+  -H "Content-Type: application/json" \
+  -d '{"data_view":{"title":"filebeat-*","name":"Logs DVWA","timeFieldName":"@timestamp"}}'
+
+# Méthode B : dans l'interface web Kibana
+# 1. Ouvrir http://localhost:5601
+# 2. Menu → Stack Management → Data Views → Create data view
+# 3. Name: "Logs DVWA", Index pattern: "filebeat-*"
+# 4. Time field: @timestamp → Create data view
+
+echo "Ouvrir Kibana : http://localhost:5601/app/discover"
+```
+
+**Checkpoint A :** Vous voyez les logs Apache de DVWA arriver en temps réel dans Kibana Discover.
+
+### Étape 3 — Dashboard de sécurité
+
+```bash
+cd ~/cours-hacking/jour-4/labs
+
+# 📌 Créer un dashboard de sécurité dans Kibana
+# Ce dashboard visualise :
+#   - Les tentatives SQLi (requêtes contenant OR, UNION, SELECT...)
+#   - Les login HTTP (POST /login.php avec fail)
+#   - Les codes HTTP 403/500 (erreurs serveur)
+#   - Le trafic par IP source (top 10)
+
+# Via l'API Kibana — créer une visualisation simple
+curl -X POST "http://localhost:5601/api/saved_objects/visualization" \
+  -H "kbn-xsrf: true" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "attributes": {
+      "title": "TOP 10 IP sources",
+      "visState": "{\"type\":\"pie\",\"params\":{\"addLegend\":true},\"aggs\":[{\"id\":\"1\",\"enabled\":true,\"type\":\"count\"},{\"id\":\"2\",\"enabled\":true,\"type\":\"terms\",\"params\":{\"field\":\"source.ip.keyword\",\"size\":10,\"order\":\"desc\"}}]}",
+      "uiStateJSON": "{}",
+      "description": "Top 10 IP sources de trafic",
+      "version": 1
+    }
+  }'
+```
+
+**Checkpoint B :** Kibana visualise les logs en temps réel. En conditions réelles, le SOC verrait ici les tentatives d'intrusion.
+
+### 🔒 Contre-mesure (M1047 Log Collection + M1030 SIEM)
+
+| Attaque | Détection dans ELK | Règle de détection |
+|---------|-------------------|-------------------|
+| SQLi (T1190) | Requêtes HTTP avec `OR`, `UNION`, `1=1` | `http.request.uri.keyword: *OR*` |
+| Brute-force (T1110) | N échecs login depuis même IP en T secondes | `source.ip: X AND http.response.status_code: 401` |
+| Scan nmap (T1046) | Burst de connexions vers ports différents | `destination.port: *` en grand volume |
+| Backdoor vsftpd (T1190) | Connexions sur port 6200 | `destination.port: 6200` |
+
+```bash
+# 📌 Créer une règle de détection simple dans Kibana
+# Cette requête détecte les tentatives SQLi (motif OR 1=1)
+echo "Requête de détection SQLi pour Kibana :"
+cat << 'EOF'
+# Dans Kibana → Discover → barre de recherche :
+http.request.uri.keyword:*OR* OR http.request.uri.keyword:*UNION* OR http.request.uri.keyword:*1=1*
+
+# Enregistrer comme Saved Search → utiliser dans un dashboard
+EOF
+
+# 📌 Vérifier la détection : générer une SQLi et voir le log dans Kibana
+curl -s "http://localhost:8088/?id=1%27%20UNION%20SELECT%201,2,3--" > /dev/null
+sleep 2  # Attendre l'indexation dans Elasticsearch
+curl -s "http://localhost:5601/api/console/proxy?path=_search&method=GET" \
+  -H "kbn-xsrf: true" \
+  -H "Content-Type: application/json" \
+  -d '{"query":{"match":{"message":"UNION"}}}'
+# → La recherche retourne le log de la tentative SQLi
+```
+
+> **Checkpoint défensif :** Le SOC centralise et détecte les attaques en temps réel. Chaque exploitation des Labs précédents (SQLi, brute-force, backdoor) laisse une trace dans ELK. C'est exactement ce que fait un SIEM en production.
+
+---
+
 ## 2. Évaluation des risques — Triangle CIA
 
 ![Triangle CIA — Confidentialité, Intégrité, Disponibilité](triade-en.png)
@@ -399,7 +583,7 @@ Mesures : chiffrement au repos et en transit, pentest interne trimestriel, SOC 2
 - [CERT-FR — Durcissement](https://www.cert.ssi.gouv.fr/)
 - [CIS Benchmarks](https://www.cisecurity.org/cis-benchmarks)
 - [MITRE D3FEND](https://d3fend.mitre.org/)
-- TryHackMe : [Linux PrivEsc](https://tryhackme.com/room/linuxprivesc), [Wazuh SOC](https://tryhackme.com/room/wazuh)
+- TryHackMe : [Linux PrivEsc](https://tryhackme.com/room/linuxprivesc), [Wazuh SOC](https://tryhackme.com/room/wazuh), [Intro to Log Analysis](https://tryhackme.com/room/introtologanalysis), [ELK Stack](https://tryhackme.com/room/elkstack)
 
 ---
 
