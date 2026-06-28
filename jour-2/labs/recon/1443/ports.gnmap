@@ -1,0 +1,4 @@
+# Nmap 7.98 scan initiated Sun Jun 28 14:43:33 2026 as: /usr/lib/nmap/nmap --privileged -sV -sC -p 21,22,80,445,3306,5432 -oA recon/1443/ports localhost
+Host: 127.0.0.1 (localhost)	Status: Up
+Host: 127.0.0.1 (localhost)	Ports: 21/open/tcp//ftp//vsftpd 2.3.4/, 22/closed/tcp//ssh///, 80/closed/tcp//http///, 445/open/tcp//netbios-ssn//Samba smbd 3.0.20-Debian (workgroup: WORKGROUP)/, 3306/open/tcp//mysql//MySQL 5.0.51a-3ubuntu5/, 5432/open/tcp//postgresql//PostgreSQL DB 8.3.0 - 8.3.7/
+# Nmap done at Sun Jun 28 14:43:40 2026 -- 1 IP address (1 host up) scanned in 7.77 seconds

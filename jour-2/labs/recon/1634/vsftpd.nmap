@@ -1,0 +1,9 @@
+# Nmap 7.98 scan initiated Sun Jun 28 16:34:45 2026 as: /usr/lib/nmap/nmap --privileged --script ftp-vsftpd-backdoor -p 21 -oA /home/yug/cours-hacking/jour-2/labs/recon/1634/vsftpd 172.18.0.4
+Nmap scan report for 172.18.0.4
+Host is up (0.000050s latency).
+
+PORT   STATE SERVICE
+21/tcp open  ftp
+MAC Address: B2:AB:AA:5D:4B:25 (Unknown)
+
+# Nmap done at Sun Jun 28 16:34:47 2026 -- 1 IP address (1 host up) scanned in 1.99 seconds

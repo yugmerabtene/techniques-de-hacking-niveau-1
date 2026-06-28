@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE nmaprun>
+<?xml-stylesheet href="file:///usr/share/nmap/nmap.xsl" type="text/xsl"?>
+<!-- Nmap 7.98 scan initiated Sun Jun 28 14:43:33 2026 as: /usr/lib/nmap/nmap -&#45;privileged -sV -sC -p 21,22,80,445,3306,5432 -oA recon/1443/ports localhost -->
+<nmaprun scanner="nmap" args="/usr/lib/nmap/nmap -&#45;privileged -sV -sC -p 21,22,80,445,3306,5432 -oA recon/1443/ports localhost" start="1782650613" startstr="Sun Jun 28 14:43:33 2026" version="7.98" xmloutputversion="1.05">
+<scaninfo type="syn" protocol="tcp" numservices="6" services="21-22,80,445,3306,5432"/>
+<verbose level="0"/>
+<debugging level="0"/>
+<host starttime="1782650613" endtime="1782650620"><status state="up" reason="localhost-response" reason_ttl="0"/>
+<address addr="127.0.0.1" addrtype="ipv4"/>
+<hostnames>
+<hostname name="localhost" type="user"/>
+<hostname name="localhost" type="PTR"/>
+</hostnames>
+<ports><port protocol="tcp" portid="21"><state state="open" reason="syn-ack" reason_ttl="64"/><service name="ftp" product="vsftpd" version="2.3.4" ostype="Unix" method="probed" conf="10"><cpe>cpe:/a:vsftpd:vsftpd:2.3.4</cpe></service><script id="ftp-syst" output="&#xa;  STAT: &#xa;FTP server status:&#xa;     Connected to 172.18.0.1&#xa;     Logged in as ftp&#xa;     TYPE: ASCII&#xa;     No session bandwidth limit&#xa;     Session timeout in seconds is 300&#xa;     Control connection is plain text&#xa;     Data connections will be plain text&#xa;     vsFTPd 2.3.4 - secure, fast, stable&#xa;End of status"><elem key="STAT">&#xa;FTP server status:&#xa;     Connected to 172.18.0.1&#xa;     Logged in as ftp&#xa;     TYPE: ASCII&#xa;     No session bandwidth limit&#xa;     Session timeout in seconds is 300&#xa;     Control connection is plain text&#xa;     Data connections will be plain text&#xa;     vsFTPd 2.3.4 - secure, fast, stable&#xa;End of status</elem>
+</script><script id="ftp-anon" output="Anonymous FTP login allowed (FTP code 230)&#xa;Can&apos;t get directory listing: PASV IP 172.18.0.4 is not the same as 127.0.0.1"/></port>
+<port protocol="tcp" portid="22"><state state="closed" reason="reset" reason_ttl="64"/><service name="ssh" method="table" conf="3"/></port>
+<port protocol="tcp" portid="80"><state state="closed" reason="reset" reason_ttl="64"/><service name="http" method="table" conf="3"/></port>
+<port protocol="tcp" portid="445"><state state="open" reason="syn-ack" reason_ttl="64"/><service name="netbios-ssn" product="Samba smbd" version="3.0.20-Debian" extrainfo="workgroup: WORKGROUP" method="probed" conf="10"><cpe>cpe:/a:samba:samba</cpe></service></port>
+<port protocol="tcp" portid="3306"><state state="open" reason="syn-ack" reason_ttl="64"/><service name="mysql" product="MySQL" version="5.0.51a-3ubuntu5" method="probed" conf="10"><cpe>cpe:/a:mysql:mysql:5.0.51a-3ubuntu5</cpe></service><script id="mysql-info" output="&#xa;  Protocol: 10&#xa;  Version: 5.0.51a-3ubuntu5&#xa;  Thread ID: 21&#xa;  Capabilities flags: 43564&#xa;  Some Capabilities: SwitchToSSLAfterHandshake, Support41Auth, SupportsCompression, Speaks41ProtocolNew, LongColumnFlag, ConnectWithDatabase, SupportsTransactions&#xa;  Status: Autocommit&#xa;  Salt: =1{=Y*e@NIa,XT~=TnMs"><elem key="Protocol">10</elem>
+<elem key="Version">5.0.51a-3ubuntu5</elem>
+<elem key="Thread ID">21</elem>
+<elem key="Capabilities flags">43564</elem>
+<table key="Some Capabilities">
+<elem>SwitchToSSLAfterHandshake</elem>
+<elem>Support41Auth</elem>
+<elem>SupportsCompression</elem>
+<elem>Speaks41ProtocolNew</elem>
+<elem>LongColumnFlag</elem>
+<elem>ConnectWithDatabase</elem>
+<elem>SupportsTransactions</elem>
+</table>
+<elem key="Status">Autocommit</elem>
+<elem key="Salt">=1{=Y*e@NIa,XT~=TnMs</elem>
+</script></port>
+<port protocol="tcp" portid="5432"><state state="open" reason="syn-ack" reason_ttl="64"/><service name="postgresql" product="PostgreSQL DB" version="8.3.0 - 8.3.7" method="probed" conf="10"><cpe>cpe:/a:postgresql:postgresql:8.3</cpe></service><script id="ssl-date" output="2026-06-28T12:43:40+00:00; 0s from scanner time."><elem key="date">2026-06-28T12:43:40+00:00</elem>
+<elem key="delta">0.0</elem>
+</script><script id="ssl-cert" output="Subject: commonName=ubuntu804-base.localdomain/organizationName=OCOSA/stateOrProvinceName=There is no such thing outside US/countryName=XX&#xa;Not valid before: 2010-03-17T14:07:45&#xa;Not valid after:  2010-04-16T14:07:45"><table key="subject">
+<elem key="commonName">ubuntu804-base.localdomain</elem>
+<elem key="countryName">XX</elem>
+<elem key="emailAddress">root@ubuntu804-base.localdomain</elem>
+<elem key="localityName">Everywhere</elem>
+<elem key="organizationName">OCOSA</elem>
+<elem key="organizationalUnitName">Office for Complication of Otherwise Simple Affairs</elem>
+<elem key="stateOrProvinceName">There is no such thing outside US</elem>
+</table>
+<table key="issuer">
+<elem key="commonName">ubuntu804-base.localdomain</elem>
+<elem key="countryName">XX</elem>
+<elem key="emailAddress">root@ubuntu804-base.localdomain</elem>
+<elem key="localityName">Everywhere</elem>
+<elem key="organizationName">OCOSA</elem>
+<elem key="organizationalUnitName">Office for Complication of Otherwise Simple Affairs</elem>
+<elem key="stateOrProvinceName">There is no such thing outside US</elem>
+</table>
+<table key="pubkey">
+<elem key="type">rsa</elem>
+<elem key="bits">1024</elem>
+<elem key="modulus">D6B41336339A95717B1BDE7C8375DA71B13CA97FFEAD641B77E94FAEBECAD4F8CBEFAEBB43792473FF3CE59E3B6DFCC8B1ACFA4C4D5E9B4C99540BD7A84A50BAA9DE1D1FF4E46B02A3F46B45CD4CAF8D8962338F65BB36619FC42C73C14E2EA0A8144E98704661BBD1B931DF8C99EE756B793C40A0AE9700909DDC990D33A4B5</elem>
+<elem key="exponent">65537</elem>
+</table>
+<elem key="sig_algo">sha1WithRSAEncryption</elem>
+<table key="validity">
+<elem key="notBefore">2010-03-17T14:07:45</elem>
+<elem key="notAfter">2010-04-16T14:07:45</elem>
+</table>
+<elem key="md5">dcd9ad906c8f2f7374af383b25408828</elem>
+<elem key="sha1">ed093088706603bfd5dc237399b498da2d4d31c6</elem>
+<elem key="sha256">e7a7fa0d63e457c7c4a59b38b70849c6a70bda6f830c7af1e32dee436de813cc</elem>
+<elem key="pem">-&#45;&#45;&#45;&#45;BEGIN CERTIFICATE-&#45;&#45;&#45;&#45;&#xa;MIIDWzCCAsQCCQD6+TpMf7a5zDANBgkqhkiG9w0BAQUFADCB8TELMAkGA1UEBhMC&#xa;WFgxKjAoBgNVBAgTIVRoZXJlIGlzIG5vIHN1Y2ggdGhpbmcgb3V0c2lkZSBVUzET&#xa;MBEGA1UEBxMKRXZlcnl3aGVyZTEOMAwGA1UEChMFT0NPU0ExPDA6BgNVBAsTM09m&#xa;ZmljZSBmb3IgQ29tcGxpY2F0aW9uIG9mIE90aGVyd2lzZSBTaW1wbGUgQWZmYWly&#xa;czEjMCEGA1UEAxMadWJ1bnR1ODA0LWJhc2UubG9jYWxkb21haW4xLjAsBgkqhkiG&#xa;9w0BCQEWH3Jvb3RAdWJ1bnR1ODA0LWJhc2UubG9jYWxkb21haW4wHhcNMTAwMzE3&#xa;MTQwNzQ1WhcNMTAwNDE2MTQwNzQ1WjCB8TELMAkGA1UEBhMCWFgxKjAoBgNVBAgT&#xa;IVRoZXJlIGlzIG5vIHN1Y2ggdGhpbmcgb3V0c2lkZSBVUzETMBEGA1UEBxMKRXZl&#xa;cnl3aGVyZTEOMAwGA1UEChMFT0NPU0ExPDA6BgNVBAsTM09mZmljZSBmb3IgQ29t&#xa;cGxpY2F0aW9uIG9mIE90aGVyd2lzZSBTaW1wbGUgQWZmYWlyczEjMCEGA1UEAxMa&#xa;dWJ1bnR1ODA0LWJhc2UubG9jYWxkb21haW4xLjAsBgkqhkiG9w0BCQEWH3Jvb3RA&#xa;dWJ1bnR1ODA0LWJhc2UubG9jYWxkb21haW4wgZ8wDQYJKoZIhvcNAQEBBQADgY0A&#xa;MIGJAoGBANa0EzYzmpVxexvefIN12nGxPKl//q1kG3fpT66+ytT4y++uu0N5JHP/&#xa;POWeO238yLGs+kxNXptMmVQL16hKULqp3h0f9ORrAqP0a0XNTK+NiWIzj2W7NmGf&#xa;xCxzwU4uoKgUTphwRmG70bkx34yZ7nVreTxAoK6XAJCd3JkNM6S1AgMBAAEwDQYJ&#xa;KoZIhvcNAQEFBQADgYEAkqS0uBRVYyVRSgvDKiLPOvgXagzPZqqnZS9Ibc3jPlyf&#xa;d2zURFQfHoRPjtSN3awtiAkhqNpWLKkFPEloNRl1DNpTI4iIGS10JsEiZe4RaINq&#xa;U0qcJ8ugtOmNKQyyPBhcZ8xTph4w0Komex6uQLkpAWwuvKIZlHwVbo0wOPbKLnU=&#xa;-&#45;&#45;&#45;&#45;END CERTIFICATE-&#45;&#45;&#45;&#45;&#xa;</elem>
+</script></port>
+</ports>
+<hostscript><script id="smb-os-discovery" output="&#xa;  OS: Unix (Samba 3.0.20-Debian)&#xa;  Computer name: 380a43108c10&#xa;  NetBIOS computer name: &#xa;  Domain name: &#xa;  FQDN: 380a43108c10&#xa;  System time: 2026-06-28T08:43:40-04:00&#xa;"><elem key="os">Unix</elem>
+<elem key="lanmanager">Samba 3.0.20-Debian</elem>
+<elem key="server"></elem>
+<elem key="date">2026-06-28T08:43:40-04:00</elem>
+<elem key="fqdn">380a43108c10</elem>
+<elem key="domain_dns"></elem>
+<elem key="workgroup">WORKGROUP\x00</elem>
+</script><script id="smb-security-mode" output="&#xa;  account_used: &lt;blank&gt;&#xa;  authentication_level: user&#xa;  challenge_response: supported&#xa;  message_signing: disabled (dangerous, but default)"><elem key="account_used">&lt;blank&gt;</elem>
+<elem key="authentication_level">user</elem>
+<elem key="challenge_response">supported</elem>
+<elem key="message_signing">disabled</elem>
+</script><script id="clock-skew" output="mean: 1h19m59s, deviation: 2h18m33s, median: 0s"><elem key="mean">4799</elem>
+<elem key="count">3</elem>
+<elem key="stddev">8313</elem>
+<elem key="median">0</elem>
+</script><script id="smb2-time" output="Protocol negotiation failed (SMB2)"/></hostscript><times srtt="29" rttvar="1208" to="100000"/>
+</host>
+<runstats><finished time="1782650620" timestr="Sun Jun 28 14:43:40 2026" summary="Nmap done at Sun Jun 28 14:43:40 2026; 1 IP address (1 host up) scanned in 7.77 seconds" elapsed="7.77" exit="success"/><hosts up="1" down="0" total="1"/>
+</runstats>
+</nmaprun>

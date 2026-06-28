@@ -1,0 +1,14 @@
+Starting Nmap 7.98 ( https://nmap.org ) at 2026-06-28 14:43 +0200
+Nmap scan report for localhost (127.0.0.1)
+Host is up (0.000049s latency).
+Other addresses for localhost (not scanned): ::1
+
+PORT    STATE SERVICE
+445/tcp open  microsoft-ds
+
+Host script results:
+|_smb-vuln-ms10-061: false
+|_smb-vuln-ms10-054: false
+|_smb-vuln-regsvc-dos: ERROR: Script execution failed (use -d to debug)
+
+Nmap done: 1 IP address (1 host up) scanned in 7.20 seconds
