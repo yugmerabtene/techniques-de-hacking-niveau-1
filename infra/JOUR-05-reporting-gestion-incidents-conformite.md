@@ -553,10 +553,10 @@ cat > findings.json << 'EOF'
    "attack":"T1190","desc":"Injection SQL non filtrée","fix":"PDO + WAF"},
   {"title":"XSS DVWA","severity":"MODEREE","cvss":"5.4",
    "attack":"T1189","desc":"Reflet JS non échappé","fix":"htmlspecialchars() + CSP"},
-  {"title":"vsftpd 2.3.4","severity":"CRITIQUE","cvss":"9.8",
-   "attack":"T1190","desc":"Backdoor supply chain","fix":"Mise à jour vsftpd"},
-  {"title":"Samba 3.0.20","severity":"CRITIQUE","cvss":"9.8",
-   "attack":"T1210","desc":"RCE via usermap","fix":"Mise à jour Samba"}
+   {"title":"vsftpd 2.3.4 (CVE-2011-2523)","severity":"CRITIQUE","cvss":"9.8",
+    "attack":"T1190","desc":"Backdoor supply chain","fix":"Mise à jour vsftpd"},
+   {"title":"Samba 3.0.20 (CVE-2007-2447)","severity":"CRITIQUE","cvss":"9.8",
+    "attack":"T1210","desc":"RCE via usermap","fix":"Mise à jour Samba"}
 ],"recos":["WAF ModSecurity","Patch management","Formation OWASP","Pentest trimestriel"]}
 EOF
 
@@ -626,6 +626,7 @@ Leçon : le WAF bloque une signature mais pas l'autre. La défense en profondeur
 - [CERT-FR — Déclarer un incident](https://www.cert.ssi.gouv.fr/)
 - [CNIL — Notifier une violation](https://www.cnil.fr/fr/notifier-une-violation-de-donnees-personnelles)
 - [MITRE ATT&CK Navigator](https://mitre-attack.github.io/attack-navigator/)
+- TryHackMe : [Incident Handling](https://tryhackme.com/room/incidenthandling), [SOC](https://tryhackme.com/room/socfundamentals)
 
 ---
 
