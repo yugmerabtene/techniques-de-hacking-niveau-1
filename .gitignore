@@ -4,5 +4,5 @@
 __pycache__/
 *.pyc
 
-# opencode agentic config (local to this dev)
+#
 .opencode/
