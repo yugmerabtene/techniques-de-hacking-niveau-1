@@ -193,7 +193,7 @@ Détection de l'incident
 
 ## Lab 5.1 — Investigation forensique
 
-###  Fiche
+### Fiche
 
 | Durée | Conteneur | Dossier |
 |---|---|---|
@@ -450,7 +450,7 @@ Cette section résume les obligations qui s'appliquent aux institutions de l'Ét
 
 ## Lab 5.2 — Génération automatisée de rapport
 
-###  Fiche
+### Fiche
 
 | Durée | Dossier | Output |
 |---|---|---|

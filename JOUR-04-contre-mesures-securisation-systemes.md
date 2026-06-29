@@ -35,9 +35,9 @@ flowchart LR
         T1566["T1566 Phishing"] ; T1190["T1190 SQLi"] ; T1210["T1210 SMB"] ; T1068["T1068 BOF"]
     end
     subgraph DEF["Mitigations"]
-        M1017["M1017 Training"] ; M1013["M1013 Hardening"] ; M1041["M1041 Encrypt"] ; M1050["M1050 ExploitProt"]
+        M1017["M1017 Training"] ; M1013["M1013 Hardening"] ; M1042["M1042 Disable SMBv1"] ; M1050["M1050 ExploitProt"]
     end
-    T1566 --> M1017 ; T1190 --> M1013 ; T1210 --> M1041 ; T1068 --> M1050
+    T1566 --> M1017 ; T1190 --> M1013 ; T1210 --> M1042 ; T1068 --> M1050
 ```
 
 **Fig 12** — Mapping offensif-défensif : 4 techniques d'attaque majeures et leurs mitigations ATT&CK correspondantes, alignées avec les règles ANSSI.
@@ -63,11 +63,11 @@ flowchart LR
 
 ## Lab 4.1 — Durcissement complet d'un serveur Linux
 
-###  Fiche
+### Fiche
 
 | Durée | Conteneur | Dossier | Mitigations |
 |---|---|---|---|
-| 1h30 | secure-linux (port 2224) | `~/cours-hacking/jour-4/labs/` | M1051, M1037, M1036, M1050, M1022 |
+| 1h30 | secure-linux-target (port 2224) | `~/cours-hacking/jour-4/labs/` | M1051 + M1037 + M1036 + M1050 + M1022 |
 
 ### Contexte métier
 
@@ -155,7 +155,6 @@ systemctl disable bluetooth cups avahi-daemon 2>/dev/null || true
 echo "[3/7] SSH durci (M1018 / Règle 5 ANSSI)..."
 # Sauvegarde de la configuration originale avant modification (bonne pratique de rollback)
 # cp = copie un fichier ou dossier (source → destination)
-# Sauvegarde de la configuration originale avant modification (bonne pratique de rollback)
 cp /etc/ssh/sshd_config /etc/ssh/sshd_config.bak
 # sed -i : édition in-place (modifie directement le fichier, sans créer de copie)
 # s/^#*PermitRootLogin.*/PermitRootLogin no/
@@ -164,11 +163,13 @@ cp /etc/ssh/sshd_config /etc/ssh/sshd_config.bak
 #   Résultat   : remplace toute la ligne par "PermitRootLogin no"
 #   Pourquoi   : empêche la connexion SSH directe en root, obligation de passer par sudo
 sed -i 's/^#*PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config
-# s/#PasswordAuthentication yes/PasswordAuthentication no/
-#   Remplace la valeur commentée/décommentée par "no"
+# s/^#*PasswordAuthentication .*/PasswordAuthentication no/
+#   ^#* = capture 0 ou 1 dièse (#) en début de ligne (ligne commentée ou non)
+#   .*  = capture n'importe quelle valeur actuelle (yes, no, sans mot de passe...)
+#   Résultat : que la ligne soit "#PasswordAuthentication yes" ou "PasswordAuthentication yes"
+#   ou même "PasswordAuthentication prohibit-password", elle devient "PasswordAuthentication no"
 #   Pourquoi : force l'authentification par clé SSH (plus sûre qu'un mot de passe)
-#   Note : la regex cible UNIQUEMENT la ligne commentée "#PasswordAuthentication yes"
-sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config
+sed -i 's/^#*PasswordAuthentication .*/PasswordAuthentication no/' /etc/ssh/sshd_config
 # Redémarrage du service SSH pour appliquer les changements
 # 2>/dev/null || systemctl restart ssh : tente sshd (systemd moderne) puis ssh (SysVinit legacy)
 systemctl restart sshd 2>/dev/null || systemctl restart ssh
@@ -323,7 +324,7 @@ docker exec secure-linux-target fail2ban-client status sshd
 
 ## Lab 4.2 — SOC : Centralisation des logs avec ELK Stack
 
-###  Fiche
+### Fiche
 
 | Durée | Conteneur | Dossier | Mitigations |
 |---|---|---|---|
@@ -372,7 +373,7 @@ mkdir -p ~/cours-hacking/jour-4/labs
 cd ~/cours-hacking/jour-4/labs
 ```
 
-> **Note mémoire :** Kibana nécessite ~2 Go RAM pour Elasticsearch. Si votre VM Kali plante, réduisez `ES_JAVA_OPTS=-Xms256m -Xms256m` dans docker-compose.yml.
+> **Note mémoire :** Kibana nécessite ~2 Go RAM pour Elasticsearch. Si votre VM Kali plante, réduisez `ES_JAVA_OPTS=-Xms256m -Xmx512m` dans docker-compose.yml.
 
 ### Étape 1 — Envoyer les logs des conteneurs à Logstash
 
@@ -408,7 +409,7 @@ docker exec dvwa-target bash -c "
 docker cp filebeat-dvwa.yml dvwa-target:/opt/filebeat/filebeat.yml
 
 # Lancer Filebeat en arrière-plan
-docker exec -d dvwa-target bash -c "cd /opt/filebeat && ./filebeat -c filebeat.yml &"
+docker exec -d dvwa-target bash -c "cd /opt/filebeat && nohup ./filebeat -c filebeat.yml > /var/log/filebeat.log 2>&1 &"
 
 # 📌 Générer du trafic pour produire des logs
 curl -s "http://localhost:8088/login.php" > /dev/null
@@ -494,7 +495,7 @@ EOF
 # 📌 Vérifier la détection : générer une SQLi et voir le log dans Kibana
 curl -s "http://localhost:8088/?id=1%27%20UNION%20SELECT%201,2,3--" > /dev/null
 sleep 2  # Attendre l'indexation dans Elasticsearch
-curl -s "http://localhost:5601/api/console/proxy?path=_search&method=GET" \
+curl -s "http://localhost:5601/api/console/proxy?path=_search&method=POST" \
   -H "kbn-xsrf: true" \
   -H "Content-Type: application/json" \
   -d '{"query":{"match":{"message":"UNION"}}}'

