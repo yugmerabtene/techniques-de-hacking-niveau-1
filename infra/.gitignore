@@ -1,8 +1,0 @@
-.DS_Store
-/tests/
-/search/
-__pycache__/
-*.pyc
-
-# opencode agentic config (local to this dev)
-.opencode/
