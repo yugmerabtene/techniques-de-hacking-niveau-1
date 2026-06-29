@@ -46,7 +46,7 @@ Vous apprendrez à :
 
 # Partie 1 — Mise en place de l'environnement (1h30)
 
-## A.1 Vérification des outils Kali
+## 1.1 Vérification des outils Kali
 
 ```bash
 # Vérification des versions installées des outils essentiels du pentest
@@ -71,7 +71,7 @@ sudo usermod -aG docker $USER  # -aG = append to Group (préserve les groupes ex
 # Un simple "su - $USER" ou une nouvelle fenêtre de terminal suffit, pas besoin de rebooter
 ```
 
-## A.2 Arborescence de travail
+## 1.2 Arborescence de travail
 
 ```bash
 # git clone = télécharge une copie complète du dépôt Git distant dans le dossier courant
@@ -107,7 +107,7 @@ techniques-de-hacking-niveau-1/      # Dépôt du cours (RACINE)
     └── hors-serie/                  # Dockerfile + code source KillChainAgent
 ```
 
-## A.3 Lancement des conteneurs
+## 1.3 Lancement des conteneurs
 
 ```bash
 # docker compose up = démarre tous les services définis dans docker-compose.yml
@@ -141,10 +141,6 @@ flowchart TB
 
 # Partie 2 — Introduction au hacking éthique (4h30)
 
----
-
-## Introduction
-
 Toute démarche de sécurité commence par la compréhension du paysage des menaces. Avant de lancer un scan ou d'exploiter une faille, il faut un **langage commun** pour décrire les comportements adverses. Ce langage, c'est **MITRE ATT&CK** — le standard adopté par les SOC, les CERT et les pentesters.
 
 Ce chapitre couvre la matrice ATT&CK (14 tactiques, 200+ techniques), le mapping des attaques classiques vers leurs IDs, et l'exploitation des 4 vulnérabilités web les plus répandues.
@@ -153,7 +149,7 @@ Ce chapitre couvre la matrice ATT&CK (14 tactiques, 200+ techniques), le mapping
 
 ---
 
-## 1. MITRE ATT&CK — La matrice des TTPs
+## 2.1 MITRE ATT&CK — La matrice des TTPs
 
 **Tactique** = l'objectif (pourquoi). **Technique** = la méthode (comment). **Procédure** = l'implémentation spécifique d'un groupe.
 
@@ -169,7 +165,7 @@ Ce chapitre couvre la matrice ATT&CK (14 tactiques, 200+ techniques), le mapping
 
 ---
 
-## 2. CVE — Common Vulnerabilities and Exposures
+## 2.2 CVE — Common Vulnerabilities and Exposures
 
 ### Qu'est-ce qu'une CVE ?
 
@@ -234,13 +230,13 @@ La **CVE** identifie *la vulnérabilité technique* (le trou). La **technique AT
 | CVE-2011-2523 | vsftpd 2.3.4 — backdoor (supply chain) | [T1190](https://attack.mitre.org/techniques/T1190/) Exploit Public-Facing App | J2 Lab 2.2 |
 | CVE-2007-2447 | Samba 3.0.20 — command injection (usermap) | [T1210](https://attack.mitre.org/techniques/T1210/) Exploit Remote Services | J2 Lab 2.3 |
 | CVE-2017-0144 | EternalBlue — buffer overflow SMB | [T1210](https://attack.mitre.org/techniques/T1210/) Exploit Remote Services | J2 Lab 2.2 |
-| *(aucune)* | XSS, SQLi, CSRF, CMDi (vulnérabilités génériques) | [T1189](https://attack.mitre.org/techniques/T1189/), [T1190](https://attack.mitre.org/techniques/T1190/), [T1203](https://attack.mitre.org/techniques/T1203/), [T1059.004](https://attack.mitre.org/techniques/T1059/004/) | J1 Labs 1.2-1.5 |
+| *(aucune)* | XSS, SQLi, CSRF, CMDi (vulnérabilités génériques) | [T1189](https://attack.mitre.org/techniques/T1189/), [T1190](https://attack.mitre.org/techniques/T1190/), [T1203](https://attack.mitre.org/techniques/T1203/), [T1059.004](https://attack.mitre.org/techniques/T1059/004/) | J1 Labs LAB-3 à LAB-6 |
 
 > **Note :** Les failles web (XSS, SQLi) n'ont pas de CVE unique car elles dépendent de l'implémentation. En revanche, les vulnérabilités logicielles (vsftpd, Samba) ont une CVE bien spécifique qui permet de les tracer et de les corriger via un système de patch management (M1051).
 
 ---
 
-## 3. Profils d'attaquants
+## 2.3 Profils d'attaquants
 
 ```mermaid
 flowchart LR
@@ -255,7 +251,7 @@ flowchart LR
 
 ---
 
-## Lab 1.0 — Conception : Plan d'attaque MITRE ATT&CK
+## LAB-1 — Conception : Plan d'attaque MITRE ATT&CK
 
 ### Fiche
 
@@ -288,14 +284,14 @@ Créez une couche nommée `Plan JOUR-01` qui couvre les techniques suivantes, or
 
 | Tactique | Technique | Outil prévu | Lab cible |
 |----------|-----------|-------------|-----------|
-| [TA0043](https://attack.mitre.org/tactics/TA0043/) Reconnaissance | [T1046](https://attack.mitre.org/techniques/T1046/) Network Service Scanning | nmap | 1.1 |
-| [TA0043](https://attack.mitre.org/tactics/TA0043/) Reconnaissance | [T1040](https://attack.mitre.org/techniques/T1040/) Network Sniffing | Wireshark / tcpdump | 1.2 |
-| [TA0001](https://attack.mitre.org/tactics/TA0001/) Initial Access | [T1189](https://attack.mitre.org/techniques/T1189/) Drive-by Compromise (XSS) | navigateur, curl | 1.2 |
-| [TA0001](https://attack.mitre.org/tactics/TA0001/) Initial Access | [T1190](https://attack.mitre.org/techniques/T1190/) Exploit Public-Facing Application (SQLi) | sqlmap | 1.3, 1.5 |
-| [TA0001](https://attack.mitre.org/tactics/TA0001/) Initial Access | [T1203](https://attack.mitre.org/techniques/T1203/) Exploitation for Client Execution (CSRF) | curl, HTML | 1.2 |
-| [TA0002](https://attack.mitre.org/tactics/TA0002/) Execution | [T1059.004](https://attack.mitre.org/techniques/T1059/004/) Unix Shell (CMDi) | netcat, msfvenom | 1.4 |
-| [TA0006](https://attack.mitre.org/tactics/TA0006/) Credential Access | [T1110](https://attack.mitre.org/techniques/T1110/) Brute Force | Hydra | 1.6 |
-| [TA0006](https://attack.mitre.org/tactics/TA0006/) Credential Access | [T1110.001](https://attack.mitre.org/techniques/T1110/001/) Password Cracking | John the Ripper | 1.5 |
+| [TA0043](https://attack.mitre.org/tactics/TA0043/) Reconnaissance | [T1046](https://attack.mitre.org/techniques/T1046/) Network Service Scanning | nmap | LAB-2 |
+| [TA0043](https://attack.mitre.org/tactics/TA0043/) Reconnaissance | [T1040](https://attack.mitre.org/techniques/T1040/) Network Sniffing | Wireshark / tcpdump | LAB-3 |
+| [TA0001](https://attack.mitre.org/tactics/TA0001/) Initial Access | [T1189](https://attack.mitre.org/techniques/T1189/) Drive-by Compromise (XSS) | navigateur, curl | LAB-3 |
+| [TA0001](https://attack.mitre.org/tactics/TA0001/) Initial Access | [T1190](https://attack.mitre.org/techniques/T1190/) Exploit Public-Facing Application (SQLi) | sqlmap | LAB-4, LAB-6 |
+| [TA0001](https://attack.mitre.org/tactics/TA0001/) Initial Access | [T1203](https://attack.mitre.org/techniques/T1203/) Exploitation for Client Execution (CSRF) | curl, HTML | LAB-3 |
+| [TA0002](https://attack.mitre.org/tactics/TA0002/) Execution | [T1059.004](https://attack.mitre.org/techniques/T1059/004/) Unix Shell (CMDi) | netcat, msfvenom | LAB-5 |
+| [TA0006](https://attack.mitre.org/tactics/TA0006/) Credential Access | [T1110](https://attack.mitre.org/techniques/T1110/) Brute Force | Hydra | LAB-7 |
+| [TA0006](https://attack.mitre.org/tactics/TA0006/) Credential Access | [T1110.001](https://attack.mitre.org/techniques/T1110/001/) Password Cracking | John the Ripper | LAB-6 |
 
 **Consigne :** Ajoutez chaque technique dans le Navigator, coloriez en **rouge** les techniques que vous allez exécuter aujourd'hui, en **orange** celles qui dépendent d'une autre, et exportez en JSON → `rendu_labs/jour-01/plan-attaque-j1.json`.
 
@@ -409,7 +405,7 @@ ls -la rendu_labs/jour-01/*.json
 
 ---
 
-## Lab 1.1 — Scan et découverte de DVWA
+## LAB-2 — Scan et découverte de DVWA
 
 ### Fiche
 
@@ -417,7 +413,7 @@ ls -la rendu_labs/jour-01/*.json
 |---|---|---|---|---|
 | 30 min | dvwa (port 8088) | `rendu_labs/jour-01/` | nmap, gobuster, curl | [TA0043](https://attack.mitre.org/tactics/TA0043/) Recon — [T1046](https://attack.mitre.org/techniques/T1046/) Network Scan |
 
-**DVWA** (Damn Vulnerable Web Application) est une application web PHP/MySQL volontairement vulnérable, conçue pour apprendre les tests de sécurité dans un environnement légal. Elle expose XSS, SQLi, CSRF, CMDi et bien d'autres failles — c'est notre cible pour les labs 1.1 à 1.4 et 1.6.
+**DVWA** (Damn Vulnerable Web Application) est une application web PHP/MySQL volontairement vulnérable, conçue pour apprendre les tests de sécurité dans un environnement légal. Elle expose XSS, SQLi, CSRF, CMDi et bien d'autres failles — c'est notre cible pour les labs LAB-2 à LAB-5 et LAB-7.
 
 ### Contexte métier
 
@@ -544,7 +540,7 @@ docker exec dvwa-target bash -c "rm -rf /var/www/html/test-empty"
 
 ---
 
-## Lab 1.2 — Exploitation XSS
+## LAB-3 — Exploitation XSS
 
 ### Fiche
 
@@ -692,7 +688,7 @@ curl -s -b /tmp/dvwa_cookie.txt \
 
 ---
 
-## Lab 1.3 — Injection SQL avec sqlmap
+## LAB-4 — Injection SQL avec sqlmap
 
 ### Fiche
 
@@ -710,7 +706,7 @@ La requête `SELECT first_name, last_name FROM users WHERE user_id = '$id'` devi
 
 **Où ?** Terminal 1
 
-**Prérequis :** Le fichier `/tmp/dvwa_cookie.txt` doit contenir le cookie de session + `security=low` (créé au Lab 1.1).
+**Prérequis :** Le fichier `/tmp/dvwa_cookie.txt` doit contenir le cookie de session + `security=low` (créé au LAB-2).
 
 **Actions :**
 1. Envoyer une requête avec `id=1' OR '1'='1' #` (encodé en URL) au lieu de `id=1`
@@ -760,7 +756,7 @@ sqlmap -u "http://localhost:8088/vulnerabilities/sqli/?id=1&Submit=Submit" \
 +---------+---------------------------------------------+
 ```
 
-**Explication :** `--load-cookies` importe la session pour que DVWA nous reconnaisse. `-D dvwa -T users -C user,password` cible la table et les colonnes à extraire. `--dump` vide le contenu. `--batch` répond automatiquement "oui" aux questions de sqlmap. Les hashs sont au format MD5 non salé — vulnérable au craquage (voir Lab 1.5).
+**Explication :** `--load-cookies` importe la session pour que DVWA nous reconnaisse. `-D dvwa -T users -C user,password` cible la table et les colonnes à extraire. `--dump` vide le contenu. `--batch` répond automatiquement "oui" aux questions de sqlmap. Les hashs sont au format MD5 non salé — vulnérable au craquage (voir LAB-6).
 
 ---
 
@@ -805,7 +801,7 @@ sqlmap -u "http://localhost:8088/vulnerabilities/sqli/?id=1&Submit=Submit" \
 
 ---
 
-## Lab 1.4 — Command Injection + Reverse Shell
+## LAB-5 — Command Injection + Reverse Shell
 
 | Durée | Conteneur | Technique ATT&CK |
 |---|---|---|
@@ -907,11 +903,11 @@ curl -s "http://localhost:8088/vulnerabilities/exec/" \
 
 **Explication :** La directive `disable_functions` empêche PHP d'appeler ces fonctions au runtime. Même si le code vulnérable appelle `shell_exec()`, PHP ne fait rien et retourne `null`. Le payload `;whoami` passe toujours dans la requête, mais le shell système n'est plus invoqué.
 
-> **☕ Pause recommandée :** Le Lab 1.5 ci-dessous est le plus long et le plus dense de la journée. Prenez 5-10 minutes avant de l'attaquer — vous allez enchaîner injection SQL sur 3 points d'entrée, extraction automatisée avec sqlmap, et cracking de mots de passe. Un esprit reposé est plus efficace pour analyser les résultats.
+> **☕ Pause recommandée :** Le LAB-6 ci-dessous est le plus long et le plus dense de la journée. Prenez 5-10 minutes avant de l'attaquer — vous allez enchaîner injection SQL sur 3 points d'entrée, extraction automatisée avec sqlmap, et cracking de mots de passe. Un esprit reposé est plus efficace pour analyser les résultats.
 
 ---
 
-## Lab 1.5 — SQLi avancée : Trouver, Exploiter, Craquer
+## LAB-6 — SQLi avancée : Trouver, Exploiter, Craquer
 
 ### Fiche
 
@@ -1265,7 +1261,7 @@ sqlmap -u "http://localhost:8083/?page=search&id=1" --batch 2>&1 | grep -i "inje
 
 ---
 
-## Lab 1.6 — Attaque par force brute avec Hydra
+## LAB-7 — Attaque par force brute avec Hydra
 
 | Durée | Conteneur | Dossier | Technique ATT&CK |
 |---|---|---|---|
@@ -1305,7 +1301,7 @@ curl -s -b /tmp/dvwa_cookie.txt -o /dev/null -w "%{http_code}" "http://localhost
 # → 200
 ```
 
-**Résultat attendu :** `200` — la session DVWA est toujours active. Si le cookie a expiré, relancer la commande du Lab 1.1.
+**Résultat attendu :** `200` — la session DVWA est toujours active. Si le cookie a expiré, relancer la commande du LAB-2.
 
 **Explication :** `-o /dev/null` ignore le corps de la réponse, `-w "%{http_code}"` n'affiche que le code HTTP. Un code `200` signifie que la page est accessible avec le cookie. Un code `302` pourrait indiquer une redirection vers la page de login (session expirée).
 
@@ -1464,13 +1460,13 @@ Ce chapitre vous a fait parcourir les **7 phases d'une attaque web complète**, 
 
 | Lab | Attaque | Compétence acquise | ATT&CK |
 |-----|---------|-------------------|--------|
-| 1.0 | Conception | Plan d'attaque ATT&CK Navigator | [TA0043](https://attack.mitre.org/tactics/TA0043/) → [TA0005](https://attack.mitre.org/tactics/TA0005/) |
-| 1.1 | Scan + énumération | nmap, gobuster | [TA0043](https://attack.mitre.org/tactics/TA0043/) Reconnaissance |
-| 1.2 | XSS (Reflected + Stored) | Injection JavaScript, vol cookie | [T1189](https://attack.mitre.org/techniques/T1189/) |
-| 1.3 | SQLi automatique | sqlmap, dump base | [T1190](https://attack.mitre.org/techniques/T1190/) |
-| 1.4 | Command Injection + Reverse Shell | Shell interactif, Meterpreter | [T1203](https://attack.mitre.org/techniques/T1203/) |
-| 1.5 | SQLi avancée + Cracking | 3 points d'injection, john | [T1190](https://attack.mitre.org/techniques/T1190/) + [T1110](https://attack.mitre.org/techniques/T1110/) |
-| 1.6 | Brute-force | Hydra, dictionnaire | [T1110](https://attack.mitre.org/techniques/T1110/) |
+| LAB-1 | Conception | Plan d'attaque ATT&CK Navigator | [TA0043](https://attack.mitre.org/tactics/TA0043/) → [TA0005](https://attack.mitre.org/tactics/TA0005/) |
+| LAB-2 | Scan + énumération | nmap, gobuster | [TA0043](https://attack.mitre.org/tactics/TA0043/) Reconnaissance |
+| LAB-3 | XSS (Reflected + Stored) | Injection JavaScript, vol cookie | [T1189](https://attack.mitre.org/techniques/T1189/) |
+| LAB-4 | SQLi automatique | sqlmap, dump base | [T1190](https://attack.mitre.org/techniques/T1190/) |
+| LAB-5 | Command Injection + Reverse Shell | Shell interactif, Meterpreter | [T1203](https://attack.mitre.org/techniques/T1203/) |
+| LAB-6 | SQLi avancée + Cracking | 3 points d'injection, john | [T1190](https://attack.mitre.org/techniques/T1190/) + [T1110](https://attack.mitre.org/techniques/T1110/) |
+| LAB-7 | Brute-force | Hydra, dictionnaire | [T1110](https://attack.mitre.org/techniques/T1110/) |
 
 **Dans un pentest réel**, ces techniques s'enchaînent : on scanne → on trouve une vulnérabilité → on l'exploite → on extrait des données → on craque les mots de passe. Chaque étape correspond à une tactique ATT&CK et doit être documentée dans le rapport.
 
