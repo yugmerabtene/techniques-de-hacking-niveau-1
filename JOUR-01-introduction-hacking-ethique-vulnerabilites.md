@@ -338,21 +338,72 @@ curl -s -o /dev/null -w "%{http_code}" http://localhost:8083
 - [ ] Couche ATT&CK Navigator créée et exportée en JSON (5+ techniques)
 - [ ] Tableau d'ordonnancement rédigé (ordre, dépendance, risque, objectif)
 - [ ] Conteneurs dvwa et sqli-app démarrés, réponses HTTP 200
+- [ ] Couche défense `defense-j1.json` créée avec les 5 mitigations
+- [ ] Chaque technique rouge liée à sa mitigation verte dans Navigator
 - [ ] Plan déposé dans `rendu_labs/jour-01/`
 
-### 🔒 Contre-mesure (M1031 + M1041)
+### 🔒 Contre-mesure — Couche défense ATT&CK
 
-Un bon plan d'attaque sert aussi à la **défense** : chaque technique a sa mitigation.
+Un bon plan d'attaque sert aussi à la **défense** : chaque technique a sa mitigation. Vous allez maintenant créer une seconde couche ATT&CK Navigator dédiée aux contre-mesures.
 
-| Technique | Mitigation |
-|-----------|------------|
-| T1046 — Scan | [M1031](https://attack.mitre.org/mitigations/M1031/) Network Intrusion Prevention (Snort/Suricata) |
-| T1190 — SQLi | [M1041](https://attack.mitre.org/mitigations/M1041/) WAF + Requêtes préparées |
-| T1189 — XSS | [M1013](https://attack.mitre.org/mitigations/M1013/) Application Hardening (CSP, htmlspecialchars) |
-| T1059.004 — CMDi | [M1018](https://attack.mitre.org/mitigations/M1018/) User Account Control + disable_functions |
-| T1110 — Brute Force | [M1036](https://attack.mitre.org/mitigations/M1036/) Account Lockout + MFA |
+#### Étape 5 — Créer la couche défense
 
-Ajoutez ces mitigations dans une seconde couche ATT&CK Navigator (`defense-j1.json`) et associez chaque technique rouge à sa mitigation verte.
+```bash
+cd rendu_labs/jour-01
+# Ouvrir ATT&CK Navigator dans le navigateur
+firefox https://mitre-attack.github.io/attack-navigator/
+```
+
+1. **New Layer** → **Enterprise v15** → nommez-la `Defense JOUR-01`
+2. **Mode MITIGATIONS** : dans le menu déroulant en haut à gauche, passez de "Techniques" à **"Mitigations"**
+3. Ajoutez les 5 mitigations correspondant à chaque technique de votre plan :
+
+| Technique | Mitigation | Code couleur |
+|-----------|------------|-------------|
+| T1046 — Scan | [M1031](https://attack.mitre.org/mitigations/M1031/) Network Intrusion Prevention | 🟢 Vert (Snort/Suricata bloque les scans) |
+| T1190 — SQLi | [M1041](https://attack.mitre.org/mitigations/M1041/) WAF + Requêtes préparées | 🟢 Vert (ModSecurity bloque les injections) |
+| T1189 — XSS | [M1013](https://attack.mitre.org/mitigations/M1013/) Application Hardening | 🟢 Vert (CSP, htmlspecialchars) |
+| T1059.004 — CMDi | [M1018](https://attack.mitre.org/mitigations/M1018/) User Account Control | 🟢 Vert (disable_functions coupe nc) |
+| T1110 — Brute Force | [M1036](https://attack.mitre.org/mitigations/M1036/) Account Lockout | 🟢 Vert (3 tentatives → blocage 15 min) |
+
+#### Étape 6 — Associer attaque → défense
+
+Dans la couche `plan-attaque-j1.json` (chargée dans Navigator) :
+1. Sélectionnez chaque technique rouge
+2. **Associez** sa mitigation : clic droit → **Link to Mitigation** → cherchez le nom de la mitigation
+3. Colorez la technique en **orange** si la mitigation est partielle, **rouge** si aucune mitigation n'est appliquée
+
+```bash
+# Exporter la couche défense
+# Dans Navigator : Download as JSON → defense-j1.json
+# Vérifier le fichier
+ls -la defense-j1.json
+# → defense-j1.json  (fichier JSON valide, ~5-10 KB)
+```
+
+#### Étape 7 — Visualiser le plan complet
+
+Le résultat attendu dans ATT&CK Navigator doit montrer :
+
+```
+┌─────────────────────────────────────────────────┐
+│ Plan JOUR-01 (attack)          Defense (mitigations) │
+│ ┌─────┬─────┬─────┬─────┐     ┌─────┬─────┐      │
+│ │T1046│T1190│T1189│T1059│     │M1031│M1041│      │
+│ │ 🔴  │ 🔴  │ 🔴  │ 🔴  │     │ 🟢  │ 🟢  │      │
+│ └─────┴─────┴─────┴─────┘     └─────┴─────┘      │
+│ Techniques rouges = attaquées  Mitigations vertes │
+└─────────────────────────────────────────────────┘
+```
+
+**Principe :** Une technique attaquante (rouge) doit toujours avoir une mitigation associée (verte). Si une technique rouge n'a pas de mitigation verte → c'est un **risque accepté** ou une **découverte** à signaler dans le rapport.
+
+```bash
+# Lister les 2 fichiers produits
+ls -la rendu_labs/jour-01/*.json
+# → plan-attaque-j1.json   (couche attaque, techniques rouges)
+# → defense-j1.json        (couche défense, mitigations vertes)
+```
 
 ---
 
@@ -445,7 +496,7 @@ curl -s -o /dev/null -w "%{http_code}" "http://localhost:8088/test-empty/"
 docker exec dvwa-target bash -c "rm -rf /var/www/html/test-empty"
 ```
 
-> **📌 Ce qu'on a retenu :** On a cartographié DVWA avec nmap (ports ouverts, OS, services) et gobuster (répertoires cachés). Un attaquant fait ça en 2 minutes pour trouver ses points d'entrée ([TA0043](https://attack.mitre.org/tactics/TA0043/) Reconnaissance).  
+> **📌 À retenir :** On a cartographié DVWA avec nmap (ports ouverts, OS, services) et gobuster (répertoires cachés). Un attaquant fait ça en 2 minutes pour trouver ses points d'entrée ([TA0043](https://attack.mitre.org/tactics/TA0043/) Reconnaissance).  
 > **Attendu :** Liste des ports (80, 8088, 3306…) + répertoires découverts (`/config/`, `/setup/`…).  
 > **Défense :** Pare-feu (UFW), désactiver le directory listing (`Options -Indexes`), détecter les scans avec un IDS (Snort/Suricata).
 
@@ -529,7 +580,7 @@ curl -s -b /tmp/dvwa_cookie.txt \
 
 > **Checkpoint défensif :** `htmlspecialchars()` + `HttpOnly` neutralisent l'XSS : plus de popup, cookie inaccessible.
 
-> **📌 Ce qu'on a retenu :** On a injecté du JavaScript dans une page vulnérable (Reflected XSS + Stored XSS) et volé le cookie de session. L'XSS est la 2e vulnérabilité web la plus courante ([T1189](https://attack.mitre.org/techniques/T1189/)).  
+> **📌 À retenir :** On a injecté du JavaScript dans une page vulnérable (Reflected XSS + Stored XSS) et volé le cookie de session. L'XSS est la 2e vulnérabilité web la plus courante ([T1189](https://attack.mitre.org/techniques/T1189/)).  
 > **Attendu :** Popup `alert(1)` + cookie volé via `document.cookie`.  
 > **Défense :** `htmlspecialchars()` pour échapper les entrées, `HttpOnly` sur les cookies pour les rendre inaccessibles au JS.
 
@@ -615,7 +666,7 @@ L'injection SQL se corrige en **ne concaténant jamais l'entrée utilisateur dan
 
 > **Checkpoint défensif :** Après passage en requêtes préparées, sqlmap ne détecte plus l'injection.
 
-> **📌 Ce qu'on a retenu :** On a injecté `' OR '1'='1' #` manuellement puis automatisé l'extraction avec sqlmap — 5 hashs MD5 récupérés en une commande ([T1190](https://attack.mitre.org/techniques/T1190/) Exploit Public-Facing App).  
+> **📌 À retenir :** On a injecté `' OR '1'='1' #` manuellement puis automatisé l'extraction avec sqlmap — 5 hashs MD5 récupérés en une commande ([T1190](https://attack.mitre.org/techniques/T1190/) Exploit Public-Facing App).  
 > **Attendu :** 5 utilisateurs affichés manuellement + 5 hashs extraits par sqlmap.  
 > **Défense :** Requêtes préparées PDO (plus de concaténation SQL) + WAF + bcrypt au lieu de MD5.
 
@@ -703,7 +754,7 @@ curl -s "http://localhost:8088/vulnerabilities/exec/" --data "ip=127.0.0.1;whoam
 
 > **Checkpoint défensif :** Après `disable_functions`, l'injection de commande et le reverse shell échouent.
 
-> **📌 Ce qu'on a retenu :** On a injecté `;whoami` dans un champ `ping` pour exécuter des commandes système, puis obtenu un reverse shell (Meterpreter) avec connexion à distance ([T1203](https://attack.mitre.org/techniques/T1203/) Exploitation for Client Execution).  
+> **📌 À retenir :** On a injecté `;whoami` dans un champ `ping` pour exécuter des commandes système, puis obtenu un reverse shell (Meterpreter) avec connexion à distance ([T1203](https://attack.mitre.org/techniques/T1203/) Exploitation for Client Execution).  
 > **Attendu :** shell interactif sur Kali (Meterpreter session 1 ouverte).  
 > **Défense :** Désactiver les fonctions système dangereuses (`disable_functions`), valider les entrées (IP), filter les métacaractères (`;`, `|`, `$`).
 
@@ -989,7 +1040,7 @@ sqlmap -u "http://localhost:8083/?page=search&id=1" --batch 2>&1 | grep -i "inje
 
 > **Checkpoint défensif :** sqlmap ne trouve plus aucune injection. Avec bcrypt, john/hashcat ne peuvent plus craquer les mots de passe en quelques secondes.
 
-> **📌 Ce qu'on a retenu :** On a exploité 3 points d'injection SQL (numérique, auth bypass, LIKE) avec sqlmap, craqué les hashs MD5 avec john, et compris pourquoi le hachage salé (bcrypt) protège mieux ([T1190](https://attack.mitre.org/techniques/T1190/)).  
+> **📌 À retenir :** On a exploité 3 points d'injection SQL (numérique, auth bypass, LIKE) avec sqlmap, craqué les hashs MD5 avec john, et compris pourquoi le hachage salé (bcrypt) protège mieux ([T1190](https://attack.mitre.org/techniques/T1190/)).  
 > **Attendu :** 3 injections confirmées + mots de passe craqués en clair.  
 > **Défense :** Requêtes préparées PDO, WAF, bcrypt/argon2 pour les mots de passe.
 
@@ -1149,7 +1200,7 @@ docker exec dvwa-target bash -c "fail2ban-client status apache-dvwa"
 
 > **Checkpoint défensif :** Avec fail2ban actif, Hydra ne peut plus tester que 5 mots de passe avant le banissement temporaire. Le brute-force est neutralisé à l'échelle réseau.
 
-> **📌 Ce qu'on a retenu :** On a brute-forcé le login DVWA avec Hydra et rockyou.txt — `admin:password` trouvé en 10 secondes ([T1110](https://attack.mitre.org/techniques/T1110/) Brute Force).  
+> **📌 À retenir :** On a brute-forcé le login DVWA avec Hydra et rockyou.txt — `admin:password` trouvé en 10 secondes ([T1110](https://attack.mitre.org/techniques/T1110/) Brute Force).  
 > **Attendu :** Mot de passe `password` trouvé pour l'utilisateur `admin`.  
 > **Défense :** fail2ban (bloque après 5 échecs), politique de mots de passe robustes (12+ caractères), rate-limiting applicatif.
 
