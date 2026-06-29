@@ -1,0 +1,253 @@
+<!-- ============================================================================
+     dashboard.html — page d'accueil de KillChainAgent
+     Hérite du layout base.html via { % extends "base.html" %}
+     Injecte le contenu ci-dessous dans le bloc { % block content %} du parent.
+     ============================================================================ -->
+{% extends "base.html" %}
+{% block content %}
+
+<!-- ========================================================================
+     SECTION 1 — Grille supérieure (2 colonnes sur desktop, 1 sur mobile)
+     grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8 : responsive 1→2 colonnes
+     ======================================================================== -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+    <!-- ====================================================================
+         CARTE — Formulaire de création de mission
+         bg-slate-800 rounded-lg : fond carte + coins arrondis
+         border border-slate-700 : bordure subtile
+         Envoi POST /missions au submit → fonction createMission()
+         ==================================================================== -->
+    <div class="bg-slate-800 rounded-lg p-6 border border-slate-700">
+        <h2 class="text-lg font-semibold mb-4">Nouvelle Mission</h2>
+        <!-- onsubmit empêche le rechargement de la page et appelle createMission() -->
+        <form id="mission-form" class="space-y-4"
+              onsubmit="event.preventDefault(); createMission();">
+            <div>
+                <label class="block text-sm text-slate-400 mb-1">Cible (IP)</label>
+                <input type="text" id="target" name="target" placeholder="192.168.1.10"
+                       class="w-full bg-slate-900 border border-slate-600 rounded px-3 py-2
+                              focus:border-red-500 focus:outline-none text-white">
+            </div>
+            <button type="submit"
+                    class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded transition font-medium">
+                Créer la Mission
+            </button>
+        </form>
+        <div id="mission-result" class="mt-4 hidden">
+            <div class="bg-green-900/30 border border-green-700 rounded p-3 text-sm">
+                <span class="text-green-400">Mission créée</span> :
+                <a id="mission-link" href="#" class="font-mono text-green-300 hover:underline"></a>
+            </div>
+        </div>
+    </div>
+
+    <!-- ====================================================================
+         CARTE — Référence de la Kill Chain ATT&CK
+         Affiche les 4 phases fixes : Discovery, Initial Access,
+         Privilege Escalation, Persistence avec leurs IDs MITRE.
+         ==================================================================== -->
+    <div class="bg-slate-800 rounded-lg p-6 border border-slate-700">
+        <h2 class="text-lg font-semibold mb-4">Kill Chain ATT&CK</h2>
+        <div class="space-y-3 text-sm">
+            <div class="flex items-center gap-3">
+                <span class="w-20 text-slate-500 font-mono">TA0007</span>
+                <span class="bg-blue-900/50 text-blue-300 px-2 py-1 rounded text-xs">Discovery</span>
+                <span class="text-slate-400">T1046 → nmap · T1595 → gobuster</span>
+            </div>
+            <div class="flex items-center gap-3">
+                <span class="w-20 text-slate-500 font-mono">TA0001</span>
+                <span class="bg-red-900/50 text-red-300 px-2 py-1 rounded text-xs">Initial Access</span>
+                <span class="text-slate-400">T1190 → msfconsole · sqlmap</span>
+            </div>
+            <div class="flex items-center gap-3">
+                <span class="w-20 text-slate-500 font-mono">TA0004</span>
+                <span class="bg-purple-900/50 text-purple-300 px-2 py-1 rounded text-xs">Privilege Escalation</span>
+                <span class="text-slate-400">T1068 → LinPEAS</span>
+            </div>
+            <div class="flex items-center gap-3">
+                <span class="w-20 text-slate-500 font-mono">TA0003</span>
+                <span class="bg-green-900/50 text-green-300 px-2 py-1 rounded text-xs">Persistence</span>
+                <span class="text-slate-400">T1098 → SSH key · cron</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================================================
+     SECTION 2 — Liste des missions récentes
+     Peuplée dynamiquement par loadMissions() au chargement et via le
+     bouton "Rafraîchir". Les missions sont affichées dans un tableau.
+     ======================================================================== -->
+<div class="bg-slate-800 rounded-lg p-6 border border-slate-700 mb-8">
+    <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-semibold">Missions récentes</h2>
+        <button onclick="loadMissions()" class="text-sm text-slate-400 hover:text-white transition">
+            Rafraîchir
+        </button>
+    </div>
+    <div id="missions-list">
+        <p class="text-slate-500 text-sm">Chargement...</p>
+    </div>
+</div>
+
+<!-- ========================================================================
+     SECTION 3 — Grille des agents
+     Présente les 6 agents du système (Supervisor, Recon, Exploit,
+     PrivEsc, Persist, Report) sous forme de cartes en grille responsive
+     grid-cols-2 → md:grid-cols-3 → lg:grid-cols-6.
+     Le statut de santé vient de checkHealth() (endpoint GET /health).
+     ======================================================================== -->
+<div class="bg-slate-800 rounded-lg p-6 border border-slate-700">
+    <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-semibold">Agents</h2>
+        <span id="health-status" class="text-xs text-slate-500">—</span>
+    </div>
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        <div class="bg-slate-900 rounded-lg p-4 text-center border border-slate-700 hover:border-red-500 transition">
+            <div class="text-2xl mb-2">S</div>
+            <div class="text-sm font-medium">Supervisor</div>
+            <div class="text-xs text-slate-500">Planification</div>
+        </div>
+        <div class="bg-slate-900 rounded-lg p-4 text-center border border-slate-700 hover:border-blue-500 transition">
+            <div class="text-2xl mb-2">R</div>
+            <div class="text-sm font-medium">Recon</div>
+            <div class="text-xs text-slate-500">nmap · gobuster</div>
+        </div>
+        <div class="bg-slate-900 rounded-lg p-4 text-center border border-slate-700 hover:border-red-500 transition">
+            <div class="text-2xl mb-2">E</div>
+            <div class="text-sm font-medium">Exploit</div>
+            <div class="text-xs text-slate-500">msf · sqlmap</div>
+        </div>
+        <div class="bg-slate-900 rounded-lg p-4 text-center border border-slate-700 hover:border-purple-500 transition">
+            <div class="text-2xl mb-2">P</div>
+            <div class="text-sm font-medium">PrivEsc</div>
+            <div class="text-xs text-slate-500">LinPEAS</div>
+        </div>
+        <div class="bg-slate-900 rounded-lg p-4 text-center border border-slate-700 hover:border-green-500 transition">
+            <div class="text-2xl mb-2">Ps</div>
+            <div class="text-sm font-medium">Persist</div>
+            <div class="text-xs text-slate-500">SSH · cron</div>
+        </div>
+        <div class="bg-slate-900 rounded-lg p-4 text-center border border-slate-700 hover:border-yellow-500 transition">
+            <div class="text-2xl mb-2">Rp</div>
+            <div class="text-sm font-medium">Report</div>
+            <div class="text-xs text-slate-500">CVSS · ATT&CK</div>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================================================
+     JAVASCRIPT — Fonctions du dashboard
+     Trois fonctions principales :
+       - createMission() : crée une nouvelle mission (POST /missions)
+       - loadMissions()  : charge la liste des missions (GET /missions)
+       - checkHealth()   : vérifie l'état de l'API (GET /health)
+     ======================================================================== -->
+<script>
+// =========================================================================
+// createMission()
+// Appelée au submit du formulaire de création de mission.
+//   - Lit la valeur du champ #target
+//   - Envoie POST /missions avec body JSON { target: "..." }
+//   - L'API répond avec { id: "uuid" }
+//   - Affiche le lien vers la mission créée
+//   - Recharge la liste des missions après 500ms
+// =========================================================================
+async function createMission() {
+    const target = document.getElementById('target').value;
+    // Requête AJAX POST → endpoint /missions
+    const resp = await fetch('/missions', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({target})
+    });
+    const data = await resp.json();
+
+    // Mise à jour du lien dans la bannière "Mission créée"
+    const link = document.getElementById('mission-link');
+    link.href = `/missions/${data.id}`; // Lien vers la page de détail
+    link.textContent = data.id;
+    document.getElementById('mission-result').classList.remove('hidden');
+    // Rafraîchit la liste des missions récentes (ci-dessous)
+    setTimeout(loadMissions, 500);
+}
+
+// =========================================================================
+// loadMissions()
+// Charge et affiche la liste des missions récentes.
+//   - GET /missions → l'API répond { missions: [...] }
+//   - Chaque mission a : id, target, status
+//   - Rend un tableau HTML dans #missions-list
+//   - Si le tableau est vide, affiche un message d'invitation
+// =========================================================================
+async function loadMissions() {
+    // Requête AJAX GET → endpoint /missions
+    const resp = await fetch('/missions');
+    const data = await resp.json();
+    const missions = data.missions || [];
+    const container = document.getElementById('missions-list');
+
+    // Aucune mission → message informatif
+    if (!missions.length) {
+        container.innerHTML = '<p class="text-slate-500 text-sm">Aucune mission. Créez-en une ci-dessus.</p>';
+        return;
+    }
+
+    // Construction du tableau HTML avec template literal
+    // Badge de statut : vert pour "completed", jaune pour les autres
+    container.innerHTML = `
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="text-left text-slate-500 border-b border-slate-700">
+                        <th class="pb-2 pr-4">ID</th>
+                        <th class="pb-2 pr-4">Cible</th>
+                        <th class="pb-2 pr-4">Statut</th>
+                        <th class="pb-2">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${missions.map(m => `
+                        <tr class="border-b border-slate-700/50">
+                            <td class="py-2 pr-4 font-mono">
+                                <a href="/missions/${m.id}" class="text-red-400 hover:underline">${m.id}</a>
+                            </td>
+                            <td class="py-2 pr-4">${m.target || '—'}</td>
+                            <td class="py-2 pr-4">
+                                <span class="px-2 py-0.5 rounded text-xs ${m.status === 'completed' ? 'bg-green-900/50 text-green-300' : 'bg-yellow-900/50 text-yellow-300'}">${m.status}</span>
+                            </td>
+                            <td class="py-2">
+                                <a href="/missions/${m.id}" class="text-slate-400 hover:text-white text-xs">Détail</a>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>`;
+}
+
+// =========================================================================
+// checkHealth()
+// Vérifie l'état de santé de l'API backend.
+//   - GET /health → l'API répond { status: "ok", agents: [...] }
+//   - Affiche le résultat dans #health-status
+//   - En cas d'échec réseau, affiche "API: unreachable"
+// =========================================================================
+async function checkHealth() {
+    try {
+        // Requête AJAX GET → endpoint /health
+        const resp = await fetch('/health');
+        const data = await resp.json();
+        document.getElementById('health-status').textContent = `API: ${data.status} · ${data.agents.length} agents`;
+    } catch(e) {
+        // API injoignable (réseau, serveur down…)
+        document.getElementById('health-status').textContent = 'API: unreachable';
+    }
+}
+
+// Chargement initial au chargement de la page
+loadMissions();
+checkHealth();
+</script>
+
+{% endblock %}

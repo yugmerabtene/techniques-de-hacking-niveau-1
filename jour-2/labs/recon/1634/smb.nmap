@@ -1,0 +1,14 @@
+# Nmap 7.98 scan initiated Sun Jun 28 16:34:47 2026 as: /usr/lib/nmap/nmap --privileged --script smb-vuln* -p 445 -oA /home/yug/cours-hacking/jour-2/labs/recon/1634/smb 172.18.0.4
+Nmap scan report for 172.18.0.4
+Host is up (0.000051s latency).
+
+PORT    STATE SERVICE
+445/tcp open  microsoft-ds
+MAC Address: B2:AB:AA:5D:4B:25 (Unknown)
+
+Host script results:
+|_smb-vuln-ms10-054: false
+|_smb-vuln-ms10-061: false
+|_smb-vuln-regsvc-dos: ERROR: Script execution failed (use -d to debug)
+
+# Nmap done at Sun Jun 28 16:34:54 2026 -- 1 IP address (1 host up) scanned in 7.40 seconds

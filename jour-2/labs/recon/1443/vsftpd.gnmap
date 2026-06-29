@@ -1,0 +1,4 @@
+# Nmap 7.98 scan initiated Sun Jun 28 14:43:40 2026 as: /usr/lib/nmap/nmap --privileged --script ftp-vsftpd-backdoor -p 21 -oA recon/1443/vsftpd localhost
+Host: 127.0.0.1 (localhost)	Status: Up
+Host: 127.0.0.1 (localhost)	Ports: 21/open/tcp//ftp///
+# Nmap done at Sun Jun 28 14:43:42 2026 -- 1 IP address (1 host up) scanned in 1.42 seconds

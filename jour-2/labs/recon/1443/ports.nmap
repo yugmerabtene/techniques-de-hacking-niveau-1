@@ -1,0 +1,58 @@
+# Nmap 7.98 scan initiated Sun Jun 28 14:43:33 2026 as: /usr/lib/nmap/nmap --privileged -sV -sC -p 21,22,80,445,3306,5432 -oA recon/1443/ports localhost
+Nmap scan report for localhost (127.0.0.1)
+Host is up (0.000029s latency).
+Other addresses for localhost (not scanned): ::1
+
+PORT     STATE  SERVICE     VERSION
+21/tcp   open   ftp         vsftpd 2.3.4
+| ftp-syst: 
+|   STAT: 
+| FTP server status:
+|      Connected to 172.18.0.1
+|      Logged in as ftp
+|      TYPE: ASCII
+|      No session bandwidth limit
+|      Session timeout in seconds is 300
+|      Control connection is plain text
+|      Data connections will be plain text
+|      vsFTPd 2.3.4 - secure, fast, stable
+|_End of status
+| ftp-anon: Anonymous FTP login allowed (FTP code 230)
+|_Can't get directory listing: PASV IP 172.18.0.4 is not the same as 127.0.0.1
+22/tcp   closed ssh
+80/tcp   closed http
+445/tcp  open   netbios-ssn Samba smbd 3.0.20-Debian (workgroup: WORKGROUP)
+3306/tcp open   mysql       MySQL 5.0.51a-3ubuntu5
+| mysql-info: 
+|   Protocol: 10
+|   Version: 5.0.51a-3ubuntu5
+|   Thread ID: 21
+|   Capabilities flags: 43564
+|   Some Capabilities: SwitchToSSLAfterHandshake, Support41Auth, SupportsCompression, Speaks41ProtocolNew, LongColumnFlag, ConnectWithDatabase, SupportsTransactions
+|   Status: Autocommit
+|_  Salt: =1{=Y*e@NIa,XT~=TnMs
+5432/tcp open   postgresql  PostgreSQL DB 8.3.0 - 8.3.7
+|_ssl-date: 2026-06-28T12:43:40+00:00; 0s from scanner time.
+| ssl-cert: Subject: commonName=ubuntu804-base.localdomain/organizationName=OCOSA/stateOrProvinceName=There is no such thing outside US/countryName=XX
+| Not valid before: 2010-03-17T14:07:45
+|_Not valid after:  2010-04-16T14:07:45
+Service Info: OS: Unix
+
+Host script results:
+| smb-os-discovery: 
+|   OS: Unix (Samba 3.0.20-Debian)
+|   Computer name: 380a43108c10
+|   NetBIOS computer name: 
+|   Domain name: 
+|   FQDN: 380a43108c10
+|_  System time: 2026-06-28T08:43:40-04:00
+| smb-security-mode: 
+|   account_used: <blank>
+|   authentication_level: user
+|   challenge_response: supported
+|_  message_signing: disabled (dangerous, but default)
+|_clock-skew: mean: 1h19m59s, deviation: 2h18m33s, median: 0s
+|_smb2-time: Protocol negotiation failed (SMB2)
+
+Service detection performed. Please report any incorrect results at https://nmap.org/submit/ .
+# Nmap done at Sun Jun 28 14:43:40 2026 -- 1 IP address (1 host up) scanned in 7.77 seconds

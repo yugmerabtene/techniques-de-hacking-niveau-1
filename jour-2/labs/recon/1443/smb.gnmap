@@ -1,0 +1,4 @@
+# Nmap 7.98 scan initiated Sun Jun 28 14:43:42 2026 as: /usr/lib/nmap/nmap --privileged --script smb-vuln* -p 445 -oA recon/1443/smb localhost
+Host: 127.0.0.1 (localhost)	Status: Up
+Host: 127.0.0.1 (localhost)	Ports: 445/open/tcp//microsoft-ds///
+# Nmap done at Sun Jun 28 14:43:49 2026 -- 1 IP address (1 host up) scanned in 7.22 seconds

@@ -1,0 +1,61 @@
+{
+  "name": "Jour 2 - Tests de pénétration et exploitation",
+  "versions": {
+    "attack": "15",
+    "navigator": "5.1.0",
+    "layer": "4.5"
+  },
+  "domain": "enterprise-attack",
+  "description": "Kill chain complète J2: Reconnaissance → Exploitation → Persistance",
+  "techniques": [
+    {
+      "techniqueID": "T1046",
+      "tactic": "discovery",
+      "color": "#e74c3c",
+      "comment": "Network Service Scanning - nmap full scan Metasploitable",
+      "enabled": true,
+      "metadata": [["Lab", "2.1"]]
+    },
+    {
+      "techniqueID": "T1190",
+      "tactic": "initial-access",
+      "color": "#e74c3c",
+      "comment": "Exploit Public-Facing Application - vsftpd 2.3.4 backdoor",
+      "enabled": true,
+      "metadata": [["Lab", "2.2"]]
+    },
+    {
+      "techniqueID": "T1210",
+      "tactic": "lateral-movement",
+      "color": "#e74c3c",
+      "comment": "Exploitation of Remote Services - Samba usermap_script CVE-2007-2447",
+      "enabled": true,
+      "metadata": [["Lab", "2.3"]]
+    },
+    {
+      "techniqueID": "T1059.004",
+      "tactic": "execution",
+      "color": "#e74c3c",
+      "comment": "Unix Shell - shell root via exploits",
+      "enabled": true,
+      "metadata": [["Lab", "2.2"], ["Lab", "2.3"]]
+    },
+    {
+      "techniqueID": "T1098.004",
+      "tactic": "persistence",
+      "color": "#e74c3c",
+      "comment": "SSH Authorized Keys - SSH key persistence",
+      "enabled": true,
+      "metadata": [["Lab", "2.3"]]
+    }
+  ],
+  "gradient": {
+    "colors": ["#ffffff", "#e74c3c"],
+    "minValue": 0,
+    "maxValue": 1
+  },
+  "legendItems": [{"label": "Testé en lab", "color": "#e74c3c"}],
+  "showTacticRowBackground": true,
+  "tacticRowBackground": "#dddddd",
+  "selectTechniquesAcrossTactics": true
+}

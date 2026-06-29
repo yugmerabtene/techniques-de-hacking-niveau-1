@@ -1,0 +1,80 @@
+{
+  "name": "Jour 3 - Contournement de protections",
+  "versions": {
+    "attack": "15",
+    "navigator": "5.1.0",
+    "layer": "4.5"
+  },
+  "domain": "enterprise-attack",
+  "description": "Kill chain J3: Buffer overflow (exploitation) → Reverse shell (persistance) → WAF bypass (évasion)",
+  "techniques": [
+    {
+      "techniqueID": "T1190",
+      "tactic": "initial-access",
+      "color": "#e74c3c",
+      "comment": "Exploit Public-Facing Application - buffer overflow sur port 9001 + SQL injection behind WAF port 8081",
+      "enabled": true,
+      "metadata": [["Lab", "3.1"], ["Lab", "3.2"]]
+    },
+    {
+      "techniqueID": "T1203",
+      "tactic": "execution",
+      "color": "#e74c3c",
+      "comment": "Exploitation for Client Execution - débordement de tampon (stack buffer overflow dans strcpy)",
+      "enabled": true,
+      "metadata": [["Lab", "3.1"]]
+    },
+    {
+      "techniqueID": "T1068",
+      "tactic": "privilege-escalation",
+      "color": "#e74c3c",
+      "comment": "Exploitation for Privilege Escalation - exécution de code arbitraire via EIP hijack",
+      "enabled": true,
+      "metadata": [["Lab", "3.1"]]
+    },
+    {
+      "techniqueID": "T1059.004",
+      "tactic": "execution",
+      "color": "#e74c3c",
+      "comment": "Unix Shell - reverse shell /bin/sh via connect+dupsh shellcode",
+      "enabled": true,
+      "metadata": [["Lab", "3.1"]]
+    },
+    {
+      "techniqueID": "T1021",
+      "tactic": "lateral-movement",
+      "color": "#e74c3c",
+      "comment": "Remote Services - connexion TCP reverse shell vers l'attaquant",
+      "enabled": true,
+      "metadata": [["Lab", "3.1"]]
+    },
+    {
+      "techniqueID": "T1562.001",
+      "tactic": "defense-evasion",
+      "color": "#e74c3c",
+      "comment": "Impair Defenses: Disable or Modify Tools - contournement ModSecurity WAF via HPP, encodings, sqlmap tamper",
+      "enabled": true,
+      "metadata": [["Lab", "3.2"]]
+    },
+    {
+      "techniqueID": "T1193",
+      "tactic": "initial-access",
+      "color": "#ff9800",
+      "comment": "Contournement de protections de pile : ASLR (+ setarch linux32 -R), NX (+ execstack), Stack Canary (+ -fno-stack-protector)",
+      "enabled": true,
+      "metadata": [["Lab", "3.1"]]
+    }
+  ],
+  "gradient": {
+    "colors": ["#ffffff", "#e74c3c"],
+    "minValue": 0,
+    "maxValue": 1
+  },
+  "legendItems": [
+    {"label": "Attaque réussie", "color": "#e74c3c"},
+    {"label": "Contre-mesure", "color": "#ff9800"}
+  ],
+  "showTacticRowBackground": true,
+  "tacticRowBackground": "#dddddd",
+  "selectTechniquesAcrossTactics": true
+}
