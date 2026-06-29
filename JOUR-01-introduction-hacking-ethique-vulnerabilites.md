@@ -432,6 +432,8 @@ nmap -sV -p 8088 localhost | tee nmap_dvwa.txt
 
 Le flag `-sV` interroge la bannière du service pour obtenir la version exacte. `tee` sauvegarde la sortie dans `nmap_dvwa.txt` pour le rapport.
 
+> 💡 **Bon à savoir :** Les versions exactes (ex. `Apache httpd 2.4.25`) diffèrent selon l'image Docker utilisée. L'essentiel est de confirmer le service HTTP Apache sur le port 8088.
+
 **Explication :** Le scan de ports est la première étape de tout pentest ([TA0043](https://attack.mitre.org/tactics/TA0043/) Reconnaissance). Connaître la version d'Apache permet de chercher des CVE associées. Sans cette information, l'attaquant travaille en aveugle.
 
 ---
@@ -458,6 +460,8 @@ gobuster dir -u http://localhost:8088 \
 ```
 Le flag `-u` définit l'URL cible, `-w` la wordlist de noms à tester (ici `common.txt`), `-q` masque la bannière. `tee` copie la sortie dans un fichier.
 
+> 💡 **Variante selon version DVWA :** Sur DVWA v1.10+, `index.php` redirige vers `login.php` (HTTP 302). Les résultats peuvent différer légèrement — `/config/`, `/docs/` et `phpinfo.php` sont des découvertes valides supplémentaires. Une wordlist plus riche (ex. `directory-list-2.3-medium.txt` de SecLists) permet de découvrir davantage de pages.
+
 **Explication :** gobuster force-brute les noms de dossiers pour cartographier la surface d'attaque. Les pages `login.php`, `config/` et `setup.php` sont des cibles privilégiées. La découverte de `config/` est un résultat critique — ce dossier peut contenir des mots de passe en clair.
 
 ---
@@ -472,19 +476,31 @@ Le flag `-u` définit l'URL cible, `-w` la wordlist de noms à tester (ici `comm
 1. Envoyer une requête POST avec les identifiants `admin:password` pour obtenir un cookie de session
 2. Utiliser ce cookie pour définir le niveau de sécurité sur `low`
 
+> ⚠️ **Spécificité DVWA v1.10+ :** Le formulaire de login inclut un `user_token` (CSRF) invisible. Une simple requête POST sans ce token échoue silencieusement. Il faut d'abord extraire le token, puis l'inclure dans la requête.
+
 **Commande :**
 ```bash
-curl -s -c /tmp/dvwa_cookie.txt \
-  -d "username=admin&password=password&Login=Login" \
+# Étape 1 : Extraire le token CSRF et récupérer un cookie de session
+TOKEN=$(curl -s -c /tmp/dvwa_cookie.txt \
+  "http://localhost:8088/login.php" \
+  | grep -oP "user_token' value='\K[a-f0-9]+")
+
+# Étape 2 : Envoyer le login avec le token
+curl -s -b /tmp/dvwa_cookie.txt -c /tmp/dvwa_cookie.txt \
+  -d "username=admin&password=password&user_token=$TOKEN&Login=Login" \
   "http://localhost:8088/login.php" | grep -o "Welcome\|Login failed"
 # → Welcome
 
+# Étape 3 : Extraire le nouveau token et passer security=low
+TOKEN=$(curl -s -b /tmp/dvwa_cookie.txt \
+  "http://localhost:8088/security.php" \
+  | grep -oP "user_token' value='\K[a-f0-9]+")
 curl -s -b /tmp/dvwa_cookie.txt -c /tmp/dvwa_cookie.txt \
-  -d "security=low&seclev_submit=Submit" \
+  -d "security=low&seclev_submit=Submit&user_token=$TOKEN" \
   "http://localhost:8088/security.php"
 # → (pas de sortie visible — le cookie est mis à jour avec security=low)
 ```
-La première commande doit afficher `Welcome` (authentification réussie). Le flag `-c` sauvegarde le cookie reçu dans `/tmp/dvwa_cookie.txt`. La seconde commande utilise `-b` pour renvoyer ce cookie et `-c` pour le mettre à jour avec `security=low`.
+La première commande doit afficher `Welcome` (authentification réussie). Le flag `-c` sauvegarde le cookie reçu dans `/tmp/dvwa_cookie.txt`. L'extraction du `user_token` via `grep -oP` est une technique réutilisable pour tout formulaire protégé par CSRF.
 
 **Explication :** Sans cookie de session, DVWA nous traite comme un visiteur anonyme. Le fichier `/tmp/dvwa_cookie.txt` contient maintenant `PHPSESSID` + `security=low`. Les labs suivants (XSS, SQLi, CMDi) nécessitent ce niveau low pour que les injections fonctionnent — sans quoi les `mysql_real_escape_string()` et `htmlspecialchars()` de DVWA bloqueraient nos attaques.
 
@@ -512,7 +528,7 @@ La première commande doit afficher `Welcome` (authentification réussie). Le fl
 
 **Commande :**
 ```bash
-docker exec dvwa-target bash -c "echo 'ServerName localhost' >> /etc/apache2/apache2.conf && echo 'Options -Indexes' >> /etc/apache2/conf-enabled/security.conf && apache2ctl restart"
+docker exec dvwa-target bash -c "echo 'ServerName localhost' >> /etc/apache2/apache2.conf && sed -i 's/Options Indexes FollowSymLinks/Options FollowSymLinks/' /etc/apache2/apache2.conf && apache2ctl restart"
 # → AH00558: apache2: Could not reliably determine... (warning, OK)
 docker exec dvwa-target bash -c "mkdir -p /var/www/html/test-empty"
 curl -s -o /dev/null -w "%{http_code}" "http://localhost:8088/test-empty/"
@@ -1321,6 +1337,9 @@ curl -s -b /tmp/dvwa_cookie.txt \
   "http://localhost:8088/login.php" | grep -oi "login failed\|failed"
 # → Login failed
 ```
+
+> ⚠️ **DVWA v1.10+** : Le login nécessite un `user_token` (CSRF). Si vous ne voyez pas `Login failed`, c'est que le token manque. Hydra ne gère pas le CSRF nativement — deux solutions : (1) utiliser un script wrapper qui extrait le token avant chaque tentative, (2) attaquer l'application `sqli-app` (port 8083, sans CSRF). Les commandes ci-dessous supposent un `user_token` déjà extrait.  
+> *Note : sur DVWA v1.10 le message `Login failed` n'apparaît pas dans la réponse HTML — Hydra ne peut pas distinguer succès/échec → cf. solution (2).*
 
 **Résultat attendu :** Les noms des champs sont `username`, `password`, `Login`. Le message d'échec en cas de mauvais mot de passe est `Login failed`.
 

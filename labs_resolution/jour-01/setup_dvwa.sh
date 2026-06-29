@@ -3,7 +3,7 @@
 # setup_dvwa.sh — Configure DVWA: reset DB + security=low
 # =====================================================================
 set -uo pipefail
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)/env.sh"
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/env.sh"
 
 DVWA="http://localhost:$DVWA_PORT"
 COOKIES=$(mktemp)
@@ -41,7 +41,15 @@ else
   echo "[+] Set to low"
 fi
 
-# Step 4: Final verify
+# Step 4: Apache hardening + test-empty/ for 403 test
+CID=$(docker compose ps -q dvwa 2>/dev/null)
+echo "[*] Applying Apache hardening..."
+docker exec "$CID" bash -c "echo 'ServerName localhost' >> /etc/apache2/apache2.conf && sed -i 's/Options Indexes FollowSymLinks/Options FollowSymLinks/' /etc/apache2/apache2.conf && apache2ctl restart" 2>/dev/null
+echo "[*] Creating test-empty/ directory..."
+docker exec "$CID" mkdir -p /var/www/html/test-empty 2>/dev/null
+echo "[+] test-empty/ ready"
+
+# Step 5: Final verify
 echo "[*] Verifying..."
 CURRENT=$($CURL -c "$COOKIES" -b "$COOKIES" "$DVWA/security.php" | grep -oP "Security level is currently: <em>\K[a-z]+(?=</em>)")
 echo "  Security Level: $CURRENT"

