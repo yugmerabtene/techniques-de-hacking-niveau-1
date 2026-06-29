@@ -43,56 +43,56 @@ sudo usermod -aG docker $USER  # -aG = append to Group (préserve les groupes ex
 ## A.2 Arborescence de travail
 
 ```bash
-# Création de l'arborescence de travail pour les 5 jours de cours + hors-série (-p = crée les parents si absents)
-mkdir -p ~/cours-hacking/labs/{jour-01,jour-02,jour-03,jour-04,jour-05} ~/cours-hacking/extra
-# cd (change directory) = se déplacer dans le dossier spécifié ; ~/ = raccourci vers le home directory
+# Création du dossier racine du cours
+mkdir -p ~/cours-hacking
 cd ~/cours-hacking
 # git clone = télécharge une copie complète du dépôt Git distant dans le dossier 'repo'
 git clone https://github.com/yugmerabtene/techniques-de-hacking-niveau-1.git repo
 ```
 
-Une fois le dépôt cloné, votre arborescence de travail est la suivante :
+Une fois le dépôt cloné, voici l'arborescence **réelle** :
 
 ```text
 ~/cours-hacking/
-├── labs/                    # VOTRE espace de travail
-│   ├── jour-01/             # → Vous travaillez ici pour le J1
-│   ├── jour-02/             # → Vous travaillez ici pour le J2
-│   ├── jour-03/             # → Vous travaillez ici pour le J3
-│   ├── jour-04/             # → Vous travaillez ici pour le J4
-│   └── jour-05/             # → Vous travaillez ici pour le J5
-├── extra/                   # Projets complémentaires
-└── repo/                    # Dépôt du cours (ce répertoire)
-    ├── labs_resolution/     # 🔥 Labs RÉSOLUS (correction, référence)
-    │   ├── jour-01/         #   Scripts XSS, SQLi, CMDi résolus
-    │   ├── jour-02/         #   Scan nmap, exploits vsftpd/Samba
-    │   ├── jour-03/         #   Exploit BOF + WAF bypass
-    │   ├── jour-04/         #   Hardening + config ELK
-    │   └── jour-05/         #   Forensique + générateur rapport
-    ├── labs/                # 📁 Dossiers vides (structure de référence)
-    │   ├── jour-01/
-    │   ├── jour-02/
-    │   ├── jour-03/
-    │   ├── jour-04/
-    │   └── jour-05/
-    ├── env.sh               # Variables d'environnement centralisées
-    ├── JOUR-01*.md          # Supports de cours
+└── repo/                              # Dépôt du cours (tout est ici)
+    ├── labs_resolution/               # 🔥 Labs RÉSOLUS (correction, référence)
+    │   ├── jour-01/labs/              #   Scripts XSS, SQLi, CMDi, hash cracking
+    │   ├── jour-02/labs/              #   Recon nmap, exploits vsftpd/Samba, MITM
+    │   ├── jour-03/labs/              #   BOF pwntools, WAF bypass, Trojan
+    │   ├── jour-04/labs/              #   Hardening + ELK SOC
+    │   └── jour-05/labs/              #   Forensique + generate_report.py
+    ├── env.sh                         # Variables centralisées (sourcer avant chaque lab)
+    ├── docker-compose.yml             # 7 conteneurs cibles
+    ├── docker/                        # Dockerfiles (buffovf, forensic, sqli-app, waf, secure-linux)
+    ├── img/                           # Schémas et figures
+    ├── JOUR-01*.md                    # Supports de cours
     ├── JOUR-02*.md
     ├── JOUR-03*.md
     ├── JOUR-04*.md
     ├── JOUR-05*.md
     ├── HORS-SERIE-AGENTIC.md
-    ├── docker-compose.yml   # Conteneurs cibles
-    ├── docker/              # Dockerfiles par lab
-    └── extra/               # Projets complémentaires (Docker, scripts)
-        └── hors-serie/      # Code source KillChainAgent
+    ├── PLAN_SCHEMAS.md                # Plan des schémas à créer
+    ├── README.md                      # Ce fichier
+    └── extra/                         # Projets complémentaires
+        ├── HORS-SERIE-AGENTIC.md
+        └── hors-serie/                # Dockerfile + code source KillChainAgent
 ```
 
-> **Différence clé :**
-> - `~/cours-hacking/labs/jour-0X/` = votre dossier de travail (vide au départ, vous y créez vos scripts)
-> - `repo/labs_resolution/jour-0X/` = les solutions complètes (pour vérifier, comparer, ou vous débloquer)
-> - `repo/labs/jour-0X/` = dossiers vides dans le repo (structure de référence uniquement)
-> - Sourcez `env.sh` depuis la racine du repo pour charger les IP/ports des conteneurs dans votre shell
+> **Note :** Vous créez votre dossier de travail `~/cours-hacking/labs/jour-0X/` vous-même au début de chaque lab (indiqué dans les prérequis). Consultez `repo/labs_resolution/jour-0X/labs/` si vous êtes bloqué.
+
+```mermaid
+flowchart LR
+    A["1. git clone repo"] --> B["2. cd repo && source env.sh"]
+    B --> C["3. docker compose up -d --build &lt;cible&gt;"]
+    C --> D["4. mkdir -p ~/cours-hacking/labs/jour-0X"]
+    D --> E["5. cd ~/cours-hacking/labs/jour-0X"]
+    E --> F["6. Travailler !"]
+    F --> G{"Bloqué ?"}
+    G -->|"Oui"| H["cat repo/labs_resolution/jour-0X/labs/*.sh"]
+    G -->|"Non"| I["Passer au lab suivant"]
+```
+
+**Fig 1b** — Workflow type d'un lab : cloner, sourcer, lancer le conteneur, créer son dossier de travail, exécuter le lab, consulter le corrigé si nécessaire.
 
 ## A.3 Lancement des conteneurs
 
@@ -100,6 +100,7 @@ Une fois le dépôt cloné, votre arborescence de travail est la suivante :
 cd ~/cours-hacking/repo
 # docker compose up = démarre tous les services définis dans docker-compose.yml
 # -d (detached) = arrière-plan, --build = reconstruit les images Docker avant de lancer
+# Sans argument : tous les conteneurs ; avec un nom : un seul service (ex: dvwa)
 docker compose up -d --build
 ```
 
@@ -361,7 +362,7 @@ Avant tout pentest, on scanne la cible pour cartographier sa surface d'attaque. 
 ### Étape 1 — Scan nmap
 
 ```bash
-cd ~/cours-hacking/labs/jour-01
+mkdir -p ~/cours-hacking/labs/jour-01 && cd ~/cours-hacking/labs/jour-01
 # 📌 Scan nmap du port DVWA : détection de version du service web
 # 🔍 -sV = probe les bannières pour identifier la version précise du service
 # 🔍 -p 8088 = port cible, tee = affiche la sortie ET la sauvegarde dans un fichier
@@ -1306,6 +1307,8 @@ cp ~/cours-hacking/repo/labs_resolution/jour-01/labs/lab_xss.sh ~/cours-hacking/
 ### Avant chaque lab
 
 ```bash
+# 0. Créer votre dossier de travail pour ce jour (une seule fois)
+mkdir -p ~/cours-hacking/labs/jour-0X
 # 1. Charger les variables d'environnement
 cd ~/cours-hacking/repo && source env.sh
 # 2. Démarrer les conteneurs nécessaires
