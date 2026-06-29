@@ -1,9 +1,11 @@
 #!/bin/bash
 # Lab 4.1 — Durcissement complet d'un serveur Linux
 # Mitigations : M1051 + M1018 + M1037 + M1036 + M1050 + M1022
+set -uo pipefail
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)/env.sh"
 
 echo "=== Lab 4.1 — Durcissement Linux ==="
-echo "Cible : secure-linux-target (port 2224)"
+echo "Cible : secure-linux-target (port $SECURE_LINUX_PORT)"
 echo ""
 
 cd ~/cours-hacking/repo

@@ -6,7 +6,7 @@
 # =====================================================================
 set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-source /tmp/techniques-hacking-mdj/env.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)/env.sh"
 
 WAF_URL="http://${WAF_IP}:${WAF_PORT}"
 SQLI_APP_URL="http://${SQLI_APP_IP}"

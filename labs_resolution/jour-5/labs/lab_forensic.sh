@@ -1,9 +1,11 @@
 #!/bin/bash
 # Lab 5.1 — Investigation forensique
 # Kill chain : T1190 → T1059.004 → T1505.003 → T1548.001
+set -uo pipefail
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)/env.sh"
 
 echo "=== Lab 5.1 — Investigation forensique ==="
-echo "Cible : forensic-victim (port 8082)"
+echo "Cible : forensic-victim (port $FORENSIC_PORT)"
 echo ""
 
 cd ~/cours-hacking/repo

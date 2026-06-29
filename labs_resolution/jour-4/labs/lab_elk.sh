@@ -1,9 +1,11 @@
 #!/bin/bash
 # Lab 4.2 — SOC : Centralisation des logs avec ELK Stack
 # Mitigations : M1047 Log Collection + M1030 SIEM
+set -uo pipefail
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)/env.sh"
 
 echo "=== Lab 4.2 — ELK Stack SOC ==="
-echo "Services : Elasticsearch:9200 | Kibana:5601"
+echo "Services : Elasticsearch:9200 | Kibana:$ELK_PORT"
 echo ""
 
 cd ~/cours-hacking/repo

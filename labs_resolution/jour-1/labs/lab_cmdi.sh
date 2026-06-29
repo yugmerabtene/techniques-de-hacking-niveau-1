@@ -4,7 +4,7 @@
 # Usage: bash lab_cmdi.sh [reverseshell]
 # =====================================================================
 set -uo pipefail
-source /tmp/techniques-hacking-mdj/env.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)/env.sh"
 
 DVWA="http://localhost:$DVWA_PORT"
 COOKIES=$(mktemp)

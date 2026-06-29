@@ -50,7 +50,7 @@ mkdir -p ~/cours-hacking/labs/jour-{1,2,3,4,5}
 # cd (change directory) = se déplacer dans le dossier spécifié ; ~/ = raccourci vers le home directory
 cd ~/cours-hacking
 # git clone = télécharge une copie complète du dépôt Git distant dans le dossier 'repo'
-git clone https://github.com/yugmerabtene/techniques-hacking-mdj.git repo
+git clone https://github.com/yugmerabtene/techniques-de-hacking-niveau-1.git repo
 ```
 
 Une fois le dépôt cloné, votre arborescence de travail est la suivante :

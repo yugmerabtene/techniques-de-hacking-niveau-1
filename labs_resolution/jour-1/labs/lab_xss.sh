@@ -3,7 +3,7 @@
 # lab_xss.sh — Reflected & Stored XSS sur DVWA
 # =====================================================================
 set -uo pipefail
-source /tmp/techniques-hacking-mdj/env.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)/env.sh"
 
 DVWA="http://localhost:$DVWA_PORT"
 COOKIES=$(mktemp)

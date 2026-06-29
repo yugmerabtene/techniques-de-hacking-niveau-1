@@ -4,7 +4,7 @@
 # Usage: bash lab_sqli_app.sh
 # =====================================================================
 set -uo pipefail
-source /tmp/techniques-hacking-mdj/env.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)/env.sh"
 
 APP="http://localhost:$SQLI_APP_PORT"
 

@@ -6,7 +6,7 @@
 # =====================================================================
 set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-source /tmp/techniques-hacking-mdj/env.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)/env.sh"
 
 RHOST="${1:-$METASPLOITABLE_IP}"
 OUTDIR="$SCRIPT_DIR/recon/$(date +%H%M)"
