@@ -2,6 +2,86 @@
 
 ---
 
+## Introduction à la cybersécurité
+
+### Qu'est-ce que la cybersécurité ?
+
+La **cybersécurité** est l'ensemble des pratiques, technologies et processus conçus pour protéger les systèmes, réseaux, programmes et données contre les attaques, les dommages ou les accès non autorisés. Son objectif fondamental repose sur le **triangle CIA** (Confidentialité, Intégrité, Disponibilité).
+
+### Bref historique
+
+| Période | Événement marquant |
+|---------|-------------------|
+| **1971** | Premier ver informatique : **Creeper** (Bob Thomas, BBN) — expérimental, il traversait ARPANET en affichant "I'm the creeper, catch me if you can!" |
+| **1988** | **Morris Worm** — premier ver à se propager massivement (6000 machines infectées, 10% d'Internet à l'époque). Robert Morris Jr. condamné. |
+| **1999** | **CVE** (Common Vulnerabilities and Exposures) créé par MITRE — standardisation des identifiants de vulnérabilités |
+| **2000s** | Explosion des attaques web (XSS, SQLi). OWASP Top 10 publié en 2003. |
+| **2010** | **Stuxnet** — première cyberarme d'État (États-Unis + Israël contre les centrifugeuses iraniennes) |
+| **2013** | **Target** — vol de 40M de cartes bancaires via un compte tiers non sécurisé (climatisation) |
+| **2017** | **WannaCry** — ransomware mondial via EternalBlue (CVE-2017-0144), 300 000 machines dans 150 pays |
+| **2020+** | Généralisation du **Zero Trust**, explosion des ransomwares (Colonial Pipeline 2021), IA générative dans les attaques (phishing ultra-personnalisé, code malveillant automatisé) |
+
+### Pourquoi ce cours ?
+
+Le hacking éthique (ou pentest) consiste à **attaquer un système avec autorisation** pour en identifier les failles avant qu'un véritable attaquant ne les exploite. Ce cours vous donne les bases : outils, méthodologie, reporting.
+
+Vous apprendrez à :
+- Utiliser les outils du pentest (nmap, sqlmap, Metasploit, Hydra)
+- Comprendre et exploiter les 4 vulnérabilités web les plus critiques
+- Cartographier vos attaques avec le framework MITRE ATT&CK
+- Documenter vos résultats dans un rapport professionnel
+
+---
+
+## A.4 Validation — Vérification des cibles
+
+Avant de commencer, assurez-vous que tous les conteneurs du lab répondent correctement :
+
+```bash
+# DVWA — Vérification que l'application web répond sur le port 8088 (-I = requête HEAD, ne télécharge que les en-têtes)
+curl -I http://localhost:8088/login.php
+# → HTTP/1.1 200 OK
+# Login : admin / password → DVWA Security → low
+
+# SQLi App — Test de la page de recherche avec injection basique sur le paramètre id
+curl "http://localhost:8083/?page=search&id=1"
+# → Laptop Pro X  (le produit avec id=1 s'affiche, l'appli est accessible)
+# Bypass d'authentification : injection SQL commentée (--), -s = mode silencieux (pas de barre de progression)
+# grep = filtre les lignes contenant un motif ; -o = affiche uniquement la correspondance (pas la ligne entière)
+# | (pipe) = redirige la sortie de la commande gauche vers l'entrée de la commande droite
+curl -s -d "page=login&username=admin'%20--&password=x" "http://localhost:8083/" | grep -o "Connecté"
+# → Connecté en tant que admin  (le commentaire -- neutralise le check du password)
+
+# vsftpd 2.3.4 — Bannière FTP attendue sur le port 21 (-w2 = timeout de 2 secondes)
+# echo = affiche du texte dans la sortie standard ; le pipe | envoie cette sortie vers l'entrée standard (stdin) de nc
+# nc (netcat) = couteau suisse réseau : connexions TCP/UDP, transfert de données, écoute de ports
+echo "" | nc -w2 localhost 21
+# → 220 (vsFTPd 2.3.4)  (version connue vulnérable, exploitable via Metasploit)
+
+# Samba — Scan nmap de détection de version (-sV) sur le port 445 uniquement (-p)
+nmap -sV -p 445 localhost | grep 445
+# → 445/tcp open netbios-ssn Samba smbd 3.0.20  (version ancienne vulnérable)
+
+# Buffer overflow — Vérification que le port 9001 est ouvert (-z = scan sans envoyer de données)
+nc -z localhost 9001 && echo "OK"
+
+# WAF — Requête normale : code HTTP attendu → 200 (-o /dev/null = jette le corps, -w formate la sortie)
+curl -s -o /dev/null -w "%{http_code}" "http://localhost:8081/?id=1"
+# → 200  (page accessible normalement)
+# Requête avec injection SQL : le WAF (ModSecurity) doit bloquer → 403 Forbidden
+curl -s -o /dev/null -w "%{http_code}" "http://localhost:8081/?id=1 OR 1=1"
+# → 403 (WAF bloque)  (ModSecurity détecte et rejette la tentative d'injection SQL)
+
+# Secure Linux — Test de connectivité SSH sur le port 2224
+nc -z localhost 2224 && echo "SSH OK"
+
+# Forensic victim — Exécution de commande via le paramètre cmd (command injection volontaire pour les exercices forensic)
+curl "http://localhost:8082/?cmd=id"
+# → uid=33(www-data)  (l'utilisateur serveur web est bien www-data, injection confirmée)
+```
+
+---
+
 ## Objectifs pédagogiques
 
 - Mettre en place l'environnement de lab (Docker, Kali, outils)
@@ -105,54 +185,6 @@ flowchart TB
 ```
 
 **Fig 1** — Topologie du lab : 7 conteneurs cibles exposés sur ports dédiés, orchestrés par Kali Linux hôte.
-
-## A.4 Validation de chaque vulnérabilité
-
-```bash
-# DVWA — Vérification que l'application web répond sur le port 8088 (-I = requête HEAD, ne télécharge que les en-têtes)
-curl -I http://localhost:8088/login.php
-# → HTTP/1.1 200 OK
-# Login : admin / password → DVWA Security → low
-
-# SQLi App — Test de la page de recherche avec injection basique sur le paramètre id
-curl "http://localhost:8083/?page=search&id=1"
-# → Laptop Pro X  (le produit avec id=1 s'affiche, l'appli est accessible)
-# Bypass d'authentification : injection SQL commentée (--), -s = mode silencieux (pas de barre de progression)
-# grep = filtre les lignes contenant un motif ; -o = affiche uniquement la correspondance (pas la ligne entière)
-# | (pipe) = redirige la sortie de la commande gauche vers l'entrée de la commande droite
-curl -s -d "page=login&username=admin'%20--&password=x" "http://localhost:8083/" | grep -o "Connecté"
-# → Connecté en tant que admin  (le commentaire -- neutralise le check du password)
-
-# vsftpd 2.3.4 — Bannière FTP attendue sur le port 21 (-w2 = timeout de 2 secondes)
-# echo = affiche du texte dans la sortie standard ; le pipe | envoie cette sortie vers l'entrée standard (stdin) de nc
-# nc (netcat) = couteau suisse réseau : connexions TCP/UDP, transfert de données, écoute de ports
-echo "" | nc -w2 localhost 21
-# → 220 (vsFTPd 2.3.4)  (version connue vulnérable, exploitable via Metasploit)
-
-# Samba — Scan nmap de détection de version (-sV) sur le port 445 uniquement (-p)
-nmap -sV -p 445 localhost | grep 445
-# → 445/tcp open netbios-ssn Samba smbd 3.0.20  (version ancienne vulnérable)
-
-# Buffer overflow — Vérification que le port 9001 est ouvert (-z = scan sans envoyer de données)
-nc -z localhost 9001 && echo "OK"
-
-# WAF — Requête normale : code HTTP attendu → 200 (-o /dev/null = jette le corps, -w formate la sortie)
-curl -s -o /dev/null -w "%{http_code}" "http://localhost:8081/?id=1"
-# → 200  (page accessible normalement)
-# Requête avec injection SQL : le WAF (ModSecurity) doit bloquer → 403 Forbidden
-curl -s -o /dev/null -w "%{http_code}" "http://localhost:8081/?id=1 OR 1=1"
-# → 403 (WAF bloque)  (ModSecurity détecte et rejette la tentative d'injection SQL)
-
-# Secure Linux — Test de connectivité SSH sur le port 2224
-nc -z localhost 2224 && echo "SSH OK"
-
-# Forensic victim — Exécution de commande via le paramètre cmd (command injection volontaire pour les exercices forensic)
-curl "http://localhost:8082/?cmd=id"
-# → uid=33(www-data)  (l'utilisateur serveur web est bien www-data, injection confirmée)
-
-# Validation automatique
-cd .
-```
 
 ---
 
