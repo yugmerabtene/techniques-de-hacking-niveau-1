@@ -540,12 +540,21 @@ Reflected XSS injecte du code dans l'URL, exécuté immédiatement. Stored XSS p
 
 ### Étape 1 — Reflected XSS
 
-Dans DVWA → **XSS (Reflected)** → champ "What's your name?" :
+**Où ?** Dans DVWA → onglet **XSS (Reflected)** → champ texte **"What's your name?"**.
+
+**Pourquoi ça marche ?** Le code PHP de DVWA prend l'entrée du champ `name` et l'affiche directement dans la page sans l'échapper :
+```php
+echo "Hello $name";  // ← Aucun htmlspecialchars(), le navigateur interprète le <script>
+```
+L'attaquant n'a pas besoin d'attaquer le serveur — il piège un lien envoyé à la victime.
+
+**Lien avec le cours :** XSS correspond à la technique [T1189](https://attack.mitre.org/techniques/T1189/) (Drive-by Compromise) — compromission via navigation. L'objectif est identique au schéma Fig 5 vu plus haut : injecter un script → voler un cookie → usurper la session.
 
 ```html
 <script>alert('XSS fonctionnel')</script>
 ```
-→ Popup JavaScript. La faille est confirmée.
+
+**Résultat :** Une popup JavaScript s'affiche dans le navigateur. La faille XSS est confirmée. En conditions réelles, cette popup serait remplacée par un script d'exfiltration du cookie de session (prochaine étape).
 
 ### Étape 2 — Vol de cookie
 
