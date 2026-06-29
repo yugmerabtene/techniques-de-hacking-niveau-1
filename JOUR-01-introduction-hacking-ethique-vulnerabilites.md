@@ -385,16 +385,7 @@ ls -la defense-j1.json
 
 Le résultat attendu dans ATT&CK Navigator doit montrer :
 
-```
-┌─────────────────────────────────────────────────┐
-│ Plan JOUR-01 (attack)          Defense (mitigations) │
-│ ┌─────┬─────┬─────┬─────┐     ┌─────┬─────┐      │
-│ │T1046│T1190│T1189│T1059│     │M1031│M1041│      │
-│ │ 🔴  │ 🔴  │ 🔴  │ 🔴  │     │ 🟢  │ 🟢  │      │
-│ └─────┴─────┴─────┴─────┘     └─────┴─────┘      │
-│ Techniques rouges = attaquées  Mitigations vertes │
-└─────────────────────────────────────────────────┘
-```
+![Plan d'attaque JOUR-01 — ATT&CK Navigator](img/attack-navigator-plan-j1.png)
 
 **Principe :** Une technique attaquante (rouge) doit toujours avoir une mitigation associée (verte). Si une technique rouge n'a pas de mitigation verte → c'est un **risque accepté** ou une **découverte** à signaler dans le rapport.
 
