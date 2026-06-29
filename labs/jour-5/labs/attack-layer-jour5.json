@@ -1,0 +1,81 @@
+{
+  "name": "Jour 5 - Reporting et gestion d'incidents",
+  "versions": {
+    "attack": "15",
+    "navigator": "5.1.0",
+    "layer": "4.5"
+  },
+  "domain": "enterprise-attack",
+  "description": "Kill chain complète J5: Investigation forensique → Reconstruction kill chain → Rapport d'incident NIS2",
+  "techniques": [
+    {
+      "techniqueID": "T1190",
+      "tactic": "initial-access",
+      "color": "#e74c3c",
+      "comment": "Exploit Public-Facing Application - Command injection (Lab 5.1) + SQLi (Lab 5.2)",
+      "enabled": true,
+      "metadata": [["Lab", "5.1"], ["Lab", "5.2"]]
+    },
+    {
+      "techniqueID": "T1059.004",
+      "tactic": "execution",
+      "color": "#e74c3c",
+      "comment": "Unix Shell - command injection via system() sur forensic-victim",
+      "enabled": true,
+      "metadata": [["Lab", "5.1"]]
+    },
+    {
+      "techniqueID": "T1505.003",
+      "tactic": "persistence",
+      "color": "#e74c3c",
+      "comment": "Web Shell - backdoor PHP eval() sur forensic-victim",
+      "enabled": true,
+      "metadata": [["Lab", "5.1"]]
+    },
+    {
+      "techniqueID": "T1548.001",
+      "tactic": "privilege-escalation",
+      "color": "#e74c3c",
+      "comment": "Sudo Caching - www-data ALL=(ALL) NOPASSWD: ALL",
+      "enabled": true,
+      "metadata": [["Lab", "5.1"]]
+    },
+    {
+      "techniqueID": "T1189",
+      "tactic": "initial-access",
+      "color": "#e74c3c",
+      "comment": "Drive-by Compromise - XSS dans le rapport de pentest généré (Lab 5.2)",
+      "enabled": true,
+      "metadata": [["Lab", "5.2"]]
+    },
+    {
+      "techniqueID": "T1210",
+      "tactic": "lateral-movement",
+      "color": "#e74c3c",
+      "comment": "Exploitation of Remote Services - Samba CVE-2007-2447 dans le rapport (Lab 5.2)",
+      "enabled": true,
+      "metadata": [["Lab", "5.2"]]
+    }
+  ],
+  "gradient": {
+    "colors": ["#ffffff", "#e74c3c"],
+    "minValue": 0,
+    "maxValue": 1
+  },
+  "legendItems": [
+    {"label": "Identifié en investigation", "color": "#e74c3c"}
+  ],
+  "showTacticRowBackground": true,
+  "tacticRowBackground": "#dddddd",
+  "selectTechniquesAcrossTactics": true,
+  "metadata": [
+    {
+      "name": "Cours",
+      "value": "Techniques de Hacking et Contre-Mesures Niveau 1"
+    },
+    {
+      "name": "Jour",
+      "value": "5"
+    }
+  ]
+}

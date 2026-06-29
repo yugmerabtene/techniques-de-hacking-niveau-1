@@ -1,0 +1,90 @@
+{
+  "name": "Jour 4 - Contre-mesures et sécurisation",
+  "versions": {
+    "attack": "15",
+    "navigator": "5.1.0",
+    "layer": "4.5"
+  },
+  "domain": "enterprise-attack",
+  "description": "Couche ATT&CK pour les contre-mesures et la sécurisation des systèmes du Jour 4",
+  "techniques": [
+    {
+      "techniqueID": "T1110",
+      "tactic": "credential-access",
+      "color": "#e74c3c",
+      "comment": "Brute Force - SSH brute-force attack, contré par fail2ban + M1036",
+      "enabled": true,
+      "metadata": [["Lab", "4.1"]]
+    },
+    {
+      "techniqueID": "T1068",
+      "tactic": "privilege-escalation",
+      "color": "#e74c3c",
+      "comment": "Exploitation for Privilege Escalation - BOF contré par ASLR + NX + Stack Canary (M1050)",
+      "enabled": true,
+      "metadata": [["Lab", "4.1"]]
+    },
+    {
+      "techniqueID": "T1046",
+      "tactic": "discovery",
+      "color": "#e74c3c",
+      "comment": "Network Service Scanning - nmap, contré par UFW + IDS/IPS (M1037, M1031)",
+      "enabled": true,
+      "metadata": [["Lab", "4.1"], ["Lab", "4.2"]]
+    },
+    {
+      "techniqueID": "T1190",
+      "tactic": "initial-access",
+      "color": "#e74c3c",
+      "comment": "Exploit Public-Facing Application - SQLi détecté par ELK + vsftpd backdoor, contré par WAF + ELK (M1013, M1047)",
+      "enabled": true,
+      "metadata": [["Lab", "4.2"]]
+    },
+    {
+      "techniqueID": "T1566",
+      "tactic": "initial-access",
+      "color": "#ff9800",
+      "comment": "Phishing - contré par M1017 User Training, non testé en lab",
+      "enabled": true,
+      "metadata": []
+    },
+    {
+      "techniqueID": "T1210",
+      "tactic": "lateral-movement",
+      "color": "#ff9800",
+      "comment": "Exploitation of Remote Services - SMB, contré par M1042 Disable SMBv1, non testé en lab",
+      "enabled": true,
+      "metadata": []
+    },
+    {
+      "techniqueID": "T1027",
+      "tactic": "defense-evasion",
+      "color": "#ff9800",
+      "comment": "Obfuscated Files or Information - contré par M1049 Antivirus, non testé en lab",
+      "enabled": true,
+      "metadata": []
+    }
+  ],
+  "gradient": {
+    "colors": ["#ffffff", "#e74c3c"],
+    "minValue": 0,
+    "maxValue": 1
+  },
+  "legendItems": [
+    {"label": "Testé en lab", "color": "#e74c3c"},
+    {"label": "Mitigation couverte", "color": "#ff9800"}
+  ],
+  "showTacticRowBackground": true,
+  "tacticRowBackground": "#dddddd",
+  "selectTechniquesAcrossTactics": true,
+  "metadata": [
+    {
+      "name": "Cours",
+      "value": "Techniques de Hacking et Contre-Mesures Niveau 1"
+    },
+    {
+      "name": "Jour",
+      "value": "4"
+    }
+  ]
+}
