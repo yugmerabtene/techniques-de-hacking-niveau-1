@@ -415,6 +415,8 @@ ls -la rendu_labs/jour-01/*.json
 |---|---|---|---|---|
 | 30 min | dvwa (port 8088) | `rendu_labs/jour-01/` | nmap, gobuster, curl | [TA0043](https://attack.mitre.org/tactics/TA0043/) Recon — [T1046](https://attack.mitre.org/techniques/T1046/) Network Scan |
 
+**DVWA** (Damn Vulnerable Web Application) est une application web PHP/MySQL volontairement vulnérable, conçue pour apprendre les tests de sécurité dans un environnement légal. Elle expose XSS, SQLi, CSRF, CMDi et bien d'autres failles — c'est notre cible pour les labs 1.1 à 1.4 et 1.6.
+
 ### Contexte métier
 
 Avant tout pentest, on scanne la cible pour cartographier sa surface d'attaque. Un scan nmap + une énumération web (gobuster) sont systématiquement demandés par le client dans le rapport.
