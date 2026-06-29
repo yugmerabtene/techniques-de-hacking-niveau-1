@@ -153,6 +153,8 @@ Ce chapitre couvre la matrice ATT&CK (14 tactiques, 200+ techniques), le mapping
 
 **Tactique** = l'objectif (pourquoi). **Technique** = la méthode (comment). **Procédure** = l'implémentation spécifique d'un groupe.
 
+Chaque **tactique** (colonne) regroupe des **techniques** (lignes) qui réalisent cet objectif. Une **sous-technique** (ex: T1059.004) précise une variante d'exécution. Les **mitigations** (MXXXX) sont les contrôles défensifs liés à chaque technique. Navigation : [attack.mitre.org](https://attack.mitre.org/) → Enterprise → cliquer sur une tactique.
+
 ![MITRE ATT&CK v15 — Chaîne complète des 14 tactiques](img/mitre-attack-chain.png)
 
 **Fig 2** — Chaîne complète MITRE ATT&CK v15 : 14 tactiques de la Reconnaissance à l'Impact.
@@ -230,9 +232,9 @@ La **CVE** identifie *la vulnérabilité technique* (le trou). La **technique AT
 | CVE-2011-2523 | vsftpd 2.3.4 — backdoor (supply chain) | [T1190](https://attack.mitre.org/techniques/T1190/) Exploit Public-Facing App | J2 Lab 2.2 |
 | CVE-2007-2447 | Samba 3.0.20 — command injection (usermap) | [T1210](https://attack.mitre.org/techniques/T1210/) Exploit Remote Services | J2 Lab 2.3 |
 | CVE-2017-0144 | EternalBlue — buffer overflow SMB | [T1210](https://attack.mitre.org/techniques/T1210/) Exploit Remote Services | J2 Lab 2.2 |
-| *(aucune)* | XSS, SQLi, CSRF, CMDi (vulnérabilités génériques) | [T1189](https://attack.mitre.org/techniques/T1189/), [T1190](https://attack.mitre.org/techniques/T1190/), [T1203](https://attack.mitre.org/techniques/T1203/), [T1059.004](https://attack.mitre.org/techniques/T1059/004/) | J1 Labs LAB-3 à LAB-6 |
+| *(aucune)* | XSS, SQLi, CSRF, CMDi (vulnérabilités génériques) | [T1189](https://attack.mitre.org/techniques/T1189/) Drive-by Compromise, [T1190](https://attack.mitre.org/techniques/T1190/) Exploit Public-Facing App, [T1203](https://attack.mitre.org/techniques/T1203/) Exploitation for Client Execution, [T1059.004](https://attack.mitre.org/techniques/T1059/004/) Unix Shell | J1 Labs LAB-3 à LAB-6 |
 
-> **Note :** Les failles web (XSS, SQLi) n'ont pas de CVE unique car elles dépendent de l'implémentation. En revanche, les vulnérabilités logicielles (vsftpd, Samba) ont une CVE bien spécifique qui permet de les tracer et de les corriger via un système de patch management (M1051).
+> **Note :** Les failles web (XSS, SQLi) n'ont pas de CVE unique car elles dépendent de l'implémentation. En revanche, les vulnérabilités logicielles (vsftpd, Samba) ont une CVE bien spécifique qui permet de les tracer et de les corriger via un système de patch management ([M1051](https://attack.mitre.org/mitigations/M1051/) Update Software).
 
 ---
 
@@ -257,7 +259,7 @@ flowchart LR
 
 | Durée | Conteneur | Dossier | Outils | ATT&CK |
 |---|---|---|---|---|
-| 30 min | Aucun (bac à sable) | `rendu_labs/jour-01/` | [ATT&CK Navigator](https://mitre-attack.github.io/attack-navigator/) | [TA0043](https://attack.mitre.org/tactics/TA0043/) → [TA0005](https://attack.mitre.org/tactics/TA0005/) |
+| 30 min | Aucun (bac à sable) | `rendu_labs/jour-01/` | [ATT&CK Navigator](https://mitre-attack.github.io/attack-navigator/) | [TA0043](https://attack.mitre.org/tactics/TA0043/) Reconnaissance → [TA0005](https://attack.mitre.org/tactics/TA0005/) Stealth |
 
 ### Contexte métier
 
@@ -304,11 +306,11 @@ Pour chaque technique du plan, définissez :
 
 | Ordre | Technique | Dépend de | Risque | Objectif |
 |-------|-----------|-----------|--------|----------|
-| 1 | T1046 — Scan | — | Firewall bloque le port | Ports ouverts identifiés |
-| 2 | T1190 — SQLi | T1046 | WAF détecte union select | Dump de la base users |
-| 3 | T1189 — XSS | T1046 | CSP bloque le script | Vol de cookie admin |
-| 4 | T1059.004 — CMDi | T1046 | disable_functions coupe nc | Reverse shell |
-| 5 | T1110 — Brute Force | T1046 | Account lockout après 3 fails | Mot de passe admin |
+| 1 | [T1046](https://attack.mitre.org/techniques/T1046/) — Scan | — | Firewall bloque le port | Ports ouverts identifiés |
+| 2 | [T1190](https://attack.mitre.org/techniques/T1190/) — SQLi | T1046 | WAF détecte union select | Dump de la base users |
+| 3 | [T1189](https://attack.mitre.org/techniques/T1189/) — XSS | T1046 | CSP bloque le script | Vol de cookie admin |
+| 4 | [T1059.004](https://attack.mitre.org/techniques/T1059/004/) — CMDi | T1046 | disable_functions coupe nc | Reverse shell |
+| 5 | [T1110](https://attack.mitre.org/techniques/T1110/) — Brute Force | T1046 | Account lockout après 3 fails | Mot de passe admin |
 
 Documentez ce tableau dans `rendu_labs/jour-01/plan-attaque-j1.md`.
 
@@ -501,15 +503,15 @@ La première commande doit afficher `Welcome` (authentification réussie). Le fl
 - [ ] gobuster : /login.php, /vulnerabilities, /config trouvés
 - [ ] Connexion DVWA réussie (cookie `security=low` dans `/tmp/dvwa_cookie.txt`)
 
-### 🔒 Contre-mesure (M1031 + M1037)
+### 🔒 Contre-mesure ([M1031](https://attack.mitre.org/mitigations/M1031/) Network Intrusion Prevention + [M1037](https://attack.mitre.org/mitigations/M1037/) Filter Network Traffic)
 
 **Objectif :** Réduire la surface d'attaque pour empêcher la reconnaissance ennemie.
 
 | Mitigation | Action |
 |---|---|
-| **M1037** Pare-feu | `ufw default deny incoming` — limiter les ports exposés |
-| **M1042** Directory listing | `Options -Indexes` dans Apache — gobuster ne voit plus les dossiers |
-| **M1031** IDS/IPS | Snort/Suricata — détecter les patterns de scan nmap et gobuster |
+| [**M1037**](https://attack.mitre.org/mitigations/M1037/) Filter Network Traffic | `ufw default deny incoming` — limiter les ports exposés |
+| [**M1042**](https://attack.mitre.org/mitigations/M1042/) Disable or Remove Feature or Program | `Options -Indexes` dans Apache — gobuster ne voit plus les dossiers |
+| [**M1031**](https://attack.mitre.org/mitigations/M1031/) Network Intrusion Prevention | Snort/Suricata — détecter les patterns de scan nmap et gobuster |
 
 **Où ?** Terminal 1
 
@@ -643,7 +645,7 @@ GET /?cookie=PHPSESSID=abc123def456 HTTP/1.1
 
 **Explication :** L'impact est plus large que le Reflected XSS : un seul dépôt infecte **tous les visiteurs** de la page (administrateurs, modérateurs, clients). Dans un pentest réel, on exploite le Stored XSS pour cibler les back-offices d'administration.
 
-### 🔒 Contre-mesure (M1013 + M1054)
+### 🔒 Contre-mesure ([M1013](https://attack.mitre.org/mitigations/M1013/) Application Developer Guidance + [M1054](https://attack.mitre.org/mitigations/M1054/) Software Configuration)
 
 **Objectif :** Bloquer les attaques XSS en échappant les entrées HTML et en rendant les cookies inaccessibles au JavaScript.
 
@@ -765,7 +767,7 @@ sqlmap -u "http://localhost:8088/vulnerabilities/sqli/?id=1&Submit=Submit" \
 - [ ] SQLi manuelle : `grep -c "First name"` retourne 5
 - [ ] sqlmap : 5 utilisateurs extraits avec hashs MD5
 
-### 🔒 Contre-mesure (M1013 + M1041)
+### 🔒 Contre-mesure ([M1013](https://attack.mitre.org/mitigations/M1013/) Application Developer Guidance + [M1041](https://attack.mitre.org/mitigations/M1041/) Encrypt Sensitive Information)
 
 **Objectif :** Remplacer la concaténation SQL par des requêtes préparées pour neutraliser les injections.
 
@@ -872,7 +874,7 @@ ip addr show docker0 | grep 'inet ' | awk '{print $2}' | cut -d/ -f1
 
 ---
 
-### 🔒 Contre-mesure (M1013 + M1018)
+### 🔒 Contre-mesure ([M1013](https://attack.mitre.org/mitigations/M1013/) Application Developer Guidance + [M1018](https://attack.mitre.org/mitigations/M1018/) User Account Management)
 
 **Objectif :** Bloquer l'exécution de commandes système en désactivant les fonctions PHP dangereuses.
 
@@ -913,7 +915,7 @@ curl -s "http://localhost:8088/vulnerabilities/exec/" \
 
 | Durée | Conteneur | Dossier | Techniques |
 |---|---|---|---|
-| 1h | sqli-app (port 8083) | `rendu_labs/jour-01/` | [T1190](https://attack.mitre.org/techniques/T1190/) + [T1110.001](https://attack.mitre.org/techniques/T1110/001/) |
+| 1h | sqli-app (port 8083) | `rendu_labs/jour-01/` | [T1190](https://attack.mitre.org/techniques/T1190/) Exploit Public-Facing App + [T1110.001](https://attack.mitre.org/techniques/T1110/001/) Password Guessing |
 
 ### Contexte métier
 
@@ -1209,7 +1211,7 @@ sqlmap -u "http://localhost:8083/?page=search&id=1" \
 - [ ] john/hashcat a craqué au moins 3 mots de passe
 - [ ] Flag `FLAG{sql_injection_master}` trouvé
 
-### 🔒 Contre-mesure (M1013 + M1027)
+### 🔒 Contre-mesure ([M1013](https://attack.mitre.org/mitigations/M1013/) Application Developer Guidance + [M1027](https://attack.mitre.org/mitigations/M1027/) Password Policies)
 
 **Objectif :** Neutraliser les 3 points d'injection SQL en une seule stratégie : requêtes préparées PDO partout + bcrypt.
 
@@ -1404,7 +1406,7 @@ hydra -L /tmp/logins.txt -P /usr/share/wordlists/rockyou.txt \
 
 ---
 
-### 🔒 Contre-mesure (M1036 + M1027)
+### 🔒 Contre-mesure ([M1036](https://attack.mitre.org/mitigations/M1036/) Account Use Policies + [M1027](https://attack.mitre.org/mitigations/M1027/) Password Policies)
 
 **Objectif :** Bloquer les attaques par force brute en limitant le nombre de tentatives avec fail2ban.
 
@@ -1460,13 +1462,13 @@ Ce chapitre vous a fait parcourir les **7 phases d'une attaque web complète**, 
 
 | Lab | Attaque | Compétence acquise | ATT&CK |
 |-----|---------|-------------------|--------|
-| LAB-1 | Conception | Plan d'attaque ATT&CK Navigator | [TA0043](https://attack.mitre.org/tactics/TA0043/) → [TA0005](https://attack.mitre.org/tactics/TA0005/) |
+| LAB-1 | Conception | Plan d'attaque ATT&CK Navigator | [TA0043](https://attack.mitre.org/tactics/TA0043/) Reconnaissance → [TA0005](https://attack.mitre.org/tactics/TA0005/) Stealth |
 | LAB-2 | Scan + énumération | nmap, gobuster | [TA0043](https://attack.mitre.org/tactics/TA0043/) Reconnaissance |
-| LAB-3 | XSS (Reflected + Stored) | Injection JavaScript, vol cookie | [T1189](https://attack.mitre.org/techniques/T1189/) |
-| LAB-4 | SQLi automatique | sqlmap, dump base | [T1190](https://attack.mitre.org/techniques/T1190/) |
-| LAB-5 | Command Injection + Reverse Shell | Shell interactif, Meterpreter | [T1203](https://attack.mitre.org/techniques/T1203/) |
-| LAB-6 | SQLi avancée + Cracking | 3 points d'injection, john | [T1190](https://attack.mitre.org/techniques/T1190/) + [T1110](https://attack.mitre.org/techniques/T1110/) |
-| LAB-7 | Brute-force | Hydra, dictionnaire | [T1110](https://attack.mitre.org/techniques/T1110/) |
+| LAB-3 | XSS (Reflected + Stored) | Injection JavaScript, vol cookie | [T1189](https://attack.mitre.org/techniques/T1189/) Drive-by Compromise |
+| LAB-4 | SQLi automatique | sqlmap, dump base | [T1190](https://attack.mitre.org/techniques/T1190/) Exploit Public-Facing App |
+| LAB-5 | Command Injection + Reverse Shell | Shell interactif, Meterpreter | [T1203](https://attack.mitre.org/techniques/T1203/) Exploitation for Client Execution |
+| LAB-6 | SQLi avancée + Cracking | 3 points d'injection, john | [T1190](https://attack.mitre.org/techniques/T1190/) Exploit Public-Facing App + [T1110](https://attack.mitre.org/techniques/T1110/) Brute Force |
+| LAB-7 | Brute-force | Hydra, dictionnaire | [T1110](https://attack.mitre.org/techniques/T1110/) Brute Force |
 
 **Dans un pentest réel**, ces techniques s'enchaînent : on scanne → on trouve une vulnérabilité → on l'exploite → on extrait des données → on craque les mots de passe. Chaque étape correspond à une tactique ATT&CK et doit être documentée dans le rapport.
 
@@ -1491,7 +1493,7 @@ Ce chapitre vous a fait parcourir les **7 phases d'une attaque web complète**, 
 ## Points clés à retenir
 
 - **Planifier avant d'exécuter** : un plan ATT&CK complet guide chaque étape du pentest
-- **MITRE ATT&CK** : chaque attaque → ID Txxxx ([T1046](https://attack.mitre.org/techniques/T1046/), [T1189](https://attack.mitre.org/techniques/T1189/), [T1190](https://attack.mitre.org/techniques/T1190/), [T1059.004](https://attack.mitre.org/techniques/T1059/004/))
+- **MITRE ATT&CK** : chaque attaque → ID Txxxx ([T1046](https://attack.mitre.org/techniques/T1046/) Network Service Discovery, [T1189](https://attack.mitre.org/techniques/T1189/) Drive-by Compromise, [T1190](https://attack.mitre.org/techniques/T1190/) Exploit Public-Facing App, [T1059.004](https://attack.mitre.org/techniques/T1059/004/) Unix Shell)
 - Les 14 tactiques couvrent le cycle complet d'une cyberattaque
 - **DVWA** expose les 4 familles de vulnérabilités web
 - **XSS vole des sessions**, **SQLi vole des données**, **CMDi donne un shell**
