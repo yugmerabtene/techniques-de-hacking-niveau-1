@@ -209,7 +209,7 @@ flowchart LR
 
 | Durée | Conteneur | Dossier |
 |---|---|---|
-| 1h30 | forensic-victim (port 8082) | `~/cours-hacking/labs/jour-05/` |
+| 1h30 | forensic-victim (port 8082) | `rendu_labs/jour-05/` |
 
 ### Contexte métier
 
@@ -231,12 +231,12 @@ flowchart LR
 # Démarrage du conteneur victime forensique en arrière-plan avec reconstruction de l'image
 # -d : mode détaché (le terminal reste libre)
 # --build : force la reconstruction de l'image (nécessaire si le Dockerfile a changé)
-cd ~/cours-hacking/repo && docker compose up -d --build forensic-victim
+docker compose up -d --build forensic-victim
 # curl -I : méthode HTTP HEAD, ne récupère que les en-têtes (pas le corps de la réponse)
 # Permet de vérifier rapidement que le serveur web répond (code 200 = OK) sans télécharger la page
 curl -I http://localhost:8082/
 # Préparation du répertoire de travail pour les labs du jour 5
-mkdir -p ~/cours-hacking/labs/jour-05 && cd ~/cours-hacking/labs/jour-05
+mkdir -p rendu_labs/jour-05 && cd rendu_labs/jour-05
 ```
 
 ### Étape 1 — Découverte du point d'entrée
@@ -375,7 +375,7 @@ docker exec forensic-victim grep www-data /etc/sudoers
 ### Étape 5 — Rapport d'incident (conforme NIS2)
 
 ```bash
-cd ~/cours-hacking/labs/jour-05
+cd rendu_labs/jour-05
 # Génération du rapport d'incident via heredoc (cat > fichier << 'DELIMITEUR')
 # Le délimiteur 'EOF' est quoté → aucune expansion de variable dans le corps
 # Ce rapport respecte le format exigé par NIS2 art.23 pour la notification sous 72h
@@ -480,7 +480,7 @@ Cette section résume les obligations qui s'appliquent aux institutions de l'Ét
 
 | Durée | Dossier | Output |
 |---|---|---|
-| 30 min | `~/cours-hacking/labs/jour-05/` | `rapport_final.md` |
+| 30 min | `rendu_labs/jour-05/` | `rapport_final.md` |
 
 ```mermaid
 flowchart LR
@@ -492,7 +492,7 @@ flowchart LR
 **Fig 18** — Pipeline de génération de rapport : le script `generate_report.py` lit les vulnérabilités depuis `findings.json`, applique le template markdown avec les tags ATT&CK, et produit `rapport_final.md`.
 
 ```bash
-cd ~/cours-hacking/labs/jour-05
+cd rendu_labs/jour-05
 # Création du script Python via heredoc (cat > fichier << 'PYEOF')
 # 'PYEOF' quoté empêche l'expansion bash des variables Python {date}, {c}, etc.
 cat > generate_report.py << 'PYEOF'
@@ -574,7 +574,7 @@ echo "Script generate_report.py créé"
 ```
 
 ```bash
-cd ~/cours-hacking/labs/jour-05
+cd rendu_labs/jour-05
 
 # Création du fichier JSON d'entrée contenant les vulnérabilités à rapporter
 # Structure JSON attendue par generate_report.py :

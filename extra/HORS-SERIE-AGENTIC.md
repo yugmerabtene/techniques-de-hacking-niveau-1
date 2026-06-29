@@ -100,7 +100,7 @@ Si ce n'est pas fait, lisez au minimum :
 
 ```bash
 # Cloner le dépôt du cours (déjà fait en J1)
-cd ~/cours-hacking/repo/extra/hors-serie
+cd extra/hors-serie
 
 # Environnement Python (isole les dépendances du projet pour ne pas polluer le système)
 # python3 -m venv .venv = crée un environnement virtuel Python dans le dossier .venv/
@@ -814,7 +814,7 @@ Automatiser une kill chain ATT&CK complète via des agents spécialisés.
 ## Vérification — Fin de Sprint 0
 
 ```bash
-cd ~/cours-hacking/repo/extra/hors-serie
+cd extra/hors-serie
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt

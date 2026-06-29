@@ -67,7 +67,7 @@ flowchart LR
 
 | Durée | Conteneur | Dossier | Mitigations |
 |---|---|---|---|
-| 1h30 | secure-linux-target (port 2224) | `~/cours-hacking/labs/jour-04/` | M1051 + M1037 + M1036 + M1050 + M1022 |
+| 1h30 | secure-linux-target (port 2224) | `rendu_labs/jour-04/` | M1051 + M1037 + M1036 + M1050 + M1022 |
 
 ### Contexte métier
 
@@ -104,12 +104,12 @@ flowchart LR
 ```bash
 # -d : démarre les conteneurs en arrière-plan (detached), libère le terminal
 # --build : reconstruit l'image à chaque fois pour intégrer les dernières modifications
-cd ~/cours-hacking/repo && docker compose up -d --build secure-linux
+docker compose up -d --build secure-linux
 # -z : scan passif (zero-I/O), teste la connectivité TCP sans envoyer de données
 # Vérifie que le service SSH est bien accessible sur le port 2224 avant de continuer
 nc -z localhost 2224 && echo "SSH OK"
 # -p : crée récursivement les répertoires parents s'ils n'existent pas (mkdir --parents)
-mkdir -p ~/cours-hacking/labs/jour-04 && cd ~/cours-hacking/labs/jour-04
+mkdir -p rendu_labs/jour-04 && cd rendu_labs/jour-04
 ```
 
 ### Étape 1 — État initial (vulnérable)
@@ -131,7 +131,7 @@ sshpass -p 'changeme' ssh -o StrictHostKeyChecking=no \
 ### Étape 2 — Script de durcissement
 
 ```bash
-cd ~/cours-hacking/labs/jour-04
+cd rendu_labs/jour-04
 # Construction du script de durcissement via heredoc (cat > fichier << 'DELIMITEUR')
 # La syntaxe 'SCRIPT_EOF' (guillemets simples autour du délimiteur) empêche l'expansion
 # des variables dans le corps du heredoc — le contenu est écrit littéralement
@@ -279,7 +279,7 @@ echo "Script hardening.sh créé"
 ### Étape 3 — Appliquer le durcissement
 
 ```bash
-cd ~/cours-hacking/labs/jour-04
+cd rendu_labs/jour-04
 # docker cp : copie un fichier de l'hôte vers le conteneur (ou inversement)
 # Syntaxe : docker cp <source_hôte> <nom_conteneur>:<destination_conteneur>
 docker cp hardening.sh secure-linux-target:/root/
@@ -346,7 +346,7 @@ docker exec secure-linux-target fail2ban-client status sshd
 
 | Durée | Conteneur | Dossier | Mitigations |
 |---|---|---|---|
-| 1h | elk-soc (Kibana 5601) | `~/cours-hacking/labs/jour-04/` | M1047 Log Collection + M1030 SIEM |
+| 1h | elk-soc (Kibana 5601) | `rendu_labs/jour-04/` | M1047 Log Collection + M1030 SIEM |
 
 ### Contexte métier
 
@@ -372,7 +372,7 @@ flowchart LR
 ### Prérequis
 
 ```bash
-cd ~/cours-hacking
+cd /chemin/vers/techniques-de-hacking-niveau-1
 
 # 📌 Démarrer ELK (profil soc, compter 2-3 min pour Elasticsearch)
 # ELK est lourd : chaque étudiant doit avoir au moins 4 Go RAM alloués à Docker
@@ -387,8 +387,8 @@ curl -s -o /dev/null -w "%{http_code}" http://localhost:5601
 # → 200  (Kibana est prêt)
 
 # 📌 Créer le dossier de travail
-mkdir -p ~/cours-hacking/labs/jour-04
-cd ~/cours-hacking/labs/jour-04
+mkdir -p rendu_labs/jour-04
+cd rendu_labs/jour-04
 ```
 
 > **Note mémoire :** Kibana nécessite ~2 Go RAM pour Elasticsearch. Si votre VM Kali plante, réduisez `ES_JAVA_OPTS=-Xms256m -Xmx512m` dans docker-compose.yml.
@@ -396,7 +396,7 @@ cd ~/cours-hacking/labs/jour-04
 ### Étape 1 — Envoyer les logs des conteneurs à Logstash
 
 ```bash
-cd ~/cours-hacking/labs/jour-04
+cd rendu_labs/jour-04
 
 # 📌 Configuration Filebeat pour DVWA (envoie les logs Apache vers Logstash)
 # Filebeat est un shipper léger qui lit les fichiers de logs et les envoie à Logstash/Elasticsearch
@@ -439,7 +439,7 @@ echo "Les logs DVWA sont envoyés à Logstash"
 ### Étape 2 — Indexer les logs dans Kibana
 
 ```bash
-cd ~/cours-hacking/labs/jour-04
+cd rendu_labs/jour-04
 
 # 📌 Créer le data view dans Kibana via l'API (ou interface web)
 # Un data view = un "pointeur" vers un index Elasticsearch (le pattern filebeat-* matche tous les logs Filebeat)
@@ -464,7 +464,7 @@ echo "Ouvrir Kibana : http://localhost:5601/app/discover"
 ### Étape 3 — Dashboard de sécurité
 
 ```bash
-cd ~/cours-hacking/labs/jour-04
+cd rendu_labs/jour-04
 
 # 📌 Créer un dashboard de sécurité dans Kibana
 # Ce dashboard visualise :

