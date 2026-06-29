@@ -31,56 +31,47 @@ Vous apprendrez à :
 - Cartographier vos attaques avec le framework MITRE ATT&CK
 - Documenter vos résultats dans un rapport professionnel
 
----
+### Mise en place des contre-mesures
 
-## A.4 Validation — Vérification des cibles
-
-Avant de commencer, assurez-vous que tous les conteneurs du lab répondent correctement :
+Avant de lancer les attaques des prochains labs, vérifions que les conteneurs cibles sont accessibles et que les contre-mesures de base (WAF, firewall) répondent comme attendu.
 
 ```bash
-# DVWA — Vérification que l'application web répond sur le port 8088 (-I = requête HEAD, ne télécharge que les en-têtes)
+# DVWA — Application web sur le port 8088
 curl -I http://localhost:8088/login.php
 # → HTTP/1.1 200 OK
-# Login : admin / password → DVWA Security → low
 
-# SQLi App — Test de la page de recherche avec injection basique sur le paramètre id
+# SQLi App — Test de la page de recherche
 curl "http://localhost:8083/?page=search&id=1"
-# → Laptop Pro X  (le produit avec id=1 s'affiche, l'appli est accessible)
-# Bypass d'authentification : injection SQL commentée (--), -s = mode silencieux (pas de barre de progression)
-# grep = filtre les lignes contenant un motif ; -o = affiche uniquement la correspondance (pas la ligne entière)
-# | (pipe) = redirige la sortie de la commande gauche vers l'entrée de la commande droite
-curl -s -d "page=login&username=admin'%20--&password=x" "http://localhost:8083/" | grep -o "Connecté"
-# → Connecté en tant que admin  (le commentaire -- neutralise le check du password)
+# → Laptop Pro X  (produit affiché)
 
-# vsftpd 2.3.4 — Bannière FTP attendue sur le port 21 (-w2 = timeout de 2 secondes)
-# echo = affiche du texte dans la sortie standard ; le pipe | envoie cette sortie vers l'entrée standard (stdin) de nc
-# nc (netcat) = couteau suisse réseau : connexions TCP/UDP, transfert de données, écoute de ports
+# vsftpd 2.3.4 — Bannière FTP sur le port 21
 echo "" | nc -w2 localhost 21
-# → 220 (vsFTPd 2.3.4)  (version connue vulnérable, exploitable via Metasploit)
+# → 220 (vsFTPd 2.3.4)
 
-# Samba — Scan nmap de détection de version (-sV) sur le port 445 uniquement (-p)
+# Samba — Scan de version sur le port 445
 nmap -sV -p 445 localhost | grep 445
-# → 445/tcp open netbios-ssn Samba smbd 3.0.20  (version ancienne vulnérable)
+# → 445/tcp open netbios-ssn Samba smbd 3.0.20
 
-# Buffer overflow — Vérification que le port 9001 est ouvert (-z = scan sans envoyer de données)
+# Buffer overflow — Port 9001 ouvert
 nc -z localhost 9001 && echo "OK"
 
-# WAF — Requête normale : code HTTP attendu → 200 (-o /dev/null = jette le corps, -w formate la sortie)
+# WAF — ModSecurity : requête normale → 200, injection → 403
 curl -s -o /dev/null -w "%{http_code}" "http://localhost:8081/?id=1"
-# → 200  (page accessible normalement)
-# Requête avec injection SQL : le WAF (ModSecurity) doit bloquer → 403 Forbidden
+# → 200
 curl -s -o /dev/null -w "%{http_code}" "http://localhost:8081/?id=1 OR 1=1"
-# → 403 (WAF bloque)  (ModSecurity détecte et rejette la tentative d'injection SQL)
+# → 403 (WAF bloque)
 
-# Secure Linux — Test de connectivité SSH sur le port 2224
+# Secure Linux — SSH sur le port 2224
 nc -z localhost 2224 && echo "SSH OK"
 
-# Forensic victim — Exécution de commande via le paramètre cmd (command injection volontaire pour les exercices forensic)
+# Forensic victim — Injection de commande
 curl "http://localhost:8082/?cmd=id"
-# → uid=33(www-data)  (l'utilisateur serveur web est bien www-data, injection confirmée)
+# → uid=33(www-data)
 ```
 
 ---
+
+## Objectifs pédagogiques
 
 ## Objectifs pédagogiques
 
