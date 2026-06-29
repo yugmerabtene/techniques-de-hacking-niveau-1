@@ -31,47 +31,7 @@ Vous apprendrez à :
 - Cartographier vos attaques avec le framework MITRE ATT&CK
 - Documenter vos résultats dans un rapport professionnel
 
-### Mise en place des contre-mesures
-
-Avant de lancer les attaques des prochains labs, vérifions que les conteneurs cibles sont accessibles et que les contre-mesures de base (WAF, firewall) répondent comme attendu.
-
-```bash
-# DVWA — Application web sur le port 8088
-curl -I http://localhost:8088/login.php
-# → HTTP/1.1 200 OK
-
-# SQLi App — Test de la page de recherche
-curl "http://localhost:8083/?page=search&id=1"
-# → Laptop Pro X  (produit affiché)
-
-# vsftpd 2.3.4 — Bannière FTP sur le port 21
-echo "" | nc -w2 localhost 21
-# → 220 (vsFTPd 2.3.4)
-
-# Samba — Scan de version sur le port 445
-nmap -sV -p 445 localhost | grep 445
-# → 445/tcp open netbios-ssn Samba smbd 3.0.20
-
-# Buffer overflow — Port 9001 ouvert
-nc -z localhost 9001 && echo "OK"
-
-# WAF — ModSecurity : requête normale → 200, injection → 403
-curl -s -o /dev/null -w "%{http_code}" "http://localhost:8081/?id=1"
-# → 200
-curl -s -o /dev/null -w "%{http_code}" "http://localhost:8081/?id=1 OR 1=1"
-# → 403 (WAF bloque)
-
-# Secure Linux — SSH sur le port 2224
-nc -z localhost 2224 && echo "SSH OK"
-
-# Forensic victim — Injection de commande
-curl "http://localhost:8082/?cmd=id"
-# → uid=33(www-data)
-```
-
 ---
-
-## Objectifs pédagogiques
 
 ## Objectifs pédagogiques
 
