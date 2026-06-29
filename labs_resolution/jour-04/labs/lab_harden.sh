@@ -14,8 +14,8 @@ cd ~/cours-hacking/repo
 docker compose up -d --build secure-linux
 nc -z localhost 2224 && echo "SSH OK"
 
-mkdir -p ~/cours-hacking/labs/jour-4
-cd ~/cours-hacking/labs/jour-4
+mkdir -p ~/cours-hacking/labs/jour-04
+cd ~/cours-hacking/labs/jour-04
 
 # Identifiants du serveur
 USER="root"

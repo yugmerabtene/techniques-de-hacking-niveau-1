@@ -14,8 +14,8 @@ cd ~/cours-hacking/repo
 docker compose up -d --build forensic-victim
 curl -I http://localhost:8082/
 
-mkdir -p ~/cours-hacking/labs/jour-5
-cd ~/cours-hacking/labs/jour-5
+mkdir -p ~/cours-hacking/labs/jour-05
+cd ~/cours-hacking/labs/jour-05
 
 echo ""
 echo "=== Étape 1 — Découverte du point d'entrée ==="

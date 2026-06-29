@@ -27,8 +27,8 @@ done
 curl -s -o /dev/null -w "%{http_code}" http://localhost:5601
 echo " (Kibana)"
 
-mkdir -p ~/cours-hacking/labs/jour-4
-cd ~/cours-hacking/labs/jour-4
+mkdir -p ~/cours-hacking/labs/jour-04
+cd ~/cours-hacking/labs/jour-04
 
 echo ""
 echo "=== Étape 1 — Vérification des logs ==="
