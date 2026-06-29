@@ -197,7 +197,7 @@ Détection de l'incident
 
 | Durée | Conteneur | Dossier |
 |---|---|---|
-| 1h30 | forensic-victim (port 8082) | `~/cours-hacking/jour-5/labs/` |
+| 1h30 | forensic-victim (port 8082) | `~/cours-hacking/labs/jour-5/` |
 
 ### Contexte métier
 
@@ -214,7 +214,7 @@ cd ~/cours-hacking/repo && docker compose up -d --build forensic-victim
 # Permet de vérifier rapidement que le serveur web répond (code 200 = OK) sans télécharger la page
 curl -I http://localhost:8082/
 # Préparation du répertoire de travail pour les labs du jour 5
-mkdir -p ~/cours-hacking/jour-5/labs && cd ~/cours-hacking/jour-5/labs
+mkdir -p ~/cours-hacking/labs/jour-5 && cd ~/cours-hacking/labs/jour-5
 ```
 
 ### Étape 1 — Découverte du point d'entrée
@@ -353,7 +353,7 @@ docker exec forensic-victim grep www-data /etc/sudoers
 ### Étape 5 — Rapport d'incident (conforme NIS2)
 
 ```bash
-cd ~/cours-hacking/jour-5/labs
+cd ~/cours-hacking/labs/jour-5
 # Génération du rapport d'incident via heredoc (cat > fichier << 'DELIMITEUR')
 # Le délimiteur 'EOF' est quoté → aucune expansion de variable dans le corps
 # Ce rapport respecte le format exigé par NIS2 art.23 pour la notification sous 72h
@@ -458,10 +458,10 @@ Cette section résume les obligations qui s'appliquent aux institutions de l'Ét
 
 | Durée | Dossier | Output |
 |---|---|---|
-| 30 min | `~/cours-hacking/jour-5/labs/` | `rapport_final.md` |
+| 30 min | `~/cours-hacking/labs/jour-5/` | `rapport_final.md` |
 
 ```bash
-cd ~/cours-hacking/jour-5/labs
+cd ~/cours-hacking/labs/jour-5
 # Création du script Python via heredoc (cat > fichier << 'PYEOF')
 # 'PYEOF' quoté empêche l'expansion bash des variables Python {date}, {c}, etc.
 cat > generate_report.py << 'PYEOF'
@@ -543,7 +543,7 @@ echo "Script generate_report.py créé"
 ```
 
 ```bash
-cd ~/cours-hacking/jour-5/labs
+cd ~/cours-hacking/labs/jour-5
 
 # Création du fichier JSON d'entrée contenant les vulnérabilités à rapporter
 # Structure JSON attendue par generate_report.py :
