@@ -8,14 +8,14 @@ echo "=== Lab 5.1 — Investigation forensique ==="
 echo "Cible : forensic-victim (port $FORENSIC_PORT)"
 echo ""
 
-cd ~/cours-hacking/repo
+cd /chemin/vers/techniques-de-hacking-niveau-1
 
 # Démarrage du conteneur victime
 docker compose up -d --build forensic-victim
 curl -I http://localhost:8082/
 
-mkdir -p ~/cours-hacking/labs/jour-05
-cd ~/cours-hacking/labs/jour-05
+mkdir -p rendu_labs/jour-05
+cd rendu_labs/jour-05
 
 echo ""
 echo "=== Étape 1 — Découverte du point d'entrée ==="

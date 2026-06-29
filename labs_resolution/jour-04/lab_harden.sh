@@ -8,14 +8,14 @@ echo "=== Lab 4.1 — Durcissement Linux ==="
 echo "Cible : secure-linux-target (port $SECURE_LINUX_PORT)"
 echo ""
 
-cd ~/cours-hacking/repo
+cd /chemin/vers/techniques-de-hacking-niveau-1
 
 # Démarrage du conteneur
 docker compose up -d --build secure-linux
 nc -z localhost 2224 && echo "SSH OK"
 
-mkdir -p ~/cours-hacking/labs/jour-04
-cd ~/cours-hacking/labs/jour-04
+mkdir -p rendu_labs/jour-04
+cd rendu_labs/jour-04
 
 # Identifiants du serveur
 USER="root"

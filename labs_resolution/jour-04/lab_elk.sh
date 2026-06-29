@@ -8,7 +8,7 @@ echo "=== Lab 4.2 — ELK Stack SOC ==="
 echo "Services : Elasticsearch:9200 | Kibana:$ELK_PORT"
 echo ""
 
-cd ~/cours-hacking/repo
+cd /chemin/vers/techniques-de-hacking-niveau-1
 
 # Démarrage ELK (profil soc)
 docker compose --profile soc up -d elk
@@ -27,8 +27,8 @@ done
 curl -s -o /dev/null -w "%{http_code}" http://localhost:5601
 echo " (Kibana)"
 
-mkdir -p ~/cours-hacking/labs/jour-04
-cd ~/cours-hacking/labs/jour-04
+mkdir -p rendu_labs/jour-04
+cd rendu_labs/jour-04
 
 echo ""
 echo "=== Étape 1 — Vérification des logs ==="

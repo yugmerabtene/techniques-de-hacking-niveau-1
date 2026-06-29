@@ -53,11 +53,11 @@ Une fois le dépôt cloné, voici l'arborescence **réelle** :
 ```text
 techniques-de-hacking-niveau-1/      # Dépôt du cours (RACINE)
 ├── labs_resolution/                 # 🔥 Labs RÉSOLUS (correction, référence)
-│   ├── jour-01/labs/                #   Scripts XSS, SQLi, CMDi, hash cracking
-│   ├── jour-02/labs/                #   Recon nmap, exploits vsftpd/Samba, MITM
-│   ├── jour-03/labs/                #   BOF pwntools, WAF bypass, Trojan
-│   ├── jour-04/labs/                #   Hardening + ELK SOC
-│   └── jour-05/labs/                #   Forensique + generate_report.py
+│   ├── jour-01/                     #   Scripts XSS, SQLi, CMDi, hash cracking
+│   ├── jour-02/                     #   Recon nmap, exploits vsftpd/Samba, MITM (incl. recon/)
+│   ├── jour-03/                     #   BOF pwntools, WAF bypass, Trojan
+│   ├── jour-04/                     #   Hardening + ELK SOC
+│   └── jour-05/                     #   Forensique + generate_report.py
 ├── rendu_labs/                      # 📁 Votre dossier de rendu (à créer / compléter)
 │   ├── jour-01/                     #   → Déposez vos travaux J1 ici
 │   ├── jour-02/                     #   → Déposez vos travaux J2 ici
@@ -69,14 +69,12 @@ techniques-de-hacking-niveau-1/      # Dépôt du cours (RACINE)
 ├── docker/                          # Dockerfiles (buffovf, forensic, sqli-app, waf, secure-linux)
 ├── img/                             # Schémas et figures
 ├── JOUR-01*.md → JOUR-05*.md       # Supports de cours
-├── HORS-SERIE-AGENTIC.md
 ├── PLAN_SCHEMAS.md
 ├── README.md
 └── extra/                           # Projets complémentaires
+    ├── HORS-SERIE-AGENTIC.md
     └── hors-serie/                  # Dockerfile + code source KillChainAgent
 ```
-
-> **Note :** `rendu_labs/jour-0X/` est votre dossier de rendu — vous y placez vos scripts, captures, rapports. Consultez `labs_resolution/jour-0X/labs/` si vous êtes bloqué.
 
 ```mermaid
 flowchart LR
@@ -86,7 +84,7 @@ flowchart LR
     D --> E["5. cd rendu_labs/jour-0X"]
     E --> F["6. Travailler !"]
     F --> G{"Bloqué ?"}
-    G -->|"Oui"| H["cat labs_resolution/jour-0X/labs/*.sh"]
+    G -->|"Oui"| H["cat labs_resolution/jour-0X/*.sh"]
     G -->|"Non"| I["Passer au lab suivant"]
 ```
 
@@ -1247,7 +1245,7 @@ techniques-de-hacking-niveau-1/
 ├── rendu_labs/            # 📁 Votre dossier de rendu
 │   └── jour-0X/           #   Déposez vos travaux ici
 ├── labs_resolution/       # 🔥 CORRIGÉS — solutions complètes
-│   └── jour-0X/labs/      #   Scripts, scans, exploits résolus
+│   └── jour-0X/           #   Scripts, scans, exploits résolus
 ├── env.sh                 # Variables d'environnement (sourcer avant les labs)
 ├── docker-compose.yml     # Orchestration des 7 conteneurs
 ├── docker/                # Dockerfiles de chaque conteneur
@@ -1298,9 +1296,9 @@ techniques-de-hacking-niveau-1/
 
 ```bash
 # Les scripts résolus se trouvent dans labs_resolution/
-ls labs_resolution/jour-01/labs/
+ls labs_resolution/jour-01/
 # Exemple : copier le corrigé du lab XSS dans votre dossier de travail
-cp labs_resolution/jour-01/labs/lab_xss.sh rendu_labs/jour-01/
+cp labs_resolution/jour-01/lab_xss.sh rendu_labs/jour-01/
 ```
 
 ### Avant chaque lab
