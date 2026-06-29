@@ -187,6 +187,18 @@ Détection de l'incident
 
 **Fig 14** — Chronologie des obligations de notification NIS2 : alerte précoce sous 24h, notification complète sous 72h, rapport final sous 1 mois.
 
+```mermaid
+flowchart LR
+    A["🔍 Incident détecté<br/>T=0"] --> B{"Données<br/>personnelles ?"}
+    B -->|"Oui"| C["CNIL sous 72h<br/>RGPD art.33"]
+    B -->|"Non"| D
+    C --> D["CERT-FR sous 24h<br/>Alerte précoce"]
+    D --> E["CERT-FR sous 72h<br/>Notification complète"]
+    E --> F["CERT-FR sous 1 mois<br/>Rapport final"]
+```
+
+**Fig 15** — Procédure de notification NIS2 + RGPD : arbre de décision et délais réglementaires pour la double notification.
+
 **Double obligation :** si l'incident implique des données personnelles, notification CNIL sous 72h (RGPD art.33) en parallèle du CERT-FR.
 
 ---
@@ -202,6 +214,16 @@ Détection de l'incident
 ### Contexte métier
 
 Un serveur web vient d'être compromis. En tant que RSSI, vous devez analyser la scène de crime, collecter les preuves (qui seront transmises au CERT-FR), reconstruire la kill chain de l'attaquant, et rédiger le rapport d'incident dans les 72h.
+
+```mermaid
+flowchart LR
+    A["T1190 SQLi<br/>/?cmd=id"] --> B["T1059.004 CMDi<br/>whoami · id"]
+    B --> C["T1505 Backdoor<br/>cmd.php caché"]
+    C --> D["T1548 SUID<br/>/bin/bash +s"]
+    D --> E["T1098 SSH key<br/>authorized_keys"]
+```
+
+**Fig 16** — Kill chain forensique reconstituée à partir des logs et artefacts : SQLi (T1190) → CMDi (T1059.004) → Backdoor (T1505) → SUID (T1548) → Persistance SSH (T1098.004).
 
 ### Prérequis
 
@@ -439,7 +461,7 @@ Cette section résume les obligations qui s'appliquent aux institutions de l'Ét
 | Remédiation | 1 mois | Patch, correction, restauration des services |
 | Rapport final | 1 mois | Causes, REX, mesures correctives, mise à jour RGS |
 
-**Fig 15** — Procédure NIS2 de bout en bout : délais réglementaires de notification et actions associées.
+**Fig 17** — Procédure NIS2 de bout en bout : délais réglementaires de notification et actions associées.
 
 ### Références officielles
 
@@ -459,6 +481,15 @@ Cette section résume les obligations qui s'appliquent aux institutions de l'Ét
 | Durée | Dossier | Output |
 |---|---|---|
 | 30 min | `~/cours-hacking/labs/jour-05/` | `rapport_final.md` |
+
+```mermaid
+flowchart LR
+    A["findings.json<br/>Vulnérabilités + CVSS"] --> B["generate_report.py<br/>Script Python"]
+    B -->|"template + format"| C["rapport_final.md<br/>Rapport de pentest"]
+    D["env.sh"] -->|"Tags ATT&CK"| B
+```
+
+**Fig 18** — Pipeline de génération de rapport : le script `generate_report.py` lit les vulnérabilités depuis `findings.json`, applique le template markdown avec les tags ATT&CK, et produit `rapport_final.md`.
 
 ```bash
 cd ~/cours-hacking/labs/jour-05

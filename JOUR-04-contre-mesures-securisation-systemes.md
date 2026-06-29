@@ -85,6 +85,20 @@ Un serveur de production non durci est une cible triviale. Dans un rapport de pe
 
 **Fig 13** — Pipeline de durcissement Linux en 7 étapes : mise à jour, services inutiles, SSH, pare-feu UFW, Fail2ban, protections noyau, audit SUID.
 
+```mermaid
+flowchart LR
+    A["1. Mise à jour<br/>M1051"] --> B["2. Services<br/>M1042"]
+    B --> C["3. SSH Hardening<br/>M1018"]
+    C --> D["4. Pare-feu UFW<br/>M1037"]
+    D --> E["5. Fail2ban<br/>M1036"]
+    E --> F["6. Kernel ASLR<br/>M1050"]
+    F --> G["7. Audit SUID<br/>M1022"]
+    G --> H["✅ Serveur durci"]
+    style H fill:#4a4,color:#fff
+```
+
+**Fig 13b** — Pipeline de durcissement sous forme de flux : les 7 étapes s'enchaînent de la mise à jour initiale à l'audit final. Chaque étape correspond à une mitigation ATT&CK.
+
 ### Prérequis
 
 ```bash
@@ -519,6 +533,18 @@ curl -s "http://localhost:5601/api/console/proxy?path=_search&method=POST" \
 ![Triangle CIA — Confidentialité, Intégrité, Disponibilité](img/triade-en.png)
 
 **Fig 18** — Triangle CIA : les 3 piliers de la sécurité de l'information. Chaque incident impacte un ou plusieurs piliers. L'analyse CIA est exigée par le RGS pour l'homologation.
+
+```mermaid
+flowchart LR
+    C["🔐 Confidentialité<br/>Données protégées<br/>Chiffrement, RBAC"] --> I["📝 Intégrité<br/>Données fiables<br/>Signature, Hash"]
+    I --> D["⏱ Disponibilité<br/>Service accessible<br/>Redondance, Backup"]
+    D --> C
+    C -->|"Chiffrement TLS<br/>M1040"| D
+    C -->|"Contrôle d'accès<br/>M1018"| I
+    I -->|"Hachage SHA-256<br/>M1022"| D
+```
+
+**Fig 18b** — Triangle CIA détaillé avec exemples concrets : chaque pilier est interconnecté et associé à des mitigations ATT&CK.
 
 ### Matrice de couverture défensive
 

@@ -388,6 +388,16 @@ Un trojan (ou cheval de Troie) est un logiciel malveillant déguisé en programm
 
 **Positionnement :** Contrairement aux exploits des Labs 2.2-2.3 (vulnérabilités réseau), le trojan exploite le **facteur humain** : un utilisateur exécute volontairement le fichier. C'est la technique la plus utilisée dans les attaques réelles (Verizon DBIR : 74% des brèches impliquent l'humain).
 
+```mermaid
+flowchart LR
+    A["Kali (attaquant)<br/>msfvenom"] -->|"Génère .exe<br/>meterpreter reverse HTTPS"| B["Trojan<br/>update_package.exe"]
+    B -->|"Livraison : USB / mail / download"| C["Victime Windows 10<br/>Double-clic"]
+    C -->|"Exécution<br/>T1204.002"| D["Meterpreter shell<br/>HTTPS → Kali"]
+    D -->|"Post-exploitation<br/>keylog, screenshot, hashdump"| E["Exfiltration"]
+```
+
+**Fig 11b** — Chaîne d'attaque Trojan Windows : génération du payload avec msfvenom, livraison à la victime, exécution volontaire (T1204.002), établissement d'un canal HTTPS (T1071.001), et post-exploitation.
+
 ### Prérequis
 
 ```bash

