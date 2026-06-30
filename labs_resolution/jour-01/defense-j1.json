@@ -13,26 +13,20 @@
   "viewMode": 1,
   "mitigations": [
     {
-      "mitigationID": "M1031",
+      "mitigationID": "M1042",
       "enabled": true,
       "color": "#2ecc71",
-      "comment": "Network Intrusion Prevention - Directory listing désactivé (LAB-2), Snort/Suricata bloque les scans nmap",
+      "comment": "Disable or Remove Feature - Directory listing Apache désactivé (LAB-2), Snort/Suricata en NIDS",
       "metadata": [["Technique ciblée", "T1046 - Network Service Scanning"]]
     },
     {
       "mitigationID": "M1013",
       "enabled": true,
       "color": "#2ecc71",
-      "comment": "Application Hardening - htmlspecialchars(), CSP, HttpOnly contre XSS et vol cookie",
-      "metadata": [["Technique ciblée", "T1189 - Drive-by Compromise (XSS)"], ["Technique ciblée", "T1539 - Steal Web Session Cookie"]]
+      "comment": "Application Hardening - htmlspecialchars(), CSP, HttpOnly contre XSS et vol cookie ; PDO contre injections SQL",
+      "metadata": [["Technique ciblée", "T1189 - Drive-by Compromise (XSS)"], ["Technique ciblée", "T1539 - Steal Web Session Cookie"], ["Technique ciblée", "T1190 - Exploit Public-Facing App (SQLi)"]]
     },
-    {
-      "mitigationID": "M1041",
-      "enabled": true,
-      "color": "#2ecc71",
-      "comment": "WAF + Requêtes préparées - ModSecurity et PDO contre les injections SQL",
-      "metadata": [["Technique ciblée", "T1190 - Exploit Public-Facing App (SQLi)"]]
-    },
+
     {
       "mitigationID": "M1018",
       "enabled": true,

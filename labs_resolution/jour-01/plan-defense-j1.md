@@ -14,13 +14,13 @@
 | Priorité | Technique ATT&CK | Risque | Mitigation ATT&CK | Contre-mesure | Statut |
 |----------|-----------------|--------|-------------------|---------------|--------|
 | **P0** | [T1059.004](https://attack.mitre.org/techniques/T1059/004/) Unix Shell (CMDi) | Shell serveur | [M1018](https://attack.mitre.org/mitigations/M1018/) User Account Control | `disable_functions` php.ini | Appliquée (LAB-5) |
-| **P0** | [T1190](https://attack.mitre.org/techniques/T1190/) Exploit Public-Facing App (SQLi) | Exfiltration DB | [M1041](https://attack.mitre.org/mitigations/M1041/) Encrypt Sensitive Info | Requêtes préparées (PDO) | Conceptuelle (LAB-4, LAB-6) |
+| **P0** | [T1190](https://attack.mitre.org/techniques/T1190/) Exploit Public-Facing App (SQLi) | Exfiltration DB | [M1013](https://attack.mitre.org/mitigations/M1013/) Application Hardening | Requêtes préparées (PDO) | Conceptuelle (LAB-4, LAB-6) |
 | **P1** | [T1189](https://attack.mitre.org/techniques/T1189/) Drive-by Compromise (XSS) | Vol de session | [M1013](https://attack.mitre.org/mitigations/M1013/) Application Hardening | `htmlspecialchars()`, CSP | Conceptuelle (LAB-3) |
 | **P1** | [T1539](https://attack.mitre.org/techniques/T1539/) Steal Web Session Cookie | Session usurpable | [M1013](https://attack.mitre.org/mitigations/M1013/) Application Hardening | `session.cookie_httponly` | Appliquée (LAB-3) |
 | **P1** | [T1203](https://attack.mitre.org/techniques/T1203/) Exploitation for Client Execution (CSRF) | Actions non autorisées | [M1018](https://attack.mitre.org/mitigations/M1018/) User Account Control | Token CSRF, SameSite | Appliquée (DVWA natif) |
 | **P2** | [T1110](https://attack.mitre.org/techniques/T1110/) Brute Force | Compromission compte | [M1036](https://attack.mitre.org/mitigations/M1036/) Account Lockout | fail2ban | Appliquée (LAB-7) |
 | **P2** | [T1110.001](https://attack.mitre.org/techniques/T1110/001/) Password Cracking | Mots de passe en clair | [M1027](https://attack.mitre.org/mitigations/M1027/) Password Policies | bcrypt/argon2 | Conceptuelle (LAB-6) |
-| **P3** | [T1046](https://attack.mitre.org/techniques/T1046/) Network Service Scanning | Surface exposée | [M1031](https://attack.mitre.org/mitigations/M1031/) Network Intrusion Prevention | Directory listing désactivé, Snort/Suricata | Appliquée (LAB-2) |
+| **P3** | [T1046](https://attack.mitre.org/techniques/T1046/) Network Service Scanning | Surface exposée | [M1042](https://attack.mitre.org/mitigations/M1042/) Disable or Remove Feature | Directory listing désactivé, Snort/Suricata | Appliquée (LAB-2) |
 
 ---
 
@@ -30,7 +30,7 @@
 
 | Propriété | Valeur |
 |-----------|--------|
-| **Mitigation ATT&CK** | [M1031](https://attack.mitre.org/mitigations/M1031/) Network Intrusion Prevention |
+| **Mitigation ATT&CK** | [M1042](https://attack.mitre.org/mitigations/M1042/) Disable or Remove Feature |
 | **Risque** | Gobuster découvre `/config/`, `/setup.php` via directory listing |
 | **Statut** | Appliquée dans `setup_dvwa.sh` (l. 47) et manuellement en LAB-2 |
 | **Commande** | `docker exec dvwa-target bash -c "sed -i 's/Options Indexes FollowSymLinks/Options FollowSymLinks/' /etc/apache2/apache2.conf && apache2ctl restart"` |
@@ -63,7 +63,7 @@
 
 | Propriété | Valeur |
 |-----------|--------|
-| **Mitigation ATT&CK** | [M1041](https://attack.mitre.org/mitigations/M1041/) Encrypt Sensitive Information |
+| **Mitigation ATT&CK** | [M1013](https://attack.mitre.org/mitigations/M1013/) Application Hardening |
 | **Risque** | Injection SQL via `$_GET['id']` |
 | **Statut** | Conceptuelle (code corrigé montré, 3 patterns en LAB-6) |
 | **Code vulnérable** | `$query = "SELECT * FROM users WHERE user_id = '$id'";` |
@@ -161,9 +161,8 @@ Référencer `defense-j1.json` pour la visualisation des couches de défense.
 
 | Mitigation ATT&CK | Techniques couvertes | Couleur dans Navigator |
 |-------------------|---------------------|----------------------|
-| [M1031](https://attack.mitre.org/mitigations/M1031/) Network Intrusion Prevention | T1046 | `#2ecc71` |
-| [M1013](https://attack.mitre.org/mitigations/M1013/) Application Hardening | T1189, T1539 | `#2ecc71` |
-| [M1041](https://attack.mitre.org/mitigations/M1041/) Encrypt Sensitive Information | T1190 | `#2ecc71` |
+| [M1042](https://attack.mitre.org/mitigations/M1042/) Disable or Remove Feature | T1046 | `#2ecc71` |
+| [M1013](https://attack.mitre.org/mitigations/M1013/) Application Hardening | T1189, T1539, T1190 | `#2ecc71` |
 | [M1018](https://attack.mitre.org/mitigations/M1018/) User Account Control | T1059.004, T1203 | `#2ecc71` |
 | [M1036](https://attack.mitre.org/mitigations/M1036/) Account Lockout | T1110 | `#2ecc71` |
 | [M1027](https://attack.mitre.org/mitigations/M1027/) Password Policies | T1110.001 | `#2ecc71` |
