@@ -3,7 +3,7 @@
 ## 1. Périmètre et objectifs
 
 - **Cibles** : DVWA (`:8088`), sqli-app (`:8083`)
-- **Objectif** : Valider 8 techniques d'attaque sur 2 applications web vulnérables, de la reconnaissance initiale jusqu'à l'exfiltration de données et l'obtention d'un shell
+- **Objectif** : Valider 8 techniques ATT&CK sur 2 applications web vulnérables, de la reconnaissance jusqu'à l'impact réel (exfiltration, shell, mots de passe)
 - **Référentiel** : MITRE ATT&CK Enterprise v15
 - **Durée estimée** : ~5h
 
@@ -13,16 +13,17 @@
 
 | RECON | INITIAL ACCESS | EXECUTION | CREDENTIAL ACCESS | IMPACT |
 |-------|---------------|-----------|-------------------|--------|
-| T1046 Scan | T1189 XSS | T1203 CSRF | T1110 Brute Force | T1539 Vol cookie |
-| | T1190 SQLi | T1059.004 CMDi | T1110.001 Cracking | |
+| T1046 Scan | T1189 XSS | T1203 CSRF | T1110 Brute Force | Exfiltration base de données |
+| | T1190 SQLi | T1059.004 CMDi | T1110.001 Cracking | Shell serveur (prise de contrôle) |
+| | | | T1539 Vol cookie | Mots de passe en clair |
 
-| Phase | Tactique MITRE | Techniques | Labs |
-|-------|---------------|------------|------|
-| **Reconnaissance** | [TA0043](https://attack.mitre.org/tactics/TA0043/) Reconnaissance | [T1046](https://attack.mitre.org/techniques/T1046/) Network Service Scanning | LAB-2 |
-| **Accès initial** | [TA0001](https://attack.mitre.org/tactics/TA0001/) Initial Access | [T1189](https://attack.mitre.org/techniques/T1189/) Drive-by Compromise (XSS), [T1190](https://attack.mitre.org/techniques/T1190/) Exploit Public-Facing App (SQLi) | LAB-3, LAB-4, LAB-6 |
-| **Exécution** | [TA0002](https://attack.mitre.org/tactics/TA0002/) Execution | [T1203](https://attack.mitre.org/techniques/T1203/) Exploitation for Client Execution (CSRF), [T1059.004](https://attack.mitre.org/techniques/T1059/004/) Unix Shell (CMDi) | LAB-3, LAB-5 |
-| **Accès aux identifiants** | [TA0006](https://attack.mitre.org/tactics/TA0006/) Credential Access | [T1110](https://attack.mitre.org/techniques/T1110/) Brute Force, [T1110.001](https://attack.mitre.org/techniques/T1110/001/) Password Cracking | LAB-6, LAB-7 |
-| **Impact** | [TA0040](https://attack.mitre.org/tactics/TA0040/) Impact | [T1539](https://attack.mitre.org/techniques/T1539/) Steal Web Session Cookie | LAB-3 |
+| Phase | Tactique MITRE | Techniques | Labs | Impact réel |
+|-------|---------------|------------|------|-------------|
+| **Reconnaissance** | [TA0043](https://attack.mitre.org/tactics/TA0043/) Reconnaissance | [T1046](https://attack.mitre.org/techniques/T1046/) Network Service Scanning | LAB-2 | Surface d'attaque cartographiée |
+| **Accès initial** | [TA0001](https://attack.mitre.org/tactics/TA0001/) Initial Access | [T1189](https://attack.mitre.org/techniques/T1189/) Drive-by Compromise (XSS), [T1190](https://attack.mitre.org/techniques/T1190/) Exploit Public-Facing App (SQLi) | LAB-3, LAB-4, LAB-6 | Point d'entrée XSS, accès aux données SQL |
+| **Exécution** | [TA0002](https://attack.mitre.org/tactics/TA0002/) Execution | [T1203](https://attack.mitre.org/techniques/T1203/) Exploitation for Client Execution (CSRF), [T1059.004](https://attack.mitre.org/techniques/T1059/004/) Unix Shell (CMDi) | LAB-3, LAB-5 | Actions non autorisées, shell interactif |
+| **Accès aux identifiants** | [TA0006](https://attack.mitre.org/tactics/TA0006/) Credential Access | [T1110](https://attack.mitre.org/techniques/T1110/) Brute Force, [T1110.001](https://attack.mitre.org/techniques/T1110/001/) Password Cracking, [T1539](https://attack.mitre.org/techniques/T1539/) Steal Web Session Cookie | LAB-3, LAB-6, LAB-7 | Mots de passe compromis, session usurpable |
+| **Impact** | [TA0040](https://attack.mitre.org/tactics/TA0040/) Impact | — | — | Exfiltration DB · Shell serveur · Mots de passe clair |
 
 ---
 
