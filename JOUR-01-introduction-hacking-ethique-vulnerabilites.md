@@ -854,15 +854,28 @@ bash labs_resolution/jour-01/restore_sqli.sh
 
 ### Contexte technique
 
-La fonction PHP `shell_exec("ping -c 4 " . $target)` colle la variable `$target` directement dans une commande shell. Si `$target = 127.0.0.1; whoami`, le shell reçoit :
+Le code PHP vulnérable dans `vulnerabilities/exec/source/low.php` fait ceci :
+
+```php
+$target = $_REQUEST[ 'ip' ];                    // ex: "127.0.0.1; whoami"
+$cmd     = "ping -c 4 " . $target;              // concaténation → "ping -c 4 127.0.0.1; whoami"
+$output  = shell_exec( $cmd );                  // exécution brute dans le shell système
+echo $output;                                   // affiche le résultat
+```
+
+Le point (`.`) en PHP concatène des chaînes. Donc si l'utilisateur envoie `ip=127.0.0.1; whoami`, la commande exécutée par le shell est :
 
 ```
 ping -c 4 127.0.0.1; whoami
 ```
 
-Le `;` est un séparateur de commandes en bash. Il termine `ping` et enchaîne `whoami`. Résultat : on exécute n'importe quelle commande système.
+Le `;` est un **séparateur de commandes en bash**. Il dit au shell : "la première commande est finie, exécute la suivante". Le shell exécute donc **deux** commandes à la suite :
+1. `ping -c 4 127.0.0.1` — le ping normal
+2. `whoami` — la commande injectée, qui s'exécute sur le serveur
 
-> 💡 **Métacaractères bash :** `;` = séparateur de commandes, `|` = pipe (sortie d'une commande → entrée de la suivante), `&&` = exécute si la précédente a réussi, `||` = exécute si la précédente a échoué. Tous fonctionnent ici.
+Résultat : on force le serveur à exécuter n'importe quelle commande système en la collant après `;`.
+
+> 💡 **Autres métacaractères bash :** `;` n'est pas le seul séparateur. `|` (pipe) connecte la sortie d'une commande à l'entrée de la suivante. `&&` exécute la suivante seulement si la précédente a réussi. `` ` `` (backticks) exécute une commande et insère son résultat. Tous fonctionnent ici car PHP ne filtre rien.
 
 ---
 
