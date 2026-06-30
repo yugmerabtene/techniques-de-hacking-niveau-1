@@ -227,7 +227,7 @@
 
 | Technique ATT&CK | Risque | Mitigation ATT&CK | Contrôle technique |
 |-----------------|--------|-------------------|---------------------|
-| [T1046](https://attack.mitre.org/techniques/T1046/) Network Service Scanning | Ports exposés | [M1031](https://attack.mitre.org/mitigations/M1031/) Network Intrusion Prevention | Snort/Suricata, `ufw default deny incoming` |
+| [T1046](https://attack.mitre.org/techniques/T1046/) Network Service Scanning | Ports exposés | [M1031](https://attack.mitre.org/mitigations/M1031/) Network Intrusion Prevention | Directory listing désactivé (LAB-2), Snort/Suricata, `ufw default deny incoming` |
 | [T1189](https://attack.mitre.org/techniques/T1189/) Drive-by Compromise (XSS) | Vol de session | [M1013](https://attack.mitre.org/mitigations/M1013/) Application Hardening | `htmlspecialchars()`, CSP, `HttpOnly` |
 | [T1190](https://attack.mitre.org/techniques/T1190/) Exploit Public-Facing App (SQLi) | Exfiltration de base | [M1041](https://attack.mitre.org/mitigations/M1041/) WAF + Requêtes préparées | ModSecurity, PDO/bindValue |
 | [T1203](https://attack.mitre.org/techniques/T1203/) Exploitation for Client Execution (CSRF) | Exécution d'actions non autorisées | [M1018](https://attack.mitre.org/mitigations/M1018/) User Account Control | Token CSRF, SameSite cookies |
