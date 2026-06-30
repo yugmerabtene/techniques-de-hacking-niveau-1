@@ -488,7 +488,7 @@ TOKEN=$(curl -s -c /tmp/dvwa_cookie.txt \
 # Étape 2 : Envoyer le login avec le token
 curl -s -b /tmp/dvwa_cookie.txt -c /tmp/dvwa_cookie.txt \
   -d "username=admin&password=password&user_token=$TOKEN&Login=Login" \
-  "http://localhost:8088/login.php" | grep -o "Welcome\|Login failed"
+  "http://localhost:8088/index.php" | grep -o "Welcome\|Login failed"
 # → Welcome
 
 # Étape 3 : Extraire le nouveau token et passer security=low
