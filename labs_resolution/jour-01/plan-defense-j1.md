@@ -66,7 +66,7 @@
 | **Statut** | Conceptuelle (code corrigé montré, 3 patterns en LAB-6) |
 | **Code vulnérable** | `$query = "SELECT * FROM users WHERE user_id = '$id'";` |
 | **Code corrigé** | `$stmt = $pdo->prepare("SELECT * FROM users WHERE user_id = ?"); $stmt->execute([$id]);` |
-| **Vérification** | `sqlmap -u "http://localhost:8088/vulnerabilities/sqli/?id=1&Submit=Submit" --load-cookies=/tmp/dvwa_cookie.txt --batch 2>&1 \| grep -o "not injectable"` → OK |
+| **Vérification** | `SESSID=$(grep PHPSESSID /tmp/dvwa_cookie.txt \| awk '{print $NF}') && sqlmap -u "http://localhost:8088/vulnerabilities/sqli/?id=1&Submit=Submit" --cookie="security=low; PHPSESSID=$SESSID" --batch 2>&1 \| grep -o "not injectable"` → OK |
 
 ### 3.5 T1203 — Token CSRF (DVWA natif + LAB-2)
 
