@@ -1,56 +1,63 @@
 #!/bin/bash
-# =====================================================================
-# setup_dvwa.sh — Configure DVWA: reset DB + security=low
-# =====================================================================
-set -uo pipefail
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/env.sh"
+# setup_dvwa.sh — Authentification DVWA + passage security=low
+# Usage: bash labs_resolution/jour-01/setup_dvwa.sh
+set -euo pipefail
+cd "$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/../.." && pwd)"
+source env.sh
 
-DVWA="http://localhost:$DVWA_PORT"
-COOKIES=$(mktemp)
-CURL="curl -s --connect-timeout 5 --max-time 10"
+echo "========================================"
+echo " setup_dvwa.sh — Connexion DVWA + low"
+echo "========================================"
 
-cleanup() { rm -f "$COOKIES"; }
-trap cleanup EXIT
+# Vérifier que DVWA répond
+echo "[*] Vérification DVWA..."
+HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:$DVWA_PORT/login.php" || echo "000")
+if [ "$HTTP_CODE" != "200" ]; then
+    echo "[!] DVWA ne répond pas sur le port $DVWA_PORT (HTTP $HTTP_CODE)"
+    echo "    Lance d'abord : docker compose up -d dvwa"
+    exit 1
+fi
+echo "[*] DVWA OK (HTTP $HTTP_CODE)"
 
-echo "[*] DVWA Setup — $DVWA"
+# Étape 1 : extraire token CSRF + récupérer cookie
+echo "[*] Extraction du token CSRF..."
+rm -f /tmp/dvwa_cookie.txt
+TOKEN=$(curl -s -c /tmp/dvwa_cookie.txt \
+    "http://localhost:$DVWA_PORT/login.php" \
+    | grep -oP "user_token' value='\K[a-f0-9]+")
+[ -z "$TOKEN" ] && echo "[!] Token CSRF non trouvé" && exit 1
+echo "[*] Token : $TOKEN"
 
-# Step 1: Reset database (setup page)
-echo "[*] Resetting database..."
-TOKEN=$($CURL -c "$COOKIES" -b "$COOKIES" "$DVWA/setup.php" | grep -oP "user_token' value='\K[a-f0-9]+")
-$CURL -c "$COOKIES" -b "$COOKIES" -X POST "$DVWA/setup.php" \
-  -d "create_db=Create+/+Reset+Database&user_token=$TOKEN" -o /dev/null
-echo "[+] Database reset done"
-
-# Step 2: Login
-echo "[*] Logging in as admin:password..."
-TOKEN=$($CURL -c "$COOKIES" -b "$COOKIES" "$DVWA/login.php" | grep -oP "user_token' value='\K[a-f0-9]+")
-$CURL -c "$COOKIES" -b "$COOKIES" -X POST "$DVWA/login.php" \
-  -d "username=admin&password=password&user_token=$TOKEN&Login=Login" -o /dev/null
-echo "[+] Logged in"
-
-# Step 3: Set/verify security level
-echo "[*] Setting security level to low..."
-SEC_PAGE=$($CURL -c "$COOKIES" -b "$COOKIES" "$DVWA/security.php")
-TOKEN=$(echo "$SEC_PAGE" | grep -oP "user_token' value='\K[a-f0-9]+")
-CURRENT=$(echo "$SEC_PAGE" | grep -oP "Security level is currently: <em>\K[a-z]+(?=</em>)")
-if [ "$CURRENT" = "low" ]; then
-  echo "[=] Already low"
-else
-  $CURL -c "$COOKIES" -b "$COOKIES" -X POST "$DVWA/security.php" \
-    -d "security=low&seclev_submit=Submit&user_token=$TOKEN" -o /dev/null
-  echo "[+] Set to low"
+# Étape 2 : login (POST vers login.php, pas index.php — sinon 302 sans authentification)
+echo "[*] Connexion admin:password..."
+LOGIN_CODE=$(curl -s -o /dev/null -w "%{http_code}" -D- \
+    -b /tmp/dvwa_cookie.txt -c /tmp/dvwa_cookie.txt \
+    -d "username=admin&password=password&user_token=$TOKEN&Login=Login" \
+    "http://localhost:$DVWA_PORT/login.php" 2>&1 | grep "Location:" | head -1)
+echo "    Réponse : $LOGIN_CODE"
+if ! echo "$LOGIN_CODE" | grep -q "index.php"; then
+    echo "[!] Échec de connexion"
+    exit 1
 fi
 
-# Step 4: Apache hardening + test-empty/ for 403 test
-CID=$(docker compose ps -q dvwa 2>/dev/null)
-echo "[*] Applying Apache hardening..."
-docker exec "$CID" bash -c "echo 'ServerName localhost' >> /etc/apache2/apache2.conf && sed -i 's/Options Indexes FollowSymLinks/Options FollowSymLinks/' /etc/apache2/apache2.conf && apache2ctl restart" 2>/dev/null
-echo "[*] Creating test-empty/ directory..."
-docker exec "$CID" mkdir -p /var/www/html/test-empty 2>/dev/null
-echo "[+] test-empty/ ready"
+# Étape 3 : passer security=low
+echo "[*] Passage en security=low..."
+TOKEN=$(curl -s -b /tmp/dvwa_cookie.txt \
+    "http://localhost:$DVWA_PORT/security.php" \
+    | grep -oP "user_token' value='\K[a-f0-9]+")
+[ -z "$TOKEN" ] && echo "[!] Token CSRF security non trouvé" && exit 1
+SESSID=$(grep PHPSESSID /tmp/dvwa_cookie.txt | awk '{print $NF}')
+curl -s -b /tmp/dvwa_cookie.txt -c /tmp/dvwa_cookie.txt \
+    -d "security=low&seclev_submit=Submit&user_token=$TOKEN" \
+    "http://localhost:$DVWA_PORT/security.php" -o /dev/null
 
-# Step 5: Final verify
-echo "[*] Verifying..."
-CURRENT=$($CURL -c "$COOKIES" -b "$COOKIES" "$DVWA/security.php" | grep -oP "Security level is currently: <em>\K[a-z]+(?=</em>)")
-echo "  Security Level: $CURRENT"
-if [ "$CURRENT" = "low" ]; then echo "[+] DVWA ready!"; else echo "[!] FAILED (got $CURRENT)"; fi
+# Vérifier que security=low est bien dans le cookie
+if grep -q "security.*low" /tmp/dvwa_cookie.txt; then
+    echo "[+] Cookie sauvegardé : /tmp/dvwa_cookie.txt"
+    echo "    PHPSESSID=$SESSID"
+    echo "    security=low ✓"
+else
+    echo "[!] security=low non trouvé dans le cookie"
+    exit 1
+fi
+echo "========================================"

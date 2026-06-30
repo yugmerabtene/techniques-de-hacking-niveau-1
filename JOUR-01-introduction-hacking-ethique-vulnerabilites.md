@@ -324,6 +324,8 @@ docker compose up -d --build dvwa sqli-app
 # → Container dvwa-target started, Container sqli-app-target started
 ```
 
+> 💡 **Pourquoi `source` et pas `bash env.sh` ?** `source` exécute le script **dans le terminal courant** — les variables (DVWA_PORT=8088, LHOST...) restent accessibles pour les commandes suivantes. `bash env.sh` lancerait un sous-shell : les variables existeraient le temps du script puis disparaîtraient. Si vous ouvrez un nouveau terminal, re-sourcez `env.sh`.
+
 Vérifiez que les cibles répondent :
 
 ```bash
@@ -477,6 +479,8 @@ Le flag `-u` définit l'URL cible, `-w` la wordlist de noms à tester (ici `comm
 2. Utiliser ce cookie pour définir le niveau de sécurité sur `low`
 
 > ⚠️ **Spécificité DVWA v1.10+ :** Le formulaire de login inclut un `user_token` (CSRF) invisible. Une simple requête POST sans ce token échoue silencieusement. Il faut d'abord extraire le token, puis l'inclure dans la requête.
+>
+> 💡 **C'est quoi un token CSRF ?** Cross-Site Request Forgery (CSRF) : un attaquant pourrait héberger un formulaire chez lui qui POSTe vers DVWA à votre insu. Le `user_token` est une clé secrète générée par le serveur, propre à votre session et qui change à chaque requête. Sans elle, le serveur rejette la requête. C'est pour ça qu'on doit l'extraire (via `grep`) avant chaque POST — si on réutilise un vieux token, la requête échoue.
 
 **Commande :**
 ```bash
@@ -485,11 +489,11 @@ TOKEN=$(curl -s -c /tmp/dvwa_cookie.txt \
   "http://localhost:8088/login.php" \
   | grep -oP "user_token' value='\K[a-f0-9]+")
 
-# Étape 2 : Envoyer le login avec le token
-curl -s -b /tmp/dvwa_cookie.txt -c /tmp/dvwa_cookie.txt \
+# Étape 2 : Envoyer le login avec le token (POST vers login.php — si on POSTait vers index.php, DVWA rejetterait la requête)
+curl -s -D- -b /tmp/dvwa_cookie.txt -c /tmp/dvwa_cookie.txt \
   -d "username=admin&password=password&user_token=$TOKEN&Login=Login" \
-  "http://localhost:8088/index.php" | grep -o "Welcome\|Login failed"
-# → Welcome
+  "http://localhost:8088/login.php" | grep "Location:"
+# → Location: index.php
 
 # Étape 3 : Extraire le nouveau token et passer security=low
 TOKEN=$(curl -s -b /tmp/dvwa_cookie.txt \
@@ -717,6 +721,12 @@ La requête `SELECT first_name, last_name FROM users WHERE user_id = '$id'` devi
 
 **Prérequis :** Le fichier `/tmp/dvwa_cookie.txt` doit contenir le cookie de session + `security=low` (créé au LAB-2).
 
+> 💡 **Pourquoi un cookie pour attaquer la base de données ?**  
+> Le cookie ne sert pas à attaquer la base — il sert à **prouver qu'on est authentifié** sur DVWA.  
+> Sans cookie de session (`PHPSESSID`), DVWA nous voit comme un visiteur anonyme et redirige vers `login.php`. La page SQLi n'est jamais atteinte → impossible d'injecter quoi que ce soit.  
+> La variable `security=low` désactive les fonctions de filtrage PHP (`mysql_real_escape_string()`, `htmlspecialchars()`) dans le code de DVWA. Sans `security=low`, l'injection est bloquée par le code lui-même.  
+> **En résumé :** le cookie = la clé d'entrée dans l'immeuble. L'injection SQL = ce qu'on fait une fois à l'intérieur. Les deux sont nécessaires.
+
 **Actions :**
 1. Envoyer une requête avec `id=1' OR '1'='1' #` (encodé en URL) au lieu de `id=1`
 2. Compter le nombre d'occurrences de "First name" dans la réponse
@@ -729,6 +739,8 @@ curl -s -b /tmp/dvwa_cookie.txt \
 # → 5
 ```
 Au lieu de `1` (un seul utilisateur normalement). Le flag `-b` envoie le cookie de session. Les caractères `%27` = `'`, `%20` = espace, `%23` = `#` sont l'encodage URL des caractères spéciaux.
+
+> 💡 **Pourquoi encodage URL ?** Dans une URL, certains caractères ont une signification spéciale : `'` peut casser la chaîne de requête, `#` est le marqueur de fragment (tout ce qui suit est ignoré par le navigateur/curl et jamais envoyé au serveur), les espaces sont interdits. En les encodant en `%XX`, on les transmet **littéralement** au serveur. Les curls avec `--data-urlencode` (utilisé dans les scripts) le font automatiquement.
 
 **Explication :** La requête SQL devient `SELECT * FROM users WHERE user_id = '1' OR '1'='1' #'`. Le `OR '1'='1'` est toujours vrai, donc la base retourne **tous les utilisateurs**. Le `#` commente le reste de la requête pour éviter les erreurs SQL. C'est le test de base de toute injection SQL ([T1190](https://attack.mitre.org/techniques/T1190/)).
 
@@ -948,6 +960,12 @@ L'application `sqli-app` (http://localhost:8083) expose 3 points d'injection dif
 | `?filter=` (LIKE) | String (% wildcard) | Difficile | `%' UNION SELECT...` |
 
 **Pourquoi SQLite ?** Les principes d'injection SQL sont identiques quel que soit le SGBD. Seule la syntaxe des commandes système change (version(), @@version, sqlite_version()). SQLite permet un conteneur léger sans MySQL séparé.
+
+> 💡 **Numeric vs String : pourquoi tant de `'` ?**  
+> La différence vient du code PHP derrière la requête :  
+> - **Numeric** : `WHERE id = $id` → pas de guillemets autour de `$id`. Injection : `1 OR 1=1` (pas de `'` nécessaire).  
+> - **String** : `WHERE username = '$u'` → des guillemets simples autour de `$u`. Injection : `admin' --` (il faut un `'` pour fermer la chaîne, puis `--` pour commenter le `'` fermant).  
+> Si vous mettez des `'` dans une injection numérique, ça casse la requête. Si vous n'en mettez pas dans une string, votre injection reste coincée dans la chaîne. Regardez toujours le code PHP ou le comportement avec `AND 1=2` pour deviner le type.
 
 ### Prérequis
 
@@ -1404,7 +1422,7 @@ hydra -l admin -P /usr/share/wordlists/rockyou.txt -s 8088 \
 - `-P` : wordlist (dictionnaire de mots de passe)
 - `-s 8088` : port non standard
 - `http-post-form` : module pour formulaire POST (le formulaire de la brute force page utilise POST)
-- `H:Cookie\:PHPSESSID=...;security=low` : passe le cookie de session via un en-tête HTTP personnalisé (les `\:` échappent les `:` dans la valeur)
+- `H:Cookie\:PHPSESSID=...;security=low` : passe le cookie de session via un en-tête HTTP personnalisé (le `\:` échappe le `:` dans `Cookie: valeur`, car Hydra utilise `:` comme séparateur de champs — sans ce backslash, Hydra croirait que `Cookie` est la fin du module et planterait)
 - `:Login failed` : si la réponse contient "Login failed" → tentative échouée
 - `-V` : affiche chaque tentative
 - `tee hydra_dvwa.txt` : sauvegarde le résultat
@@ -1461,17 +1479,26 @@ hydra -L /tmp/logins.txt -P /usr/share/wordlists/rockyou.txt \
 3. Vérifier que la règle est active
 4. Re-tester Hydra pour confirmer le blocage
 
+> ⚠️ **Piège :** La brute force page de DVWA (`vulnerabilities/brute/`) retourne **HTTP 200** même en cas d'échec (elle réaffiche le formulaire avec le message "Login failed"). Elle ne retourne **pas** de 401 (Unauthorized). Le filtre `apache-auth` de fail2ban (qui cherche des 401 dans `error.log`) ne détecterait **jamais** les échecs. Il faut un **filtre personnalisé** qui surveille les requêtes POST vers `/vulnerabilities/brute/` dans le `access.log`.
+
 **Commande :**
 ```bash
 docker exec dvwa-target bash -c "apt-get update && apt-get install -y fail2ban"
 # → fail2ban already installed / installing...
 
+# Créer un filtre personnalisé — détecte les POST vers la page brute force
+docker exec dvwa-target bash -c "cat > /etc/fail2ban/filter.d/dvwa-brute.conf << 'EOF'
+[Definition]
+failregex = ^<HOST> .* POST /vulnerabilities/brute/ HTTP/1\.[01]\" 200
+ignoreregex =
+EOF"
+
 docker exec dvwa-target bash -c "cat > /etc/fail2ban/jail.local << 'EOF'
 [apache-dvwa]
 enabled  = true
 port     = http,https
-filter   = apache-auth
-logpath  = /var/log/apache2/error.log
+filter   = dvwa-brute
+logpath  = /var/log/apache2/access.log
 maxretry = 5
 findtime = 600
 bantime  = 900
@@ -1485,7 +1512,7 @@ docker exec dvwa-target bash -c "fail2ban-client status apache-dvwa"
 
 **Résultat attendu :** `fail2ban-client status` confirme que la règle est active. Après 5 tentatives échouées, Hydra reçoit une erreur `connection refused` — l'IP est bannie.
 
-**Explication :** fail2ban surveille les logs Apache (/var/log/apache2/error.log). Quand il détecte 5 échecs (`maxretry=5`) en 10 minutes (`findtime=600`), il crée une règle iptables qui bloque l'IP attaquante pendant 15 minutes (`bantime=900`). Le brute-force est neutralisé à l'échelle réseau, indépendamment de l'application.
+**Explication :** fail2ban surveille les logs Apache (`/var/log/apache2/access.log`). Le filtre `dvwa-brute` repère chaque requête POST vers `/vulnerabilities/brute/` retournant HTTP 200 (tentative de connexion). Quand il détecte 5 POSTs (`maxretry=5`) en 10 minutes (`findtime=600`), il crée une règle iptables qui bloque l'IP attaquante pendant 15 minutes (`bantime=900`). Le brute-force est neutralisé à l'échelle réseau, indépendamment de l'application.
 
 ### Résultat attendu
 
