@@ -35,7 +35,6 @@
 | **Statut** | Appliquée dans `setup_dvwa.sh` (l. 47) et manuellement en LAB-2 |
 | **Commande** | `docker exec dvwa-target bash -c "sed -i 's/Options Indexes FollowSymLinks/Options FollowSymLinks/' /etc/apache2/apache2.conf && apache2ctl restart"` |
 | **Vérification** | `curl -s -o /dev/null -w "%{http_code}" "http://localhost:8088/test-empty/"` → `403` |
-| **Documentation cours** | Lignes 530-536 |
 
 ### 3.2 T1189 — htmlspecialchars() + CSP (LAB-3)
 
@@ -57,7 +56,6 @@
 | **Statut** | Appliquée manuellement en LAB-3 |
 | **Commande** | `docker exec dvwa-target bash -c "echo 'session.cookie_httponly = 1' >> /etc/php/*/apache2/php.ini && apache2ctl restart"` |
 | **Vérification** | `docker exec dvwa-target bash -c "grep 'session.cookie_httponly' /etc/php/*/apache2/php.ini"` → `session.cookie_httponly = 1` |
-| **Documentation cours** | Lignes 671-683 |
 
 ### 3.4 T1190 — Requêtes préparées / PDO (LAB-4, LAB-6)
 
@@ -78,7 +76,6 @@
 | **Risque** | Formulaire `/vulnerabilities/csrf/` change le password sans consentement |
 | **Statut** | Appliquée (DVWA v1.10+ intègre un token CSRF sur tous les formulaires) |
 | **Commande extraction** | `TOKEN=$(curl -s -c /tmp/dvwa_cookie.txt "http://localhost:8088/login.php" \| grep -oP "user_token' value='\K[a-f0-9]+")` |
-| **Documentation cours** | Lignes 483-503 (protocole de connexion LAB-2) |
 
 ### 3.6 T1059.004 — disable_functions php.ini (LAB-5)
 
@@ -90,7 +87,6 @@
 | **Commande** | `docker exec dvwa-target bash -c "sed -i 's/disable_functions =.*/disable_functions = system,exec,passthru,shell_exec,popen,proc_open/' /etc/php/*/apache2/php.ini && apache2ctl restart"` |
 | **Vérification 1** | `docker exec dvwa-target bash -c "php -r 'echo function_exists(\"shell_exec\") ? \"actif\" : \"inactif\";'"` → `inactif` |
 | **Vérification 2** | `curl -s "http://localhost:8088/vulnerabilities/exec/" --data "ip=127.0.0.1;whoami&Submit=Submit" -b /tmp/dvwa_cookie.txt \| grep -c "www-data"` → `0` |
-| **Documentation cours** | Lignes 884-913 |
 
 ### 3.7 T1110 — fail2ban Account Lockout (LAB-7)
 
@@ -103,7 +99,6 @@
 | **Fichier jail.local** | `/etc/fail2ban/jail.local` : `[apache-dvwa] enabled = true, port = http,https, filter = apache-auth, logpath = /var/log/apache2/error.log, maxretry = 5, findtime = 600, bantime = 900` |
 | **Commande reload** | `fail2ban-client reload` |
 | **Vérification** | `docker exec dvwa-target bash -c "fail2ban-client status apache-dvwa"` → `Currently banned: 0` |
-| **Documentation cours** | Lignes 1419-1455 |
 
 ### 3.8 T1110.001 — bcrypt/argon2 Password Hashing (LAB-6)
 
@@ -114,7 +109,6 @@
 | **Statut** | Conceptuelle (code corrigé montré, pas appliqué sur DVWA) |
 | **Code vulnérable** | `md5($password)` |
 | **Code corrigé** | `$hash = password_hash($password, PASSWORD_BCRYPT);` / `password_verify($password, $hash)` |
-| **Documentation cours** | Lignes 1221-1256 |
 
 ---
 
