@@ -1098,6 +1098,8 @@ curl -s "http://localhost:8088/vulnerabilities/exec/" \
 
 **Explication :** La directive `disable_functions` empêche PHP d'appeler ces fonctions au runtime. Même si le code vulnérable appelle `shell_exec()`, PHP ne fait rien et retourne `null`. Le payload `;whoami` passe toujours dans la requête HTTP, mais le shell système n'est plus invoqué.
 
+> 🔄 **Restaurer les fonctions :** `bash labs_resolution/jour-01/restore_cmdi.sh`
+
 ### Résultat attendu
 
 - [ ] CMDi basique : `; whoami` retourne `www-data` dans la réponse curl
