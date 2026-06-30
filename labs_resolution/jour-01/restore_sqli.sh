@@ -2,7 +2,7 @@
 # restore_sqli.sh — RESTAURE la faille SQLi DVWA (concaténation d'origine)
 # Usage: bash labs_resolution/jour-01/restore_sqli.sh
 set -euo pipefail
-cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+cd "$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/../.." && pwd)"
 source env.sh
 
 CID=$(docker compose ps -q dvwa 2>/dev/null)

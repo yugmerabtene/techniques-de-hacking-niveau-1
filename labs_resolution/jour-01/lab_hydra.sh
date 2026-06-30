@@ -2,7 +2,7 @@
 # lab_hydra.sh — Brute force DVWA avec Hydra (page vulnerabilities/brute/)
 # Usage: bash labs_resolution/jour-01/lab_hydra.sh
 set -euo pipefail
-cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+cd "$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/../.." && pwd)"
 source env.sh
 
 echo "[*] Test Hydra sur DVWA vulnerabilities/brute/"

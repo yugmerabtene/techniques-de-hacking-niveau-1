@@ -32,4 +32,7 @@ LPORT_SAMBA=4445
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LABS_DIR="$REPO_ROOT/labs_resolution"
 
+# Ajout des scripts labs au PATH pour exécution depuis n'importe où
+export PATH="$LABS_DIR/jour-01:$PATH"
+
 set +a

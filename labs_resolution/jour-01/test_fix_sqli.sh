@@ -2,7 +2,7 @@
 # test_fix_sqli.sh — Vérifie que la correction SQLi bloque les injections
 # Usage: bash labs_resolution/jour-01/test_fix_sqli.sh
 set -euo pipefail
-cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+cd "$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/../.." && pwd)"
 source env.sh
 
 echo "=== Test 1 : Injection manuelle ==="
