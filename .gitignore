@@ -3,3 +3,4 @@ preformation/
 .gitignore.clean
 token.txt
 .opencode
+tests/rapport-test-*.md
