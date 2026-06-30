@@ -5,10 +5,16 @@ set -euo pipefail
 cd "$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/../.." && pwd)"
 source env.sh
 
-CID=$(docker compose ps -q dvwa 2>/dev/null)
-[ -z "$CID" ] && echo "Conteneur dvwa introuvable" && exit 1
+echo "========================================"
+echo " fix_sqli.sh — Correction SQLi DVWA"
+echo "========================================"
+echo "[*] Connexion au conteneur dvwa..."
 
-docker exec -i "$CID" bash << 'SCRIPT'
+CID=$(sg docker -c "docker compose ps -q dvwa" 2>/dev/null)
+[ -z "$CID" ] && echo "[!] Conteneur dvwa introuvable" && exit 1
+echo "[*] Conteneur : $CID"
+
+sg docker -c "docker exec -i $CID bash" << 'SCRIPT'
 cat > /var/www/html/vulnerabilities/sqli/source/low.php << 'PHPEOF'
 <?php
 
@@ -34,4 +40,7 @@ if( isset( $_REQUEST[ 'Submit' ] ) ) {
 ?>
 PHPEOF
 SCRIPT
+
 echo "[+] SQLi corrigée : requêtes préparées"
+echo "[+] Fichier : /var/www/html/vulnerabilities/sqli/source/low.php"
+echo "========================================"

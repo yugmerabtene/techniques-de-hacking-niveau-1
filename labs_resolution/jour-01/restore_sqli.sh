@@ -5,10 +5,16 @@ set -euo pipefail
 cd "$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/../.." && pwd)"
 source env.sh
 
-CID=$(docker compose ps -q dvwa 2>/dev/null)
-[ -z "$CID" ] && echo "Conteneur dvwa introuvable" && exit 1
+echo "=========================================="
+echo " restore_sqli.sh — Restauration faille SQLi"
+echo "=========================================="
+echo "[*] Connexion au conteneur dvwa..."
 
-docker exec -i "$CID" bash << 'SCRIPT'
+CID=$(sg docker -c "docker compose ps -q dvwa" 2>/dev/null)
+[ -z "$CID" ] && echo "[!] Conteneur dvwa introuvable" && exit 1
+echo "[*] Conteneur : $CID"
+
+sg docker -c "docker exec -i $CID bash" << 'SCRIPT'
 cat > /var/www/html/vulnerabilities/sqli/source/low.php << 'PHPEOF'
 <?php
 
@@ -30,7 +36,9 @@ if( isset( $_REQUEST[ 'Submit' ] ) ) {
 ?>
 PHPEOF
 SCRIPT
+
 echo "[+] SQLi restaurée : concaténation vulnérable"
+echo "[+] Fichier : /var/www/html/vulnerabilities/sqli/source/low.php"
 
 echo ""
 echo "[*] Vérification injection :"
@@ -42,14 +50,23 @@ curl -s -b /tmp/dvwa_cookie_rs.txt -c /tmp/dvwa_cookie_rs.txt \
     "http://localhost:$DVWA_PORT/login.php" -o /dev/null
 
 echo -n "  id=1 (normal)     → "
-curl -s -b /tmp/dvwa_cookie_rs.txt -G \
+NORMAL=$(curl -s -b /tmp/dvwa_cookie_rs.txt -G \
     "http://localhost:$DVWA_PORT/vulnerabilities/sqli/" \
     --data-urlencode "id=1" \
-    --data-urlencode "Submit=Submit" | grep -oP 'First name:' | wc -l
+    --data-urlencode "Submit=Submit" | grep -oP 'First name:' | wc -l)
+echo "$NORMAL résultat(s)"
 
 echo -n "  id=1' OR '1'='1' → "
-curl -s -b /tmp/dvwa_cookie_rs.txt -G \
+INJECT=$(curl -s -b /tmp/dvwa_cookie_rs.txt -G \
     "http://localhost:$DVWA_PORT/vulnerabilities/sqli/" \
     --data-urlencode "id=1' OR '1'='1' -- -" \
-    --data-urlencode "Submit=Submit" | grep -oP 'First name:' | wc -l
+    --data-urlencode "Submit=Submit" | grep -oP 'First name:' | wc -l)
+echo "$INJECT résultat(s)"
+
+if [ "$INJECT" -gt "$NORMAL" ]; then
+    echo "  ✅ Faille active : injection retourne $INJECT résultats (normal=$NORMAL)"
+else
+    echo "  ⚠️  Injection non détectée (normal=$NORMAL, inject=$INJECT)"
+fi
 rm -f /tmp/dvwa_cookie_rs.txt
+echo "=========================================="
