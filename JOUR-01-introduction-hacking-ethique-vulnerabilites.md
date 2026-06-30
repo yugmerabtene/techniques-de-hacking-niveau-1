@@ -784,26 +784,35 @@ sqlmap -u "http://localhost:8088/vulnerabilities/sqli/?id=1&Submit=Submit" \
 1. Comprendre la différence entre requête concaténée et requête préparée
 2. Vérifier qu'après correction sqlmap ne détecte plus l'injection
 
-**Commande (simulation de correction) :**
-```bash
-# Code vulnérable :
-#   $query = "SELECT * FROM users WHERE user_id = '$id'";
-# Code corrigé :
-#   $stmt = $pdo->prepare("SELECT * FROM users WHERE user_id = ?");
-#   $stmt->execute([$id]);
+**Correction avec scripts (disponibles dans `labs_resolution/jour-01/`) :**
 
-sqlmap -u "http://localhost:8088/vulnerabilities/sqli/?id=1&Submit=Submit" \
-  --load-cookies=/tmp/dvwa_cookie.txt --batch 2>&1 | grep -o "not injectable\|injectable"
-# → not injectable
+```bash
+# 1. fix_sqli.sh — Remplace la concaténation SQL par des requêtes préparées
+#    Code vulnérable : $query = "SELECT * FROM users WHERE user_id = '$id'";
+#    Code corrigé   : $stmt = mysqli_prepare($db, "SELECT ... WHERE user_id = ?");
+#                     mysqli_stmt_bind_param($stmt, "s", $id);
+bash labs_resolution/jour-01/fix_sqli.sh
+
+# 2. test_fix_sqli.sh — Vérifie que l'injection est bloquée
+#    Test manuel + sqlmap → "not injectable"
+bash labs_resolution/jour-01/test_fix_sqli.sh
+
+# 3. restore_sqli.sh — RESTAURE la faille (concaténation d'origine) pour s'entraîner
+bash labs_resolution/jour-01/restore_sqli.sh
 ```
+
+**Les 3 scripts :**
+- **`fix_sqli.sh`** : corrige la faille dans le conteneur DVWA en remplaçant la concaténation SQL par des `mysqli_prepare()` + `bind_param()` → l'entrée utilisateur est traitée comme une donnée, pas comme du code SQL
+- **`test_fix_sqli.sh`** : lance une injection de test (`1' OR '1'='1'`) et sqlmap pour confirmer que la correction bloque toute injection → `not injectable`
+- **`restore_sqli.sh`** : remet la version vulnérable d'origine (concaténation dans la requête) pour permettre de re-tester l'exploitation
 
 **Explication :** Avec les requêtes préparées, la valeur de `$id` est transmise **séparément** du code SQL. Même si `$id` contient `1' OR '1'='1'`, la base de données ne l'interprète pas comme du SQL — c'est une chaîne de caractères inoffensive. Ajoutez un WAF (ModSecurity) et du bcrypt pour les mots de passe, et la défense est complète.
 
 ### Résultat attendu
 
-- [ ] Injection SQL manuelle : `grep -c "First name"` retourne `5` (au lieu de 1)
-- [ ] sqlmap a extrait 5 utilisateurs avec leurs hashs MD5 (`admin`, `gordonb`, `1337`, `pablo`, `smithy`)
-- [ ] Sortie sqlmap sauvegardée (copier-coller ou `tee`) dans le dossier `rendu_labs/jour-01/`
+- [ ] `bash fix_sqli.sh` → injection `' OR '1'='1'` retourne 1 résultat (au lieu de 5)
+- [ ] `bash test_fix_sqli.sh` → sqlmap confirme `not injectable`
+- [ ] `bash restore_sqli.sh` → la faille est réactivée pour s'entraîner
 - [ ] Comprendre le principe de l'injection SQL : `' OR '1'='1' #` neutralise la clause WHERE
 - [ ] Savoir utiliser sqlmap avec un cookie de session et les options `-D`, `-T`, `-C`, `--dump`
 - [ ] Connaître les défenses : requêtes préparées PDO, WAF, bcrypt
@@ -1228,7 +1237,10 @@ sqlmap -u "http://localhost:8083/?page=search&id=1" \
 1. Remplacer les 3 requêtes vulnérables par des requêtes préparées PDO
 2. Re-tester avec sqlmap pour confirmer
 
-**Commande (simulation de correction) :**
+**Correction (requêtes préparées + bcrypt) :**
+
+Le principe est le même que pour DVWA : remplacer la concaténation SQL par des requêtes préparées sur les 3 points d'injection, et remplacer `md5()` par `password_hash(..., PASSWORD_BCRYPT)`.
+
 ```bash
 # Code vulnérable → corrigé :
 # Point 1 (id=) :
