@@ -1,0 +1,82 @@
+{
+  "name": "Defense JOUR-01",
+  "versions": {
+    "attack": "15",
+    "navigator": "5.1.0",
+    "layer": "4.5"
+  },
+  "domain": "enterprise-attack",
+  "description": "Couche défense - Mitigations associées aux techniques du Jour 1",
+  "filters": {
+    "stages": ["mitigate"]
+  },
+  "viewMode": 1,
+  "mitigations": [
+    {
+      "mitigationID": "M1031",
+      "enabled": true,
+      "color": "#2ecc71",
+      "comment": "Network Intrusion Prevention - Snort/Suricata bloque les scans nmap",
+      "metadata": [["Technique ciblée", "T1046 - Network Service Scanning"]]
+    },
+    {
+      "mitigationID": "M1013",
+      "enabled": true,
+      "color": "#2ecc71",
+      "comment": "Application Hardening - htmlspecialchars(), CSP, HttpOnly contre XSS et vol cookie",
+      "metadata": [["Technique ciblée", "T1189 - Drive-by Compromise (XSS)"], ["Technique ciblée", "T1539 - Steal Web Session Cookie"]]
+    },
+    {
+      "mitigationID": "M1041",
+      "enabled": true,
+      "color": "#2ecc71",
+      "comment": "WAF + Requêtes préparées - ModSecurity et PDO contre les injections SQL",
+      "metadata": [["Technique ciblée", "T1190 - Exploit Public-Facing App (SQLi)"]]
+    },
+    {
+      "mitigationID": "M1018",
+      "enabled": true,
+      "color": "#2ecc71",
+      "comment": "User Account Control - disable_functions php.ini coupe CMDi, token CSRF protège les formulaires",
+      "metadata": [["Technique ciblée", "T1059.004 - Unix Shell (CMDi)"], ["Technique ciblée", "T1203 - Exploitation for Client Execution (CSRF)"]]
+    },
+    {
+      "mitigationID": "M1036",
+      "enabled": true,
+      "color": "#2ecc71",
+      "comment": "Account Lockout - fail2ban bannit l'IP après 5 échecs en 10 min",
+      "metadata": [["Technique ciblée", "T1110 - Brute Force"]]
+    },
+    {
+      "mitigationID": "M1027",
+      "enabled": true,
+      "color": "#2ecc71",
+      "comment": "Password Policies - bcrypt/argon2 et politique de complexité contre le cracking",
+      "metadata": [["Technique ciblée", "T1110.001 - Password Cracking"]]
+    }
+  ],
+  "gradient": {
+    "colors": ["#ffffff", "#2ecc71"],
+    "minValue": 0,
+    "maxValue": 1
+  },
+  "legendItems": [
+    {
+      "label": "Mitigation applicable",
+      "color": "#2ecc71"
+    }
+  ],
+  "showTacticRowBackground": true,
+  "tacticRowBackground": "#dddddd",
+  "selectTechniquesAcrossTactics": true,
+  "metadata": [
+    {
+      "name": "Cours",
+      "value": "Techniques de Hacking et Contre-Mesures Niveau 1"
+    },
+    {
+      "name": "Jour",
+      "value": "1 - Défense"
+    }
+  ]
+}

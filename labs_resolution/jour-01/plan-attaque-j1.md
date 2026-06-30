@@ -3,7 +3,7 @@
 ## 1. Périmètre et objectifs
 
 - **Cibles** : DVWA (`:8088`), sqli-app (`:8083`)
-- **Objectif** : Valider 7 techniques d'attaque sur 2 applications web vulnérables, de la reconnaissance initiale jusqu'à l'exfiltration de données et l'obtention d'un shell
+- **Objectif** : Valider 8 techniques d'attaque sur 2 applications web vulnérables, de la reconnaissance initiale jusqu'à l'exfiltration de données et l'obtention d'un shell
 - **Référentiel** : MITRE ATT&CK Enterprise v15
 - **Durée estimée** : ~5h
 
@@ -13,14 +13,14 @@
 
 | RECON | INITIAL ACCESS | EXECUTION | CREDENTIAL ACCESS | IMPACT |
 |-------|---------------|-----------|-------------------|--------|
-| T1046 Scan | T1189 XSS | T1059.004 CMDi | T1110 Brute Force | T1539 Vol cookie |
-| | T1190 SQLi | | T1110.001 Cracking | |
+| T1046 Scan | T1189 XSS | T1203 CSRF | T1110 Brute Force | T1539 Vol cookie |
+| | T1190 SQLi | T1059.004 CMDi | T1110.001 Cracking | |
 
 | Phase | Tactique MITRE | Techniques | Labs |
 |-------|---------------|------------|------|
-| **Reconnaissance** | [TA0043](https://attack.mitre.org/tactics/TA0043/) Reconnaissance | [T1046](https://attack.mitre.org/techniques/T1046/) Network Service Scanning, [T1040](https://attack.mitre.org/techniques/T1040/) Network Sniffing | LAB-2 |
+| **Reconnaissance** | [TA0043](https://attack.mitre.org/tactics/TA0043/) Reconnaissance | [T1046](https://attack.mitre.org/techniques/T1046/) Network Service Scanning | LAB-2 |
 | **Accès initial** | [TA0001](https://attack.mitre.org/tactics/TA0001/) Initial Access | [T1189](https://attack.mitre.org/techniques/T1189/) Drive-by Compromise (XSS), [T1190](https://attack.mitre.org/techniques/T1190/) Exploit Public-Facing App (SQLi) | LAB-3, LAB-4, LAB-6 |
-| **Exécution** | [TA0002](https://attack.mitre.org/tactics/TA0002/) Execution | [T1059.004](https://attack.mitre.org/techniques/T1059/004/) Unix Shell (CMDi) | LAB-5 |
+| **Exécution** | [TA0002](https://attack.mitre.org/tactics/TA0002/) Execution | [T1203](https://attack.mitre.org/techniques/T1203/) Exploitation for Client Execution (CSRF), [T1059.004](https://attack.mitre.org/techniques/T1059/004/) Unix Shell (CMDi) | LAB-3, LAB-5 |
 | **Accès aux identifiants** | [TA0006](https://attack.mitre.org/tactics/TA0006/) Credential Access | [T1110](https://attack.mitre.org/techniques/T1110/) Brute Force, [T1110.001](https://attack.mitre.org/techniques/T1110/001/) Password Cracking | LAB-6, LAB-7 |
 | **Impact** | [TA0040](https://attack.mitre.org/tactics/TA0040/) Impact | [T1539](https://attack.mitre.org/techniques/T1539/) Steal Web Session Cookie | LAB-3 |
 
@@ -195,9 +195,11 @@
          v
     [cookie DVWA + security=low]   ← requis par toutes les attaques web
          |
-         +---> Étape 2 (LAB-3) : XSS
-         |         T1189 — Drive-by Compromise
-         |         Dépend de : cookie DVWA (Étape 1)
+          +---> Étape 2 (LAB-3) : XSS + CSRF
+          |         T1189 — Drive-by Compromise
+          |         T1203 — Exploitation for Client Execution
+          |         T1539 — Steal Web Session Cookie
+          |         Dépend de : cookie DVWA (Étape 1)
          |
          +---> Étape 3 (LAB-4) : SQLi (DVWA)
          |         T1190 — Exploit Public-Facing App
@@ -227,9 +229,11 @@
 | [T1046](https://attack.mitre.org/techniques/T1046/) Network Service Scanning | Ports exposés | [M1031](https://attack.mitre.org/mitigations/M1031/) Network Intrusion Prevention | Snort/Suricata, `ufw default deny incoming` |
 | [T1189](https://attack.mitre.org/techniques/T1189/) Drive-by Compromise (XSS) | Vol de session | [M1013](https://attack.mitre.org/mitigations/M1013/) Application Hardening | `htmlspecialchars()`, CSP, `HttpOnly` |
 | [T1190](https://attack.mitre.org/techniques/T1190/) Exploit Public-Facing App (SQLi) | Exfiltration de base | [M1041](https://attack.mitre.org/mitigations/M1041/) WAF + Requêtes préparées | ModSecurity, PDO/bindValue |
+| [T1203](https://attack.mitre.org/techniques/T1203/) Exploitation for Client Execution (CSRF) | Exécution d'actions non autorisées | [M1018](https://attack.mitre.org/mitigations/M1018/) User Account Control | Token CSRF, SameSite cookies |
 | [T1059.004](https://attack.mitre.org/techniques/T1059/004/) Unix Shell (CMDi) | Prise de contrôle | [M1018](https://attack.mitre.org/mitigations/M1018/) User Account Control | `disable_functions` php.ini |
 | [T1110](https://attack.mitre.org/techniques/T1110/) Brute Force | Compromission de compte | [M1036](https://attack.mitre.org/mitigations/M1036/) Account Lockout | fail2ban (5 échecs → banni 15 min) |
 | [T1110.001](https://attack.mitre.org/techniques/T1110/001/) Password Cracking | Mots de passe en clair | [M1027](https://attack.mitre.org/mitigations/M1027/) Password Policies | bcrypt/argon2, politique de complexité |
+| [T1539](https://attack.mitre.org/techniques/T1539/) Steal Web Session Cookie | Vol de session | [M1013](https://attack.mitre.org/mitigations/M1013/) Application Hardening | Cookie `HttpOnly`, `Secure`, SameSite |
 
 ---
 
