@@ -229,9 +229,9 @@ La **CVE** identifie *la vulnérabilité technique* (le trou). La **technique AT
 
 | CVE | Vulnérabilité | Technique ATT&CK | Lab |
 |-----|---------------|------------------|-----|
-| CVE-2011-2523 | vsftpd 2.3.4 — backdoor (supply chain) | [T1190](https://attack.mitre.org/techniques/T1190/) Exploit Public-Facing App | J2 Lab 2.2 |
-| CVE-2007-2447 | Samba 3.0.20 — command injection (usermap) | [T1210](https://attack.mitre.org/techniques/T1210/) Exploit Remote Services | J2 Lab 2.3 |
-| CVE-2017-0144 | EternalBlue — buffer overflow SMB | [T1210](https://attack.mitre.org/techniques/T1210/) Exploit Remote Services | J2 Lab 2.2 |
+| CVE-2011-2523 | vsftpd 2.3.4 — backdoor (supply chain) | [T1190](https://attack.mitre.org/techniques/T1190/) Exploit Public-Facing App | J2 LAB-2 |
+| CVE-2007-2447 | Samba 3.0.20 — command injection (usermap) | [T1210](https://attack.mitre.org/techniques/T1210/) Exploit Remote Services | J2 LAB-3 |
+| CVE-2017-0144 | EternalBlue — buffer overflow SMB | [T1210](https://attack.mitre.org/techniques/T1210/) Exploit Remote Services | J2 LAB-2 |
 | *(aucune)* | XSS, SQLi, CSRF, CMDi (vulnérabilités génériques) | [T1189](https://attack.mitre.org/techniques/T1189/) Drive-by Compromise, [T1190](https://attack.mitre.org/techniques/T1190/) Exploit Public-Facing App, [T1203](https://attack.mitre.org/techniques/T1203/) Exploitation for Client Execution, [T1059.004](https://attack.mitre.org/techniques/T1059/004/) Unix Shell | J1 Labs LAB-3 à LAB-6 |
 
 > **Note :** Les failles web (XSS, SQLi) n'ont pas de CVE unique car elles dépendent de l'implémentation. En revanche, les vulnérabilités logicielles (vsftpd, Samba) ont une CVE bien spécifique qui permet de les tracer et de les corriger via un système de patch management ([M1051](https://attack.mitre.org/mitigations/M1051/) Update Software).

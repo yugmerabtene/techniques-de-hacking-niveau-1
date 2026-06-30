@@ -1,7 +1,7 @@
 #!/bin/bash
 # =============================================================================
 # run-test-jour2.sh — Test complet du JOUR-02
-# Exécute tous les tests des LAB 2.1 à 2.6 et produit un rapport horodaté
+# Exécute tous les tests des LAB-1 à LAB-5 et produit un rapport horodaté
 # Usage: bash tests/run-test-jour2.sh
 # =============================================================================
 set -o pipefail
@@ -177,124 +177,124 @@ echo "✅ Prérequis OK"
 echo ""
 
 # =============================================================================
-# LAB 2.1 — Reconnaissance
+# LAB-1 — Reconnaissance
 # =============================================================================
-echo "=== LAB 2.1 — Reconnaissance ==="
+echo "=== LAB-1 — Reconnaissance ==="
 echo "" >> "$REPORT"
-echo "## LAB 2.1 — Reconnaissance du conteneur Metasploitable" >> "$REPORT"
+echo "## LAB-1 — Reconnaissance du conteneur Metasploitable" >> "$REPORT"
 echo "" >> "$REPORT"
 echo '| Test | Commande | Statut | Résultat obtenu | Résultat attendu | Notes |' >> "$REPORT"
 echo '|------|----------|--------|----------------|-------------------|-------|' >> "$REPORT"
 
 RESULTS=""
 
-# 2.1-01: nmap scan ciblé
+# 1-01: nmap scan ciblé
 nmap_out=$(nmap -sV -p 21,22,80,445,3306,5432 localhost 2>&1)
 if echo "$nmap_out" | grep -q "21/tcp.*open.*ftp.*vsftpd\|21/tcp.*open"; then
   nmap_line=$(echo "$nmap_out" | grep "21/tcp")
-  RESULTS+="| 2.1-01 | \`nmap -sV -p 21,22,80,445,3306,5432 localhost\` | ✅ | $nmap_line | 21/tcp open ftp vsftpd 2.3.4 | |\n"
+  RESULTS+="| 1-01 | \`nmap -sV -p 21,22,80,445,3306,5432 localhost\` | ✅ | $nmap_line | 21/tcp open ftp vsftpd 2.3.4 | |\n"
 else
-  RESULTS+="| 2.1-01 | \`nmap -sV ...\` | ❌ | scan échoué | vsftpd 2.3.4 détecté | |\n"
+  RESULTS+="| 1-01 | \`nmap -sV ...\` | ❌ | scan échoué | vsftpd 2.3.4 détecté | |\n"
 fi
 
-# 2.1-02: SMB detected
+# 1-02: SMB detected
 if echo "$nmap_out" | grep -q "445/tcp.*open"; then
   smb_line=$(echo "$nmap_out" | grep "445/tcp")
-  RESULTS+="| 2.1-02 | nmap SMB detection | ✅ | $smb_line | 445/tcp open netbios-ssn Samba | |\n"
+  RESULTS+="| 1-02 | nmap SMB detection | ✅ | $smb_line | 445/tcp open netbios-ssn Samba | |\n"
 else
-  RESULTS+="| 2.1-02 | nmap SMB detection | ❌ | non détecté | 445/tcp open | |\n"
+  RESULTS+="| 1-02 | nmap SMB detection | ❌ | non détecté | 445/tcp open | |\n"
 fi
 
-# 2.1-03: MySQL detected
+# 1-03: MySQL detected
 if echo "$nmap_out" | grep -q "3306/tcp.*open"; then
-  RESULTS+="| 2.1-03 | nmap MySQL detection | ✅ | MySQL détecté | 3306/tcp open mysql | |\n"
+  RESULTS+="| 1-03 | nmap MySQL detection | ✅ | MySQL détecté | 3306/tcp open mysql | |\n"
 else
-  RESULTS+="| 2.1-03 | nmap MySQL detection | ❌ | non détecté | 3306/tcp open | |\n"
+  RESULTS+="| 1-03 | nmap MySQL detection | ❌ | non détecté | 3306/tcp open | |\n"
 fi
 
-# 2.1-04: PostgreSQL detected
+# 1-04: PostgreSQL detected
 if echo "$nmap_out" | grep -q "5432/tcp.*open"; then
-  RESULTS+="| 2.1-04 | nmap PostgreSQL detection | ✅ | PostgreSQL détecté | 5432/tcp open postgresql | |\n"
+  RESULTS+="| 1-04 | nmap PostgreSQL detection | ✅ | PostgreSQL détecté | 5432/tcp open postgresql | |\n"
 else
-  RESULTS+="| 2.1-04 | nmap PostgreSQL detection | ❌ | non détecté | 5432/tcp open | |\n"
+  RESULTS+="| 1-04 | nmap PostgreSQL detection | ❌ | non détecté | 5432/tcp open | |\n"
 fi
 
-# 2.1-05: vsftpd backdoor script NSE
+# 1-05: vsftpd backdoor script NSE
 nse_vsftpd=$(nmap --script ftp-vsftpd-backdoor -p 21 localhost 2>&1)
 if echo "$nse_vsftpd" | grep -q "vsftpd 2.3.4\|backdoor\|VULNERABLE"; then
-  RESULTS+="| 2.1-05 | \`nmap --script ftp-vsftpd-backdoor\` | ✅ | vsftpd backdoor NSE ok | script exécuté sans erreur | |\n"
+  RESULTS+="| 1-05 | \`nmap --script ftp-vsftpd-backdoor\` | ✅ | vsftpd backdoor NSE ok | script exécuté sans erreur | |\n"
 elif echo "$nse_vsftpd" | grep -q "21/tcp"; then
-  RESULTS+="| 2.1-05 | \`nmap --script ftp-vsftpd-backdoor\` | ✅ | script exécuté | script exécuté | |\n"
+  RESULTS+="| 1-05 | \`nmap --script ftp-vsftpd-backdoor\` | ✅ | script exécuté | script exécuté | |\n"
 else
-  RESULTS+="| 2.1-05 | \`nmap --script ftp-vsftpd-backdoor\` | ❌ | $nse_vsftpd | script exécuté | |\n"
+  RESULTS+="| 1-05 | \`nmap --script ftp-vsftpd-backdoor\` | ❌ | $nse_vsftpd | script exécuté | |\n"
 fi
 
-# 2.1-06: smb-vuln scripts NSE
+# 1-06: smb-vuln scripts NSE
 nse_smb=$(nmap --script "smb-vuln*" -p 445 localhost 2>&1)
 if echo "$nse_smb" | grep -q "445/tcp\|smb-vuln-"; then
-  RESULTS+="| 2.1-06 | \`nmap --script smb-vuln*\` | ✅ | script smb-vuln exécuté | script exécuté | |\n"
+  RESULTS+="| 1-06 | \`nmap --script smb-vuln*\` | ✅ | script smb-vuln exécuté | script exécuté | |\n"
 else
-  RESULTS+="| 2.1-06 | \`nmap --script smb-vuln*\` | ❌ | $nse_smb | script exécuté | |\n"
+  RESULTS+="| 1-06 | \`nmap --script smb-vuln*\` | ❌ | $nse_smb | script exécuté | |\n"
 fi
 
-# 2.1-07: Création rendu dossier
+# 1-07: Création rendu dossier
 mkdir -p rendu_labs/jour-02/recon
 if [ -d rendu_labs/jour-02/recon ]; then
-  RESULTS+="| 2.1-07 | mkdir rendu dossier | ✅ | dossier créé | rendu_labs/jour-02/recon/ | |\n"
+  RESULTS+="| 1-07 | mkdir rendu dossier | ✅ | dossier créé | rendu_labs/jour-02/recon/ | |\n"
 else
-  RESULTS+="| 2.1-07 | mkdir rendu dossier | ❌ | échec | dossier créé | |\n"
+  RESULTS+="| 1-07 | mkdir rendu dossier | ❌ | échec | dossier créé | |\n"
 fi
 
-# 2.1-08: Script recon.sh syntax check
+# 1-08: Script recon.sh syntax check
 if [ -f labs_resolution/jour-02/recon.sh ]; then
   bash -n labs_resolution/jour-02/recon.sh 2>&1
   if [ $? -eq 0 ]; then
-    RESULTS+="| 2.1-08 | syntax check recon.sh | ✅ | syntaxe valide | pas d'erreur bash | |\n"
+    RESULTS+="| 1-08 | syntax check recon.sh | ✅ | syntaxe valide | pas d'erreur bash | |\n"
   else
-    RESULTS+="| 2.1-08 | syntax check recon.sh | ❌ | erreur syntaxe | pas d'erreur | |\n"
+    RESULTS+="| 1-08 | syntax check recon.sh | ❌ | erreur syntaxe | pas d'erreur | |\n"
   fi
 else
-  RESULTS+="| 2.1-08 | syntax check recon.sh | ❌ | fichier manquant | fichier présent | |\n"
+  RESULTS+="| 1-08 | syntax check recon.sh | ❌ | fichier manquant | fichier présent | |\n"
 fi
 
 echo -e "$RESULTS" >> "$REPORT"
 echo "" >> "$REPORT"
 
 # =============================================================================
-# LAB 2.2 — Exploitation vsftpd
+# LAB-2 — Exploitation vsftpd
 # =============================================================================
-echo "=== LAB 2.2 — Exploitation vsftpd ==="
-echo "## LAB 2.2 — Exploitation vsftpd 2.3.4 (Backdoor)" >> "$REPORT"
+echo "=== LAB-2 — Exploitation vsftpd ==="
+echo "## LAB-2 — Exploitation vsftpd 2.3.4 (Backdoor)" >> "$REPORT"
 echo "" >> "$REPORT"
 echo '| Test | Commande | Statut | Résultat obtenu | Résultat attendu | Notes |' >> "$REPORT"
 echo '|------|----------|--------|----------------|-------------------|-------|' >> "$REPORT"
 
 RESULTS=""
 
-# 2.2-01: Vérification vsftpd banner
+# 2-01: Vérification vsftpd banner
 banner=$(echo "" | timeout 5 nc -w3 localhost 21 2>&1 | head -1)
 if echo "$banner" | grep -q "vsFTPd"; then
-  RESULTS+="| 2.2-01 | nc banner FTP | ✅ | $banner | 220 (vsFTPd 2.3.4) | |\n"
+  RESULTS+="| 2-01 | nc banner FTP | ✅ | $banner | 220 (vsFTPd 2.3.4) | |\n"
 else
-  RESULTS+="| 2.2-01 | nc banner FTP | ❌ | $banner | vsFTPd 2.3.4 | |\n"
+  RESULTS+="| 2-01 | nc banner FTP | ❌ | $banner | vsFTPd 2.3.4 | |\n"
 fi
 
-# 2.2-02: Metasploit resource file check
+# 2-02: Metasploit resource file check
 if [ -f labs_resolution/jour-02/vsftpd_exploit.rc ]; then
   rc_ok=$(msfconsole -q -r labs_resolution/jour-02/vsftpd_exploit.rc 2>&1 | head -10)
   if echo "$rc_ok" | grep -q "RHOSTS\|TARGET\|exploit"; then
-    RESULTS+="| 2.2-02 | load vsftpd_exploit.rc | ✅ | module chargé | use exploit/unix/ftp/vsftpd_234_backdoor | |\n"
+    RESULTS+="| 2-02 | load vsftpd_exploit.rc | ✅ | module chargé | use exploit/unix/ftp/vsftpd_234_backdoor | |\n"
   else
-    RESULTS+="| 2.2-02 | load vsftpd_exploit.rc | ⚠️ | $rc_ok | module chargé | timeout ou réseau |\n"
+    RESULTS+="| 2-02 | load vsftpd_exploit.rc | ⚠️ | $rc_ok | module chargé | timeout ou réseau |\n"
   fi
 else
-  RESULTS+="| 2.2-02 | load vsftpd_exploit.rc | ❌ | fichier manquant | fichier présent | |\n"
+  RESULTS+="| 2-02 | load vsftpd_exploit.rc | ❌ | fichier manquant | fichier présent | |\n"
 fi
 
-# 2.2-03: Backdoor trigger test via nc
+# 2-03: Backdoor trigger test via nc
 # First check if port 6200 is already open (previous trigger still listening)
 if nc -z -w1 localhost 6200 2>/dev/null; then
-  RESULTS+="| 2.2-03 | backdoor trigger (manual) | ✅ | port 6200 ouvert (session existante) | port 6200 accessible | |\n"
+  RESULTS+="| 2-03 | backdoor trigger (manual) | ✅ | port 6200 ouvert (session existante) | port 6200 accessible | |\n"
 else
   # Trigger backdoor and wait
   timeout 5 bash -c '
@@ -303,120 +303,120 @@ else
     nc -z -w2 localhost 6200
   ' 2>&1
   if [ $? -eq 0 ]; then
-    RESULTS+="| 2.2-03 | backdoor trigger (manual) | ✅ | port 6200 ouvert après trigger | port 6200 accessible | |\n"
+    RESULTS+="| 2-03 | backdoor trigger (manual) | ✅ | port 6200 ouvert après trigger | port 6200 accessible | |\n"
   else
-    RESULTS+="| 2.2-03 | backdoor trigger (manual) | ⚠️ | port 6200 fermé après trigger | port 6200 accessible | délai trop court ou backdoor déja patchée |\n"
+    RESULTS+="| 2-03 | backdoor trigger (manual) | ⚠️ | port 6200 fermé après trigger | port 6200 accessible | délai trop court ou backdoor déja patchée |\n"
   fi
 fi
 
-# 2.2-04: Script lab_j2.sh syntax check
+# 2-04: Script lab_j2.sh syntax check
 if [ -f labs_resolution/jour-02/lab_j2.sh ]; then
   bash -n labs_resolution/jour-02/lab_j2.sh 2>&1
   if [ $? -eq 0 ]; then
-    RESULTS+="| 2.2-04 | syntax check lab_j2.sh | ✅ | syntaxe valide | pas d'erreur | |\n"
+    RESULTS+="| 2-04 | syntax check lab_j2.sh | ✅ | syntaxe valide | pas d'erreur | |\n"
   else
-    RESULTS+="| 2.2-04 | syntax check lab_j2.sh | ❌ | erreur syntaxe | pas d'erreur | |\n"
+    RESULTS+="| 2-04 | syntax check lab_j2.sh | ❌ | erreur syntaxe | pas d'erreur | |\n"
   fi
 else
-  RESULTS+="| 2.2-04 | syntax check lab_j2.sh | ❌ | fichier manquant | fichier présent | |\n"
+  RESULTS+="| 2-04 | syntax check lab_j2.sh | ❌ | fichier manquant | fichier présent | |\n"
 fi
 
 echo -e "$RESULTS" >> "$REPORT"
 echo "" >> "$REPORT"
 
 # =============================================================================
-# LAB 2.3 — Exploitation Samba + Persistance
+# LAB-3 — Exploitation Samba + Persistance
 # =============================================================================
-echo "=== LAB 2.3 — Exploitation Samba ==="
-echo "## LAB 2.3 — Exploitation Samba + Kill Chain complète" >> "$REPORT"
+echo "=== LAB-3 — Exploitation Samba ==="
+echo "## LAB-3 — Exploitation Samba + Kill Chain complète" >> "$REPORT"
 echo "" >> "$REPORT"
 echo '| Test | Commande | Statut | Résultat obtenu | Résultat attendu | Notes |' >> "$REPORT"
 echo '|------|----------|--------|----------------|-------------------|-------|' >> "$REPORT"
 
 RESULTS=""
 
-# 2.3-01: Samba resource file check
+# 3-01: Samba resource file check
 if [ -f labs_resolution/jour-02/samba_exploit.rc ]; then
   rc_smb=$(msfconsole -q -r labs_resolution/jour-02/samba_exploit.rc 2>&1 | head -10)
   if echo "$rc_smb" | grep -q "RHOSTS\|usermap\|TARGET\|exploit"; then
-    RESULTS+="| 2.3-01 | load samba_exploit.rc | ✅ | module chargé | use exploit/multi/samba/usermap_script | |\n"
+    RESULTS+="| 3-01 | load samba_exploit.rc | ✅ | module chargé | use exploit/multi/samba/usermap_script | |\n"
   else
-    RESULTS+="| 2.3-01 | load samba_exploit.rc | ⚠️ | $rc_smb | module chargé | |\n"
+    RESULTS+="| 3-01 | load samba_exploit.rc | ⚠️ | $rc_smb | module chargé | |\n"
   fi
 else
-  RESULTS+="| 2.3-01 | load samba_exploit.rc | ❌ | fichier manquant | fichier présent | |\n"
+  RESULTS+="| 3-01 | load samba_exploit.rc | ❌ | fichier manquant | fichier présent | |\n"
 fi
 
-# 2.3-02: samba_bind.rc check
+# 3-02: samba_bind.rc check
 if [ -f labs_resolution/jour-02/samba_bind.rc ]; then
   rc_bind=$(msfconsole -q -r labs_resolution/jour-02/samba_bind.rc 2>&1 | head -5)
-  RESULTS+="| 2.3-02 | load samba_bind.rc | ✅ | module chargé | payload bind_netcat alternatif | |\n"
+  RESULTS+="| 3-02 | load samba_bind.rc | ✅ | module chargé | payload bind_netcat alternatif | |\n"
 else
-  RESULTS+="| 2.3-02 | load samba_bind.rc | ❌ | fichier manquant | fichier présent | |\n"
+  RESULTS+="| 3-02 | load samba_bind.rc | ❌ | fichier manquant | fichier présent | |\n"
 fi
 
-# 2.3-03: SMB port accessible
+# 3-03: SMB port accessible
 smb_test=$(timeout 5 nmap -p 445 localhost 2>&1)
 if echo "$smb_test" | grep -q "445/tcp.*open"; then
-  RESULTS+="| 2.3-03 | SMB port 445 | ✅ | 445/tcp open | Samba smbd accessible | |\n"
+  RESULTS+="| 3-03 | SMB port 445 | ✅ | 445/tcp open | Samba smbd accessible | |\n"
 else
-  RESULTS+="| 2.3-03 | SMB port 445 | ❌ | port fermé | Samba smbd accessible | |\n"
+  RESULTS+="| 3-03 | SMB port 445 | ❌ | port fermé | Samba smbd accessible | |\n"
 fi
 
-# 2.3-04: Persistence scripts tested via syntax check
+# 3-04: Persistence scripts tested via syntax check
 # Check that the persistence commands in the doc would work
-RESULTS+="| 2.3-04 | Persistance SSH key doc | ✅ | documented in course | 3 méthodes (SSH, cron, SUID) | vérifié document |\n"
+RESULTS+="| 3-04 | Persistance SSH key doc | ✅ | documented in course | 3 méthodes (SSH, cron, SUID) | vérifié document |\n"
 
-# 2.3-05: Attack layer JSON valid
+# 3-05: Attack layer JSON valid
 if [ -f labs_resolution/jour-02/attack-layer-jour2.json ]; then
   if python3 -c "import json; json.load(open('labs_resolution/jour-02/attack-layer-jour2.json'))" 2>&1; then
-    RESULTS+="| 2.3-05 | attack-layer-jour2.json | ✅ | JSON valide | fichier ATT&CK valide | |\n"
+    RESULTS+="| 3-05 | attack-layer-jour2.json | ✅ | JSON valide | fichier ATT&CK valide | |\n"
   else
-    RESULTS+="| 2.3-05 | attack-layer-jour2.json | ❌ | JSON invalide | fichier valide | |\n"
+    RESULTS+="| 3-05 | attack-layer-jour2.json | ❌ | JSON invalide | fichier valide | |\n"
   fi
 else
-  RESULTS+="| 2.3-05 | attack-layer-jour2.json | ❌ | fichier manquant | fichier présent | |\n"
+  RESULTS+="| 3-05 | attack-layer-jour2.json | ❌ | fichier manquant | fichier présent | |\n"
 fi
 
-# 2.3-06: env.sh variables
+# 3-06: env.sh variables
 source env.sh 2>/dev/null
 if [ -n "${METASPLOITABLE_IP:-}" ]; then
-  RESULTS+="| 2.3-06 | env.sh METASPLOITABLE_IP | ✅ | IP: $METASPLOITABLE_IP | IP du conteneur vsftpd | |\n"
+  RESULTS+="| 3-06 | env.sh METASPLOITABLE_IP | ✅ | IP: $METASPLOITABLE_IP | IP du conteneur vsftpd | |\n"
 else
-  RESULTS+="| 2.3-06 | env.sh METASPLOITABLE_IP | ⚠️ | IP non définie | IP du conteneur vsftpd | |\n"
+  RESULTS+="| 3-06 | env.sh METASPLOITABLE_IP | ⚠️ | IP non définie | IP du conteneur vsftpd | |\n"
 fi
 
 echo -e "$RESULTS" >> "$REPORT"
 echo "" >> "$REPORT"
 
 # =============================================================================
-# LAB 2.5 — ARP Poisoning
+# LAB-4 — ARP Poisoning
 # =============================================================================
-echo "=== LAB 2.5 — ARP Poisoning ==="
-echo "## LAB 2.5 — ARP Poisoning et attaque MITM avec BetterCap" >> "$REPORT"
+echo "=== LAB-4 — ARP Poisoning ==="
+echo "## LAB-4 — ARP Poisoning et attaque MITM avec BetterCap" >> "$REPORT"
 echo "" >> "$REPORT"
 echo '| Test | Commande | Statut | Résultat obtenu | Résultat attendu | Notes |' >> "$REPORT"
 echo '|------|----------|--------|----------------|-------------------|-------|' >> "$REPORT"
 
 RESULTS=""
 
-# 2.5-01: bettercap installed
+# 4-01: bettercap installed
 if command -v bettercap &>/dev/null; then
   bc_ver=$(bettercap -version 2>&1 | head -2 | tail -1 || echo "version unknown")
-  RESULTS+="| 2.5-01 | bettercap installed | ✅ | $bc_ver | bettercap disponible | |\n"
+  RESULTS+="| 4-01 | bettercap installed | ✅ | $bc_ver | bettercap disponible | |\n"
 else
-  RESULTS+="| 2.5-01 | bettercap installed | ❌ | non installé | bettercap disponible | sudo apt install bettercap |\n"
+  RESULTS+="| 4-01 | bettercap installed | ❌ | non installé | bettercap disponible | sudo apt install bettercap |\n"
 fi
 
-# 2.5-02: Network discovery via ARP
+# 4-02: Network discovery via ARP
 arp_table=$(arp -n 2>&1 | head -10)
 if echo "$arp_table" | grep -q "172.17\|172.18"; then
-  RESULTS+="| 2.5-02 | ARP table | ✅ | entrées ARP trouvées | conteneurs dans table ARP | |\n"
+  RESULTS+="| 4-02 | ARP table | ✅ | entrées ARP trouvées | conteneurs dans table ARP | |\n"
 else
-  RESULTS+="| 2.5-02 | ARP table | ⚠️ | pas d'entrées docker | conteneurs dans table ARP | peut être vide si pas de trafic |\n"
+  RESULTS+="| 4-02 | ARP table | ⚠️ | pas d'entrées docker | conteneurs dans table ARP | peut être vide si pas de trafic |\n"
 fi
 
-# 2.5-03: Conteneur IPs (via inspect)
+# 4-03: Conteneur IPs (via inspect)
 dvwa_ip=$(newgrp docker << 'EOF' 2>&1
 docker inspect dvwa-target -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}'
 EOF
@@ -426,56 +426,56 @@ docker inspect vsftpd-target -f '{{range .NetworkSettings.Networks}}{{.IPAddress
 EOF
 )
 if [ -n "$dvwa_ip" ]; then
-  RESULTS+="| 2.5-03 | docker inspect IPs | ✅ | DVWA: $dvwa_ip, vsftpd: $vsftpd_ip | IPs des conteneurs | |\n"
+  RESULTS+="| 4-03 | docker inspect IPs | ✅ | DVWA: $dvwa_ip, vsftpd: $vsftpd_ip | IPs des conteneurs | |\n"
 else
-  RESULTS+="| 2.5-03 | docker inspect IPs | ❌ | IPs non trouvées | IPs des conteneurs | |\n"
+  RESULTS+="| 4-03 | docker inspect IPs | ❌ | IPs non trouvées | IPs des conteneurs | |\n"
 fi
 
-# 2.5-04: BetterCap basic probe test
+# 4-04: BetterCap basic probe test
 bc_test=$(timeout 10 echo "kali" | sudo -S bettercap -eval "net.probe on; sleep 2; net.show" 2>&1 | head -20)
 if echo "$bc_test" | grep -q "bettercap\|192.168\|172.17\|172.18"; then
-  RESULTS+="| 2.5-04 | bettercap net.probe | ✅ | hôtes détectés | découverte réseau | |\n"
+  RESULTS+="| 4-04 | bettercap net.probe | ✅ | hôtes détectés | découverte réseau | |\n"
 elif [ -z "$bc_test" ]; then
-  RESULTS+="| 2.5-04 | bettercap net.probe | ⚠️ | pas de sortie (timeout) | découverte réseau | peut prendre >10s |\n"
+  RESULTS+="| 4-04 | bettercap net.probe | ⚠️ | pas de sortie (timeout) | découverte réseau | peut prendre >10s |\n"
 else
-  RESULTS+="| 2.5-04 | bettercap net.probe | ⚠️ | ${bc_test:0:100} | découverte réseau | |\n"
+  RESULTS+="| 4-04 | bettercap net.probe | ⚠️ | ${bc_test:0:100} | découverte réseau | |\n"
 fi
 
-# 2.5-05: ARP static entry test (simulation)
+# 4-05: ARP static entry test (simulation)
 arp_static=$(arp -n 2>&1 | grep -c "172.17.0.1")
-RESULTS+="| 2.5-05 | ARP table gateway | ✅ | passerelle dans table ARP | entrée ARP statique possible | Contre-mesure documentée |\n"
+RESULTS+="| 4-05 | ARP table gateway | ✅ | passerelle dans table ARP | entrée ARP statique possible | Contre-mesure documentée |\n"
 
 echo -e "$RESULTS" >> "$REPORT"
 echo "" >> "$REPORT"
 
 # =============================================================================
-# LAB 2.6 — Nessus / Scanner de vulnérabilités
+# LAB-5 — Nessus / Scanner de vulnérabilités
 # =============================================================================
-echo "=== LAB 2.6 — Nessus ==="
-echo "## LAB 2.6 — Scanner de vulnérabilités Nessus" >> "$REPORT"
+echo "=== LAB-5 — Nessus ==="
+echo "## LAB-5 — Scanner de vulnérabilités Nessus" >> "$REPORT"
 echo "" >> "$REPORT"
 echo '| Test | Commande | Statut | Résultat obtenu | Résultat attendu | Notes |' >> "$REPORT"
 echo '|------|----------|--------|----------------|-------------------|-------|' >> "$REPORT"
 
 RESULTS=""
 
-# 2.6-01: Check if Nessus is installed
+# 5-01: Check if Nessus is installed
 nessus_installed=$(dpkg -l nessus 2>&1 | grep -c "^ii\|nessus")
 if [ "$nessus_installed" -gt 0 ]; then
-  RESULTS+="| 2.6-01 | Nessus installed | ✅ | paquet installé | Nessus Essentials | |\n"
+  RESULTS+="| 5-01 | Nessus installed | ✅ | paquet installé | Nessus Essentials | |\n"
 else
-  RESULTS+="| 2.6-01 | Nessus installed | ⚠️ | non installé | optionnel — nmap --script vuln alternative | Utiliser nmap --script vuln |\n"
+  RESULTS+="| 5-01 | Nessus installed | ⚠️ | non installé | optionnel — nmap --script vuln alternative | Utiliser nmap --script vuln |\n"
 fi
 
-# 2.6-02: nmap --script vuln as alternative
+# 5-02: nmap --script vuln as alternative
 nmap_vuln=$(nmap --script vuln -p 21,445 localhost 2>&1 | head -30)
 if echo "$nmap_vuln" | grep -q "CVE\|VULNERABLE\|vuln\|21/tcp\|445/tcp"; then
-  RESULTS+="| 2.6-02 | \`nmap --script vuln\` | ✅ | NSE vuln exécuté | détection CVE critiques | Alternative à Nessus |\n"
+  RESULTS+="| 5-02 | \`nmap --script vuln\` | ✅ | NSE vuln exécuté | détection CVE critiques | Alternative à Nessus |\n"
 else
-  RESULTS+="| 2.6-02 | \`nmap --script vuln\` | ⚠️ | $nmap_vuln | détection CVE | peut prendre du temps |\n"
+  RESULTS+="| 5-02 | \`nmap --script vuln\` | ⚠️ | $nmap_vuln | détection CVE | peut prendre du temps |\n"
 fi
 
-# 2.6-03: Nessus summary file creation test
+# 5-03: Nessus summary file creation test
 mkdir -p rendu_labs/jour-02
 cat > rendu_labs/jour-02/nessus_summary.txt << 'NSEOF'
 === RÉSUMÉ SCAN NESSUS ===
@@ -487,20 +487,20 @@ Vulnérabilités critiques:
   - CVE-2007-2447 : Samba 3.0.20 usermap (CVSS 9.8)
 NSEOF
 if [ -f rendu_labs/jour-02/nessus_summary.txt ]; then
-  RESULTS+="| 2.6-03 | nessus_summary.txt creation | ✅ | fichier créé | résumé de scan | |\n"
+  RESULTS+="| 5-03 | nessus_summary.txt creation | ✅ | fichier créé | résumé de scan | |\n"
 else
-  RESULTS+="| 2.6-03 | nessus_summary.txt creation | ❌ | échec création | fichier créé | |\n"
+  RESULTS+="| 5-03 | nessus_summary.txt creation | ❌ | échec création | fichier créé | |\n"
 fi
 
-# 2.6-04: Contre-mesure — mise à jour simulation
+# 5-04: Contre-mesure — mise à jour simulation
 update_test=$(newgrp docker << 'EOF' 2>&1
 docker exec vsftpd-target bash -c "apt-get update -qq 2>/dev/null && echo 'apt-get OK' || echo 'apt-get FAIL'"
 EOF
 )
 if echo "$update_test" | grep -q "OK"; then
-  RESULTS+="| 2.6-04 | apt-get update vsftpd | ✅ | mise à jour simulée | apt-get update OK | |\n"
+  RESULTS+="| 5-04 | apt-get update vsftpd | ✅ | mise à jour simulée | apt-get update OK | |\n"
 else
-  RESULTS+="| 2.6-04 | apt-get update vsftpd | ⚠️ | $update_test | apt-get update | |\n"
+  RESULTS+="| 5-04 | apt-get update vsftpd | ⚠️ | $update_test | apt-get update | |\n"
 fi
 
 echo -e "$RESULTS" >> "$REPORT"

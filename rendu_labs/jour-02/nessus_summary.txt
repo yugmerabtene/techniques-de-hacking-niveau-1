@@ -1,0 +1,7 @@
+=== RÉSUMÉ SCAN NESSUS ===
+Date: $(date)
+Cibles: 127.0.0.1 (conteneurs docker)
+
+Vulnérabilités critiques:
+  - CVE-2011-2523 : vsftpd 2.3.4 backdoor (CVSS 9.8)
+  - CVE-2007-2447 : Samba 3.0.20 usermap (CVSS 9.8)

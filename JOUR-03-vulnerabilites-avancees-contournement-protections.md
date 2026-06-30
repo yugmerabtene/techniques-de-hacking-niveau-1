@@ -386,7 +386,7 @@ curl -s -o /dev/null -w "%{http_code}" "http://localhost:8081/?id=1%20OR%201=1"
 
 Un trojan (ou cheval de Troie) est un logiciel malveillant déguisé en programme légitime. Dans un test de pénétration, l'auditeur peut être mandaté pour tester la capacité des employés à détecter une pièce jointe malveillante (simulation d'APT). Le trojan est livré via un fichier `.exe`, un document Office macro, ou un lien de téléchargement.
 
-**Positionnement :** Contrairement aux exploits des Labs 2.2-2.3 (vulnérabilités réseau), le trojan exploite le **facteur humain** : un utilisateur exécute volontairement le fichier. C'est la technique la plus utilisée dans les attaques réelles (Verizon DBIR : 74% des brèches impliquent l'humain).
+**Positionnement :** Contrairement aux exploits des LAB-2–LAB-3 (vulnérabilités réseau), le trojan exploite le **facteur humain** : un utilisateur exécute volontairement le fichier. C'est la technique la plus utilisée dans les attaques réelles (Verizon DBIR : 74% des brèches impliquent l'humain).
 
 ```mermaid
 flowchart LR

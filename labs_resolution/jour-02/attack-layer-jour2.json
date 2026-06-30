@@ -14,7 +14,7 @@
       "color": "#e74c3c",
       "comment": "Network Service Scanning - nmap full scan Metasploitable",
       "enabled": true,
-      "metadata": [["Lab", "2.1"]]
+      "metadata": [["Lab", "LAB-1"]]
     },
     {
       "techniqueID": "T1190",
@@ -22,7 +22,7 @@
       "color": "#e74c3c",
       "comment": "Exploit Public-Facing Application - vsftpd 2.3.4 backdoor",
       "enabled": true,
-      "metadata": [["Lab", "2.2"]]
+      "metadata": [["Lab", "LAB-2"]]
     },
     {
       "techniqueID": "T1210",
@@ -30,7 +30,7 @@
       "color": "#e74c3c",
       "comment": "Exploitation of Remote Services - Samba usermap_script CVE-2007-2447",
       "enabled": true,
-      "metadata": [["Lab", "2.3"]]
+      "metadata": [["Lab", "LAB-3"]]
     },
     {
       "techniqueID": "T1059.004",
@@ -38,7 +38,7 @@
       "color": "#e74c3c",
       "comment": "Unix Shell - shell root via exploits",
       "enabled": true,
-      "metadata": [["Lab", "2.2"], ["Lab", "2.3"]]
+      "metadata": [["Lab", "LAB-2"], ["Lab", "LAB-3"]]
     },
     {
       "techniqueID": "T1098.004",
@@ -46,7 +46,7 @@
       "color": "#e74c3c",
       "comment": "SSH Authorized Keys - SSH key persistence",
       "enabled": true,
-      "metadata": [["Lab", "2.3"]]
+      "metadata": [["Lab", "LAB-3"]]
     }
   ],
   "gradient": {
