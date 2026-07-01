@@ -4,3 +4,8 @@ preformation/
 token.txt
 .opencode
 tests/rapport-test-*.md
+tests/bilan-*.md
+tests/rapport-bug-*.md
+tests/rapport-complet.md
+tests/plan-test-*.md
+

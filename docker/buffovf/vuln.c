@@ -35,6 +35,7 @@ void vulnerable_function(char *input) {
 }
 
 int main() {
+    setvbuf(stdout, NULL, _IONBF, 0);  // Désactive le buffering stdout (socat + fork ne flush pas sinon)
     char input[256];                // Tampon source de 256 octets — peut
                                     // largement dépasser les 64 du buffer
 
