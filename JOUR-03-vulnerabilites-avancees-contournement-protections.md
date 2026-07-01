@@ -217,7 +217,7 @@ Le buffer overflow a réussi parce que le binaire a été compilé **sans aucune
 | Protection | Flag gcc | Effet sur l'exploit |
 |---|---|---|
 | **Stack Canary** | `-fstack-protector-strong` | Valeur aléatoire entre buffer et EIP — écrasée → crash détecté |
-| **NX/DEP** | `-z noexecstack` (retiré) | La pile n'est plus exécutable → ret2libc impossible (mais ROP pur reste possible) |
+| **NX/DEP** | `-z noexecstack` | Empêche l'exécution de code sur la pile (shellcode) → contourné par ret2libc (appel system@libc, pas de code sur la pile) |
 | **ASLR** | `kernel.randomize_va_space=2` | Adresses aléatoires → force brute nécessaire même en ret2libc |
 | **PIE** | `-pie -fPIE` | Le binaire lui-même est randomisé → les adresses PLT/GOT changent aussi |
 | **FORTIFY_SOURCE** | `-D_FORTIFY_SOURCE=2` | Remplace `strcpy()` par `__strcpy_chk()` avec vérification de taille |
