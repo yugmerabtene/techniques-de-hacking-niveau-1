@@ -28,7 +28,7 @@
       "techniqueID": "T1068",
       "tactic": "privilege-escalation",
       "color": "#e74c3c",
-      "comment": "Exploitation for Privilege Escalation - exécution de code arbitraire via EIP hijack",
+      "comment": "Exploitation for Privilege Escalation - exécution de code arbitraire via EIP hijack + ret2libc",
       "enabled": true,
       "metadata": [["Lab", "3.1"]]
     },
@@ -36,15 +36,7 @@
       "techniqueID": "T1059.004",
       "tactic": "execution",
       "color": "#e74c3c",
-      "comment": "Unix Shell - reverse shell /bin/sh via connect+dupsh shellcode",
-      "enabled": true,
-      "metadata": [["Lab", "3.1"]]
-    },
-    {
-      "techniqueID": "T1021",
-      "tactic": "lateral-movement",
-      "color": "#e74c3c",
-      "comment": "Remote Services - connexion TCP reverse shell vers l'attaquant",
+      "comment": "Unix Shell - shell /bin/sh via ret2libc (system@libc)",
       "enabled": true,
       "metadata": [["Lab", "3.1"]]
     },
@@ -52,17 +44,9 @@
       "techniqueID": "T1562.001",
       "tactic": "defense-evasion",
       "color": "#e74c3c",
-      "comment": "Impair Defenses: Disable or Modify Tools - contournement ModSecurity WAF via HPP, encodings, sqlmap tamper",
+      "comment": "Impair Defenses - contournement ModSecurity WAF via operateurs alternatifs (LIKE, IN, RLIKE, ||, &&)",
       "enabled": true,
       "metadata": [["Lab", "3.2"]]
-    },
-    {
-      "techniqueID": "T1193",
-      "tactic": "initial-access",
-      "color": "#ff9800",
-      "comment": "Contournement de protections de pile : ASLR (+ setarch linux32 -R), NX (+ execstack), Stack Canary (+ -fno-stack-protector)",
-      "enabled": true,
-      "metadata": [["Lab", "3.1"]]
     }
   ],
   "gradient": {
@@ -71,8 +55,7 @@
     "maxValue": 1
   },
   "legendItems": [
-    {"label": "Attaque réussie", "color": "#e74c3c"},
-    {"label": "Contre-mesure", "color": "#ff9800"}
+    {"label": "Attaque reussie", "color": "#e74c3c"}
   ],
   "showTacticRowBackground": true,
   "tacticRowBackground": "#dddddd",
